@@ -4,143 +4,255 @@ import { IoFlaskSharp } from 'react-icons/io5';
 
 const docs: { [key: string]: ConfigDoc } = {
   'config.name': {
-    title: 'Training Name',
+    title: '训练名称',
     description: (
       <>
-        The name of the training job. This name will be used to identify the job in the system and will the the filename
-        of the final model. It must be unique and can only contain alphanumeric characters, underscores, and dashes. No
-        spaces or special characters are allowed.
+        训练任务的名称。用于标识任务并作为最终模型文件名的一部分。必须唯一，仅允许字母、数字、下划线和短横线，不允许空格或特殊字符。
       </>
     ),
   },
   gpuids: {
-    title: 'GPU ID',
+    title: 'GPU 编号',
     description: (
       <>
-        This is the GPU that will be used for training. Only one GPU can be used per job at a time via the UI currently.
-        However, you can start multiple jobs in parallel, each using a different GPU.
+        训练所使用的 GPU 编号。目前 UI 每个任务仅支持选择一个 GPU，但可以并行启动多个任务分别使用不同的 GPU。
       </>
     ),
   },
   'config.process[0].trigger_word': {
-    title: 'Trigger Word',
+    title: '触发词',
     description: (
       <>
-        Optional: This will be the word or token used to trigger your concept or character.
+        可选：用于触发你训练概念或角色的词或标记。
         <br />
         <br />
-        When using a trigger word, If your captions do not contain the trigger word, it will be added automatically the
-        beginning of the caption. If you do not have captions, the caption will become just the trigger word. If you
-        want to have variable trigger words in your captions to put it in different spots, you can use the{' '}
-        <code>{'[trigger]'}</code> placeholder in your captions. This will be automatically replaced with your trigger
-        word.
+        当启用触发词时，如果数据集字幕未包含触发词，系统会自动在字幕开头加入触发词；若无字幕，将仅使用触发词作为字幕。若希望在不同位置使用触发词，可在字幕中使用占位符{' '}
+        <code>{'[trigger]'}</code>，系统会自动替换为你的触发词。
         <br />
         <br />
-        Trigger words will not automatically be added to your test prompts, so you will need to either add your trigger
-        word manually or use the
-        <code>{'[trigger]'}</code> placeholder in your test prompts as well.
+        触发词不会自动加到测试提示词中，请手动添加或同样使用{' '}
+        <code>{'[trigger]'}</code> 作为占位符。
       </>
     ),
   },
   'config.process[0].model.name_or_path': {
-    title: 'Name or Path',
+    title: '名称或路径',
     description: (
       <>
-        The name of a diffusers repo on Huggingface or the local path to the base model you want to train from. The
-        folder needs to be in diffusers format for most models. For some models, such as SDXL and SD1, you can put the
-        path to an all in one safetensors checkpoint here.
+        HuggingFace 上 diffusers 仓库名，或本地基础模型的文件夹路径。多数模型需要使用 diffusers 格式的文件夹；部分模型（如 SDXL、SD1）可填入整合的 safetensors 检查点路径。
+      </>
+    ),
+  },
+  'config.process[0].model.arch': {
+    title: '模型架构',
+    description: (
+      <>
+        选择训练所用的基础模型架构，会影响可配置项与训练流程。例如图像、视频、编辑模型的架构不同。
+      </>
+    ),
+  },
+  'model.low_vram': {
+    title: '低显存',
+    description: (
+      <>
+        启用后以更保守的显存占用进行训练，适合显存较小的显卡。可能降低训练速度但提高稳定性。
+      </>
+    ),
+  },
+  'model.layer_offloading_transformer_percent': {
+    title: 'Transformer 卸载百分比',
+    description: (
+      <>
+        设置将 Transformer 层权重卸载到 CPU 内存的比例（0–100%）。卸载越多显存占用越少，但训练速度可能下降。
+      </>
+    ),
+  },
+  'model.layer_offloading_text_encoder_percent': {
+    title: '文本编码器卸载百分比',
+    description: (
+      <>
+        设置将文本编码器权重卸载到 CPU 内存的比例（0–100%）。用于进一步降低显存占用。
+      </>
+    ),
+  },
+  'config.process[0].network.type': {
+    title: '目标类型',
+    description: (
+      <>
+        训练目标网络类型，常见为 LoRA 或 LoKr。不同类型会影响参数含义与导出格式。
+      </>
+    ),
+  },
+  'config.process[0].network.lokr_factor': {
+    title: 'LoKr 因子',
+    description: (
+      <>
+        LoKr 的因子设置，影响参数分解与容量。-1 表示自动选择。
+      </>
+    ),
+  },
+  'config.process[0].network.linear': {
+    title: '线性秩',
+    description: (
+      <>
+        LoRA 的线性层秩（rank），数值越大容量越高但显存与训练难度也增加。
+      </>
+    ),
+  },
+  'config.process[0].network.conv': {
+    title: '卷积秩',
+    description: (
+      <>
+        卷积分支的秩，控制卷积通道的低秩近似容量。可选项，按需调整。
+      </>
+    ),
+  },
+  'train.batch_size': {
+    title: '批大小',
+    description: (
+      <>
+        每步训练的样本数量。受显存影响，过大可能 OOM，过小训练不稳定。
+      </>
+    ),
+  },
+  'train.gradient_accumulation': {
+    title: '梯度累计',
+    description: (
+      <>
+        累计多次小批次的梯度再进行一次优化，相当于放大有效批大小以节省显存。
+      </>
+    ),
+  },
+  'train.steps': {
+    title: '总步数',
+    description: (
+      <>
+        总训练迭代步数。步数越多通常效果更好，但训练时间更长。
+      </>
+    ),
+  },
+  'train.optimizer': {
+    title: '优化器',
+    description: (
+      <>
+        选择参数更新算法，如 AdamW8Bit 或 Adafactor。不同优化器对显存与稳定性影响不同。
+      </>
+    ),
+  },
+  'train.lr': {
+    title: '学习率',
+    description: (
+      <>
+        控制参数更新的步幅。过大易发散，过小收敛慢。建议从 1e-4 等常用值起调。
+      </>
+    ),
+  },
+  'train.optimizer_params.weight_decay': {
+    title: '权重衰减',
+    description: (
+      <>
+        L2 正则项系数，抑制过拟合并提升泛化能力。通常与优化器搭配调整。
+      </>
+    ),
+  },
+  'train.timestep_type': {
+    title: '时间步类型',
+    description: (
+      <>
+        噪声时间步分布类型（Sigmoid/Linear/Shift/Weighted），影响训练采样策略与学习重点。
+      </>
+    ),
+  },
+  'train.content_or_style': {
+    title: '时间步偏向',
+    description: (
+      <>
+        训练偏向形体、结构（高噪声）或细节、纹理（低噪声），Balanced 表示均衡。
+      </>
+    ),
+  },
+  'train.loss_type': {
+    title: '损失类型',
+    description: (
+      <>
+        选择损失函数（MSE/MAE/Wavelet/Stepped Recovery），影响训练优化目标与收敛特性。
       </>
     ),
   },
   'datasets.control_path': {
-    title: 'Control Dataset',
+    title: '控制数据集',
     description: (
       <>
-        The control dataset needs to have files that match the filenames of your training dataset. They should be
-        matching file pairs. These images are fed as control/input images during training. The control images will be
-        resized to match the training images.
+        控制数据集的文件名需要与训练数据集一一对应，形成成对文件。训练时这些图像作为控制/输入图像使用，
+        控制图会自动缩放以匹配目标训练图像的尺寸。
       </>
     ),
   },
   'datasets.multi_control_paths': {
-    title: 'Multi Control Dataset',
+    title: '多控制数据集',
     description: (
       <>
-        The control dataset needs to have files that match the filenames of your training dataset. They should be
-        matching file pairs. These images are fed as control/input images during training.
+        控制数据集的文件名需与训练数据集对应为成对文件，训练时作为控制/输入图像。
         <br />
         <br />
-        For multi control datasets, the controls will all be applied in the order they are listed. If the model does not
-        require the images to be the same aspect ratios, such as with Qwen/Qwen-Image-Edit-2509, then the control images
-        do not need to match the aspect size or aspect ratio of the target image and they will be automatically resized
-        to the ideal resolutions for the model / target images.
+        多控制数据集会按列出的顺序依次应用所有控制图。如果模型不要求与目标图像保持相同长宽比（例如 Qwen/QIE-2509），
+        则控制图不必与目标图像尺寸或比例一致，系统会自动缩放到更适合该模型/目标的分辨率。
       </>
     ),
   },
   'datasets.num_frames': {
-    title: 'Number of Frames',
+    title: '帧数',
     description: (
       <>
-        This sets the number of frames to shrink videos to for a video dataset. If this dataset is images, set this to 1
-        for one frame. If your dataset is only videos, frames will be extracted evenly spaced from the videos in the
-        dataset.
+        用于视频数据集：将每个视频压缩/抽取为固定帧数。如果是图像数据集请设为 1。纯视频数据集会按时间均匀抽帧。
         <br />
         <br />
-        It is best to trim your videos to the proper length before training. Wan is 16 frames a second. Doing 81 frames
-        will result in a 5 second video. So you would want all of your videos trimmed to around 5 seconds for best
-        results.
+        建议在训练前将视频剪裁到合适长度。以 Wan 为例，默认 16fps，81 帧约等于 5 秒视频，
+        因此将视频统一到约 5 秒更利于训练稳定。
         <br />
         <br />
-        Example: Setting this to 81 and having 2 videos in your dataset, one is 2 seconds and one is 90 seconds long,
-        will result in 81 evenly spaced frames for each video making the 2 second video appear slow and the 90second
-        video appear very fast.
+        示例：若设为 81，且数据集中两个视频分别为 2 秒与 90 秒，都会被均匀抽取为 81 帧，
+        因此 2 秒视频看起来更慢，90 秒视频看起来更快。
       </>
     ),
   },
   'datasets.do_i2v': {
-    title: 'Do I2V',
+    title: '启用 I2V',
     description: (
       <>
-        For video models that can handle both I2V (Image to Video) and T2V (Text to Video), this option sets this
-        dataset to be trained as an I2V dataset. This means that the first frame will be extracted from the video and
-        used as the start image for the video. If this option is not set, the dataset will be treated as a T2V dataset.
+        对同时支持 I2V（图到视频）与 T2V（文到视频）的模型，此选项将该数据集按 I2V 方式训练：
+        会从视频中提取第一帧作为起始图像。未启用时，默认按 T2V 方式处理。
       </>
     ),
   },
   'datasets.flip': {
-    title: 'Flip X and Flip Y',
+    title: '水平/垂直翻转',
     description: (
       <>
-        You can augment your dataset on the fly by flipping the x (horizontal) and/or y (vertical) axis. Flipping a
-        single axis will effectively double your dataset. It will result it training on normal images, and the flipped
-        versions of the images. This can be very helpful, but keep in mind it can also be destructive. There is no
-        reason to train people upside down, and flipping a face can confuse the model as a person's right side does not
-        look identical to their left side. For text, obviously flipping text is not a good idea.
+        可在训练时动态进行数据增强：按 x（水平）/y（垂直）方向翻转。翻转单一轴会有效扩大数据量（原图+翻转图）。
+        需谨慎使用：例如人物上下颠倒或人脸左右互换可能破坏效果；文本翻转通常不可取。
         <br />
         <br />
-        Control images for a dataset will also be flipped to match the images, so they will always match on the pixel
-        level.
+        控制图也会按相同方式翻转以与训练图像逐像素对应。
       </>
     ),
   },
   'train.unload_text_encoder': {
-    title: 'Unload Text Encoder',
+    title: '卸载文本编码器',
     description: (
       <>
-        Unloading text encoder will cache the trigger word and the sample prompts and unload the text encoder from the
-        GPU. Captions in for the dataset will be ignored
+        启用后会缓存触发词与示例提示词，并将文本编码器从 GPU 卸载以节省显存。数据集中提供的字幕在训练时会被忽略。
       </>
     ),
   },
   'train.cache_text_embeddings': {
-    title: 'Cache Text Embeddings',
+    title: '缓存文本嵌入',
     description: (
       <>
-        <small>(experimental)</small>
+        <small>（实验性）</small>
         <br />
-        Caching text embeddings will process and cache all the text embeddings from the text encoder to the disk. The
-        text encoder will be unloaded from the GPU. This does not work with things that dynamically change the prompt
-        such as trigger words, caption dropout, etc.
+        该选项会预处理并将文本编码器生成的所有文本嵌入缓存到磁盘，同时把文本编码器从 GPU 卸载以降低显存占用。
+        对会动态改变提示词的功能（例如触发词、字幕丢弃等）不适用。
       </>
     ),
   },
@@ -188,30 +300,26 @@ const docs: { [key: string]: ConfigDoc } = {
   'model.layer_offloading': {
     title: (
       <>
-        Layer Offloading{' '}
+        层级卸载{' '}
         <span className="text-yellow-500">
-          ( <IoFlaskSharp className="inline text-yellow-500" name="Experimental" /> Experimental)
+          ( <IoFlaskSharp className="inline text-yellow-500" name="Experimental" /> 实验性 )
         </span>
       </>
     ),
     description: (
       <>
-        This is an experimental feature based on{' '}
+        该功能基于{' '}
         <a className="text-blue-500" href="https://github.com/lodestone-rock/RamTorch" target="_blank">
           RamTorch
         </a>
-        . This feature is early and will have many updates and changes, so be aware it may not work consistently from
-        one update to the next. It will also only work with certain models.
+        ，仍处于早期阶段，后续会频繁更新与调整，因此在不同版本间可能表现不一致，并且只适用于部分模型。
         <br />
         <br />
-        Layer Offloading uses the CPU RAM instead of the GPU ram to hold most of the model weights. This allows training
-        a much larger model on a smaller GPU, assuming you have enough CPU RAM. This is slower than training on pure GPU
-        RAM, but CPU RAM is cheaper and upgradeable. You will still need GPU RAM to hold the optimizer states and LoRA
-        weights, so a larger card is usually still needed.
+        层级卸载会使用 CPU 内存来承载模型的大部分权重，而不是使用 GPU 显存。这使得在较小显存的显卡上也能训练更大的模型（前提是拥有足够的 CPU 内存）。
+        相比纯 GPU 显存训练，这种方式速度更慢，但 CPU 内存更便宜且可升级。仍然需要一定的 GPU 显存来保存优化器状态与 LoRA 权重，通常仍建议使用较大显存的显卡。
         <br />
         <br />
-        You can also select the percentage of the layers to offload. It is generally best to offload as few as possible
-        (close to 0%) for best performance, but you can offload more if you need the memory.
+        你可以选择需要卸载的层所占的百分比。一般来说，为了性能更好，建议尽量少卸载（接近 0%）；如果内存不足，可以适当提高卸载比例。
       </>
     ),
   },
@@ -229,32 +337,23 @@ const docs: { [key: string]: ConfigDoc } = {
     ),
   },
   'train.diff_output_preservation': {
-    title: 'Differential Output Preservation',
+    title: '差异化输出保持',
     description: (
       <>
-        Differential Output Preservation (DOP) is a technique to help preserve class of the trained concept during
-        training. For this, you must have a trigger word set to differentiate your concept from its class. For instance,
-        You may be training a woman named Alice. Your trigger word may be "Alice". The class is "woman", since Alice is
-        a woman. We want to teach the model to remember what it knows about the class "woman" while teaching it what is
-        different about Alice. During training, the trainer will make a prediction with your LoRA bypassed and your
-        trigger word in the prompt replaced with the class word. Making "photo of Alice" become "photo of woman". This
-        prediction is called the prior prediction. Each step, we will do the normal training step, but also do another
-        step with this prior prediction and the class prompt in order to teach our LoRA to preserve the knowledge of the
-        class. This should not only improve the performance of your trained concept, but also allow you to do things
-        like "Alice standing next to a woman" and not make both of the people look like Alice.
+        差异化输出保持（DOP）用于在训练概念的同时保留其所属类别的知识。需要设置触发词以便将概念与类别区分开来。
+        训练过程中会进行一次“先验预测”：禁用 LoRA，将提示词中的触发词替换为类别词（例如“photo of Alice”→“photo of woman”）。
+        每一步除了正常训练外，还会基于该先验预测与类别提示执行一次额外训练，以帮助 LoRA 保持对类别的认知。
+        这能提升概念的表现，并避免模型把同类对象都生成为同一个概念。
       </>
     ),
   },
   'train.blank_prompt_preservation': {
-    title: 'Blank Prompt Preservation',
+    title: '空提示词保持',
     description: (
       <>
-        Blank Prompt Preservation (BPP) is a technique to help preserve the current models knowledge when unprompted.
-        This will not only help the model become more flexible, but will also help the quality of your concept during
-        inference, especially when a model uses CFG (Classifier Free Guidance) on inference. At each step during
-        training, a prior prediction is made with a blank prompt and with the LoRA disabled. This prediction is then
-        used as a target on an additional training step with a blank prompt, to preserve the model's knowledge when no
-        prompt is given. This helps the model to not overfit to the prompt and retain its generalization capabilities.
+        空提示词保持（BPP）用于在无提示词时保留模型的已有知识，提高灵活性与推理质量（尤其在使用 CFG 时）。
+        训练每一步都会在禁用 LoRA、使用空提示词的情况下进行一次先验预测，并在额外的空提示训练步中将其作为目标，
+        以保持模型在无提示时的泛化能力，避免过度拟合提示词。
       </>
     ),
   },

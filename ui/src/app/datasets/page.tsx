@@ -27,7 +27,7 @@ export default function Datasets() {
 
   const columns: TableColumn[] = [
     {
-      title: 'Dataset Name',
+      title: '数据集名称',
       key: 'name',
       render: row => (
         <Link href={`/datasets/${row.name}`} className="text-gray-200 hover:text-gray-100">
@@ -36,7 +36,7 @@ export default function Datasets() {
       ),
     },
     {
-      title: 'Actions',
+      title: '操作',
       key: 'actions',
       className: 'w-20 text-right',
       render: row => (
@@ -52,10 +52,10 @@ export default function Datasets() {
 
   const handleDeleteDataset = (datasetName: string) => {
     openConfirm({
-      title: 'Delete Dataset',
-      message: `Are you sure you want to delete the dataset "${datasetName}"? This action cannot be undone.`,
+      title: '删除数据集',
+      message: `确定要删除数据集 "${datasetName}" 吗？该操作不可撤销。`,
       type: 'warning',
-      confirmText: 'Delete',
+      confirmText: '删除',
       onConfirm: () => {
         apiClient
           .post('/api/datasets/delete', { name: datasetName })
@@ -85,14 +85,14 @@ export default function Datasets() {
 
   const openNewDatasetModal = () => {
     openConfirm({
-      title: 'New Dataset',
-      message: 'Enter the name of the new dataset:',
+      title: '新建数据集',
+      message: '请输入新数据集的名称：',
       type: 'info',
-      confirmText: 'Create',
-      inputTitle: 'Dataset Name',
+      confirmText: '创建',
+      inputTitle: '数据集名称',
       onConfirm: async (name?: string) => {
         if (!name) {
-          console.error('Dataset name is required.');
+          console.error('必须填写数据集名称。');
           return;
         }
         try {
@@ -104,7 +104,7 @@ export default function Datasets() {
             refreshDatasets();
           }
         } catch (error) {
-          console.error('Error creating new dataset:', error);
+          console.error('创建数据集失败：', error);
         }
       },
     });
@@ -114,7 +114,7 @@ export default function Datasets() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-100">Datasets</h1>
+          <h1 className="text-2xl font-semibold text-gray-100">数据集</h1>
         </div>
         <div className="flex-1"></div>
         <div>
@@ -122,7 +122,7 @@ export default function Datasets() {
             className="text-gray-200 bg-slate-600 px-4 py-2 rounded-md hover:bg-slate-500 transition-colors"
             onClick={() => openNewDatasetModal()}
           >
-            New Dataset
+            新建数据集
           </Button>
         </div>
       </TopBar>
@@ -139,16 +139,16 @@ export default function Datasets() {
       <Modal
         isOpen={isNewDatasetModalOpen}
         onClose={() => setIsNewDatasetModalOpen(false)}
-        title="New Dataset"
+        title="新建数据集"
         size="md"
       >
         <div className="space-y-4 text-gray-200">
           <form onSubmit={handleCreateDataset}>
             <div className="text-sm text-gray-400">
-              This will create a new folder with the name below in your dataset folder.
+              将在数据集目录下以输入的名称创建一个新文件夹。
             </div>
             <div className="mt-4">
-              <TextInput label="Dataset Name" value={newDatasetName} onChange={value => setNewDatasetName(value)} />
+              <TextInput label="数据集名称" value={newDatasetName} onChange={value => setNewDatasetName(value)} />
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
@@ -157,13 +157,13 @@ export default function Datasets() {
                 className="rounded-md bg-gray-700 px-4 py-2 text-gray-200 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 onClick={() => setIsNewDatasetModalOpen(false)}
               >
-                Cancel
+                取消
               </button>
               <button
                 type="submit"
                 className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                Confirm
+                创建
               </button>
             </div>
           </form>
