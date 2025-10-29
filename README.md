@@ -31,7 +31,7 @@
 # 拉取最新镜像
 docker pull coco1006/ai-toolkit-easy2use:latest
 
-# 运行容器（需要 GPU 支持）
+# 运行容器
 docker run -d \
   --name ai-toolkit \
   --gpus all \
@@ -82,7 +82,7 @@ docker tag ai-toolkit-easy2use:0.7.2 ai-toolkit-easy2use:latest
 #### 3）运行本地构建的容器
 
 ```bash
-# 运行容器（需要 GPU 支持）
+# 运行容器
 docker run -d \
   --name ai-toolkit \
   --gpus all \
@@ -101,7 +101,7 @@ docker run -d \
 
 ## 容器运行选项
 
-### 标准运行（需要 GPU）
+### 标准运行
 
 ```bash
 docker run -d \
