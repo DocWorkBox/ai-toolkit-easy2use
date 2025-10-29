@@ -38,6 +38,7 @@ docker run -d \
   -p 8675:8675 \
   -v ${PWD}/models:/models \
   -v ${PWD}/output:/output \
+  -v ${PWD}/datasets:/datasets \
   coco1006/ai-toolkit-easy2use:latest
 ```
 
@@ -53,6 +54,7 @@ docker run -d `
   -p 8675:8675 `
   -v "${PWD}/models:/models" `
   -v "${PWD}/output:/output" `
+  -v "${PWD}/datasets:/datasets" `
   coco1006/ai-toolkit-easy2use:latest
 ```
 
@@ -89,6 +91,7 @@ docker run -d \
   -p 8675:8675 \
   -v ${PWD}/models:/models \
   -v ${PWD}/output:/output \
+  -v ${PWD}/datasets:/datasets \
   ai-toolkit-easy2use:latest
 ```
 
@@ -98,6 +101,13 @@ docker run -d \
 
 - `http://localhost:8675`（本地访问）
 - `http://<your-ip>:8675`（远程访问）
+
+## 目录挂载说明
+
+- `/models`：存放 AI 模型文件（如 FLUX.1-dev 等）
+- `/output`：训练输出和生成结果
+- `/datasets`：训练数据集存放目录
+- 容器内 Web UI 运行在端口 8675
 
 ## 容器运行选项
 
@@ -110,6 +120,7 @@ docker run -d \
   -p 8675:8675 \
   -v ${PWD}/models:/models \
   -v ${PWD}/output:/output \
+  -v ${PWD}/datasets:/datasets \
   coco1006/ai-toolkit-easy2use:latest
 ```
 
@@ -122,6 +133,7 @@ docker run -d `
   -p 8675:8675 `
   -v "${PWD}/models:/models" `
   -v "${PWD}/output:/output" `
+  -v "${PWD}/datasets:/datasets" `
   coco1006/ai-toolkit-easy2use:latest
 ```
 
