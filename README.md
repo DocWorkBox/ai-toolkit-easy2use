@@ -164,14 +164,19 @@ docker exec -it ai-toolkit bash
 
 ### 环境要求
 - Python ≥ 3.10
+- CUDA ≥ 12.1
+- PyTorch ≥ 2.4.0（CUDA 版本）
 - NVIDIA GPU（显存需满足训练需求）
 - Node.js ≥ 18
+- Git
 
 ### 安装步骤
-1. 创建 Python 虚拟环境
-2. 安装 PyTorch（CUDA 版本）
-3. 安装项目依赖：`pip install -r requirements.txt`
-4. 构建并运行 UI：`cd ui && npm install && npm run build_and_start`
+1. 克隆仓库：`git clone https://github.com/DocWorkBox/ai-toolkit-easy2use.git`
+2. 创建 Python 虚拟环境：`python -m venv venv`
+3. 激活虚拟环境：`venv\Scripts\activate`（Windows）或 `source venv/bin/activate`（Linux/macOS）
+4. 安装 PyTorch（CUDA 版本）：`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
+5. 安装项目依赖：`pip install -r requirements.txt`
+6. 构建并运行 UI：`cd ui && npm install && npm run build_and_start`
 
 </details>
 
