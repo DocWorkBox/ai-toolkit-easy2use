@@ -67,4 +67,4 @@ echo "Pod Started"
 setup_ssh
 export_env_vars
 echo "Starting AI Toolkit UI..."
-cd /app/ai-toolkit/ui && npm run start 
+cd /app/ai-toolkit-easy2use/ui && npm run start 

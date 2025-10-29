@@ -55,11 +55,11 @@ RUN pip install --pre --no-cache-dir torch torchvision torchaudio --index-url ht
 ARG CACHEBUST=1234
 ARG GIT_COMMIT=main
 RUN echo "Cache bust: ${CACHEBUST}" && \
-    git clone https://github.com/ostris/ai-toolkit.git && \
-    cd ai-toolkit && \
+    git clone https://github.com/DocWorkBox/ai-toolkit-easy2use.git && \
+    cd ai-toolkit-easy2use && \
     git checkout ${GIT_COMMIT}
 
-WORKDIR /app/ai-toolkit
+WORKDIR /app/ai-toolkit-easy2use
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt && \
@@ -67,7 +67,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     pip install setuptools==69.5.1 --no-cache-dir
 
 # Build UI
-WORKDIR /app/ai-toolkit/ui
+WORKDIR /app/ai-toolkit-easy2use/ui
 RUN npm install && \
     npm run build && \
     npm run update_db
@@ -81,3 +81,4 @@ COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
+
