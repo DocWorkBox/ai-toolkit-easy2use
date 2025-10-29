@@ -42,7 +42,7 @@ Windows（PowerShell）：
 
 ```powershell
 python -m venv venv
-./venv/Scripts/Activate.ps1
+.\venv\Scripts\Activate.ps1
 ```
 
 ### 3）安装 PyTorch（示例，CUDA 12.6 对应版本）
@@ -61,7 +61,15 @@ pip install -r requirements.txt
 
 ## 运行 UI（中文界面）
 
-UI 为基于 Next.js 的 Web 应用。默认开发模式运行在 `http://localhost:3000`。
+### 环境要求
+
+- Node.js ≥ 18
+
+UI 为基于 Next.js 的 Web 应用。UI 无需持续运行即可执行训练任务，仅在启动/停止/监控任务时需要使用。
+
+### 开发模式
+
+开发模式运行在 `http://localhost:3000`：
 
 ```bash
 cd ui
@@ -75,7 +83,21 @@ npm run dev
 - `http://localhost:3000/dashboard`（仪表盘）
 - `http://localhost:3000/jobs/new`（新建任务）
 
-> 生产部署方式可参考 `ui/README.md` 或根据你的环境自定义（例如构建后由你自己的 Node 服务或容器运行）。
+### 生产环境
+
+生产环境运行在端口 `8675`。以下命令将安装/更新 UI 及其依赖并启动 UI：
+
+```bash
+cd ui
+npm run build_and_start
+```
+
+启动后可通过以下地址访问：
+
+- `http://localhost:8675`（本地访问）
+- `http://<your-ip>:8675`（服务器部署时的远程访问）
+
+> **注意**：UI 无需持续运行即可执行训练任务。UI 仅用于启动、停止和监控任务。
 
 ## 中文版 UI 截图
 
