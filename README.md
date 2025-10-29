@@ -15,9 +15,11 @@
 ## 环境要求
 
 - Docker Desktop（Windows/macOS）或 Docker Engine（Linux）
-- NVIDIA GPU + NVIDIA Container Toolkit（用于 GPU 加速）
+- **NVIDIA GPU + NVIDIA Container Toolkit**（必需，不支持 CPU 运行）
 - Git（用于拉取仓库）
 - 至少 20GB 可用磁盘空间（用于 Docker 镜像和模型）
+
+> **重要提示**：本 Docker 镜像基于 NVIDIA CUDA，仅支持 GPU 运行，不支持纯 CPU 模式。
 
 ## Docker 部署（推荐方式）
 
@@ -29,7 +31,7 @@
 # 拉取最新镜像
 docker pull coco1006/ai-toolkit-easy2use:latest
 
-# 运行容器（GPU 加速）
+# 运行容器（需要 GPU 支持）
 docker run -d \
   --name ai-toolkit \
   --gpus all \
@@ -80,7 +82,7 @@ docker tag ai-toolkit-easy2use:0.7.2 ai-toolkit-easy2use:latest
 #### 3）运行本地构建的容器
 
 ```bash
-# GPU 加速运行
+# 运行容器（需要 GPU 支持）
 docker run -d \
   --name ai-toolkit \
   --gpus all \
@@ -99,18 +101,7 @@ docker run -d \
 
 ## 容器运行选项
 
-### 基础运行（仅 CPU）
-
-```bash
-docker run -d \
-  --name ai-toolkit \
-  -p 8675:8675 \
-  -v ${PWD}/models:/models \
-  -v ${PWD}/output:/output \
-  coco1006/ai-toolkit-easy2use:latest
-```
-
-### GPU 加速运行（推荐）
+### 标准运行（需要 GPU）
 
 ```bash
 docker run -d \
@@ -121,6 +112,20 @@ docker run -d \
   -v ${PWD}/output:/output \
   coco1006/ai-toolkit-easy2use:latest
 ```
+
+### Windows PowerShell 运行
+
+```powershell
+docker run -d `
+  --name ai-toolkit `
+  --gpus all `
+  -p 8675:8675 `
+  -v "${PWD}/models:/models" `
+  -v "${PWD}/output:/output" `
+  coco1006/ai-toolkit-easy2use:latest
+```
+
+> **注意**：`--gpus all` 参数是必需的，因为镜像基于 CUDA，必须使用 GPU 运行。
 
 ## 容器管理命令
 
