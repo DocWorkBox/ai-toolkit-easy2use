@@ -165,6 +165,7 @@ docker exec -it ai-toolkit bash
 
 - `/models`：存放 AI 模型文件（如 FLUX.1-dev 等）
 - `/output`：训练输出和生成结果
+- `/datasets`：训练集图片存放
 - 容器内 Web UI 运行在端口 8675
 
 ## 传统安装方式（高级用户）
