@@ -104,6 +104,11 @@ npm run build_and_start
 ![仪表盘（中文）](ui/public/screenshots/dashboard_zh.png)
 ![新建任务（中文）](ui/public/screenshots/jobs_new_zh.png)
 
+### 手机端 UI 截图
+
+![手机端：适配器页面（1）](ui/public/screenshots/adapter-UI0.png)
+![手机端：适配器页面（2）](ui/public/screenshots/adapter-UI1.png)
+
 ## 常见问题（FAQ）
 
 - 显存不足如何处理？
