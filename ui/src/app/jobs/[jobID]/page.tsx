@@ -62,7 +62,8 @@ export default function JobPage({ params }: { params: { jobID: string } }) {
           </Button>
         </div>
         <div>
-          <h1 className="text-lg">Job: {job?.name}</h1>
+          {/* 标题在移动端缩小并截断，避免过长名称导致溢出 */}
+          <h1 className="text-base sm:text-lg truncate max-w-[50vw] sm:max-w-none">Job: {job?.name}</h1>
         </div>
         <div className="flex-1"></div>
         {job && (

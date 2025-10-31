@@ -45,28 +45,22 @@ const GpuMonitor: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // 根据 GPU 数量返回带断点的栅格类，手机端默认单列
   const getGridClasses = (gpuCount: number): string => {
-    switch (gpuCount) {
-      case 1:
-        return 'grid-cols-1';
-      case 2:
-        return 'grid-cols-2';
-      case 3:
-        return 'grid-cols-3';
-      case 4:
-        return 'grid-cols-4';
-      case 5:
-      case 6:
-        return 'grid-cols-3';
-      case 7:
-      case 8:
-        return 'grid-cols-4';
-      case 9:
-      case 10:
-        return 'grid-cols-5';
-      default:
-        return 'grid-cols-3';
-    }
+    // 在源代码中显式列出所有可能类，避免 Tailwind 清理
+    const map: { [key: number]: string } = {
+      1: 'grid-cols-1',
+      2: 'grid-cols-1 sm:grid-cols-2',
+      3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+      4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+      5: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+      6: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+      7: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+      8: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+      9: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+      10: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6',
+    };
+    return map[gpuCount] || 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3';
   };
 
   console.log('state', {

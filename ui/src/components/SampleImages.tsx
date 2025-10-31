@@ -146,94 +146,23 @@ export default function SampleImages({ job }: SampleImagesProps) {
     );
   }, [status, sampleImages.length]);
 
-  // Use direct Tailwind class without string interpolation
-  // This way Tailwind can properly generate the class
-  // I hate this, but it's the only way to make it work
+  // 将样例图栅格改为响应式：
+  // - 手机端两列（更易于浏览）
+  // - 随屏幕大小逐步增加列数，但限制为最多 8 列
+  // 直接返回明确的 Tailwind 类，避免被构建时清理
   const gridColsClass = useMemo(() => {
-    const cols = Math.min(numSamples, 40);
-
-    switch (cols) {
-      case 1:
-      case 2:
-      case 3:
-        return 'grid-cols-3';
-      case 4:
-        return 'grid-cols-4';
-      case 5:
-        return 'grid-cols-5';
-      case 6:
-        return 'grid-cols-6';
-      case 7:
-        return 'grid-cols-7';
-      case 8:
-        return 'grid-cols-8';
-      case 9:
-        return 'grid-cols-9';
-      case 10:
-        return 'grid-cols-10';
-      case 11:
-        return 'grid-cols-11';
-      case 12:
-        return 'grid-cols-12';
-      case 13:
-        return 'grid-cols-13';
-      case 14:
-        return 'grid-cols-14';
-      case 15:
-        return 'grid-cols-15';
-      case 16:
-        return 'grid-cols-16';
-      case 17:
-        return 'grid-cols-17';
-      case 18:
-        return 'grid-cols-18';
-      case 19:
-        return 'grid-cols-19';
-      case 20:
-        return 'grid-cols-20';
-      case 21:
-        return 'grid-cols-21';
-      case 22:
-        return 'grid-cols-22';
-      case 23:
-        return 'grid-cols-23';
-      case 24:
-        return 'grid-cols-24';
-      case 25:
-        return 'grid-cols-25';
-      case 26:
-        return 'grid-cols-26';
-      case 27:
-        return 'grid-cols-27';
-      case 28:
-        return 'grid-cols-28';
-      case 29:
-        return 'grid-cols-29';
-      case 30:
-        return 'grid-cols-30';
-      case 31:
-        return 'grid-cols-31';
-      case 32:
-        return 'grid-cols-32';
-      case 33:
-        return 'grid-cols-33';
-      case 34:
-        return 'grid-cols-34';
-      case 35:
-        return 'grid-cols-35';
-      case 36:
-        return 'grid-cols-36';
-      case 37:
-        return 'grid-cols-37';
-      case 38:
-        return 'grid-cols-38';
-      case 39:
-        return 'grid-cols-39';
-      case 40:
-        return 'grid-cols-40';
-      default:
-        return 'grid-cols-3';
-    }
+    const cols = Math.min(numSamples, 8);
+    const map: { [key: number]: string } = {
+      1: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+      2: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+      3: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+      4: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
+      5: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6',
+      6: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7',
+      7: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7',
+      8: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8',
+    };
+    return map[cols] || 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4';
   }, [numSamples]);
 
   const sampleConfig = useMemo(() => {

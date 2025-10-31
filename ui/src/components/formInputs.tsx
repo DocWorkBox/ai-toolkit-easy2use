@@ -190,6 +190,13 @@ export const SelectInput = (props: SelectInputProps) => {
         isDisabled={props.disabled}
         className="aitk-react-select-container"
         classNamePrefix="aitk-react-select"
+        // 使用 Portal 将下拉菜单渲染到 body，避免被父容器 overflow 截断
+        menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+        menuPosition="fixed"
+        styles={{
+          menuPortal: base => ({ ...base, zIndex: 9999 }),
+          menu: base => ({ ...base, zIndex: 9999 }),
+        }}
         onChange={selected => {
           if (selected) {
             onChange((selected as { value: string }).value);

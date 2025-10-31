@@ -134,13 +134,13 @@ export default function JobOverview({ job }: JobOverviewProps) {
             </div>
           </div>
 
-          {/* Log - Now using flex-grow to fill remaining space */}
-          <div className="bg-gray-950 rounded-lg p-4 relative flex-grow min-h-60">
-            <div
-              ref={logRef}
-              className="text-xs text-gray-300 absolute inset-0 p-4 overflow-y-auto"
-              onScroll={handleScroll}
-            >
+  {/* 日志区域：在手机端使用视口高度，确保显示比例合适 */}
+  <div className="bg-gray-950 rounded-lg p-4 relative flex-grow min-h-60 h-[40vh] sm:h-[45vh] md:h-auto">
+    <div
+      ref={logRef}
+      className="text-xs text-gray-300 absolute inset-0 p-4 overflow-y-auto"
+      onScroll={handleScroll}
+    >
               {statusLog === 'loading' && 'Loading log...'}
               {statusLog === 'error' && 'Error loading log'}
               {['success', 'refreshing'].includes(statusLog) && (
