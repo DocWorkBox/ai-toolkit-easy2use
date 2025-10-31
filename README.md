@@ -72,12 +72,18 @@ cd ai-toolkit-easy2use
 #### 2）构建 Docker 镜像
 
 ```bash
-# 构建镜像（包含缓存破坏参数以确保最新代码）
-docker build --build-arg CACHEBUST=$(Get-Date -UFormat %s) -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .
+# 推荐（跨平台更稳，始终拉取最新基础镜像）
+docker build --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .
 
 # 同时创建 latest 标签
 docker tag ai-toolkit-easy2use:0.7.2 ai-toolkit-easy2use:latest
 ```
+
+> 如需彻底禁用缓存（更慢但最干净）：`docker build --no-cache --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
+
+> 高级（可选）：不同终端的轻量缓存破坏示例
+- Linux/macOS（Bash）：`docker build --build-arg CACHEBUST=$(date +%s) --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
+- Windows PowerShell：`docker build --build-arg CACHEBUST=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
 
 > **注意**：首次构建可能需要 15-30 分钟，请耐心等待。
 
