@@ -27,7 +27,8 @@ export default function Datasets() {
 
   const columns: TableColumn[] = [
     {
-      title: '数据集名称',
+      // English localization: column for dataset name
+      title: 'Dataset Name',
       key: 'name',
       render: row => (
         <Link href={`/datasets/${row.name}`} className="text-gray-200 hover:text-gray-100">
@@ -36,7 +37,8 @@ export default function Datasets() {
       ),
     },
     {
-      title: '操作',
+      // English localization: actions column
+      title: 'Actions',
       key: 'actions',
       className: 'w-20 text-right',
       render: row => (
@@ -52,10 +54,11 @@ export default function Datasets() {
 
   const handleDeleteDataset = (datasetName: string) => {
     openConfirm({
-      title: '删除数据集',
-      message: `确定要删除数据集 "${datasetName}" 吗？该操作不可撤销。`,
+      // English localization for confirm modal
+      title: 'Delete Dataset',
+      message: `Are you sure you want to delete dataset "${datasetName}"? This action cannot be undone.`,
       type: 'warning',
-      confirmText: '删除',
+      confirmText: 'Delete',
       onConfirm: () => {
         apiClient
           .post('/api/datasets/delete', { name: datasetName })
@@ -85,14 +88,15 @@ export default function Datasets() {
 
   const openNewDatasetModal = () => {
     openConfirm({
-      title: '新建数据集',
-      message: '请输入新数据集的名称：',
+      // English localization for create dataset modal
+      title: 'Create Dataset',
+      message: 'Please enter the name of the new dataset:',
       type: 'info',
-      confirmText: '创建',
-      inputTitle: '数据集名称',
+      confirmText: 'Create',
+      inputTitle: 'Dataset Name',
       onConfirm: async (name?: string) => {
         if (!name) {
-          console.error('必须填写数据集名称。');
+          console.error('Dataset name is required.');
           return;
         }
         try {
@@ -104,7 +108,7 @@ export default function Datasets() {
             refreshDatasets();
           }
         } catch (error) {
-          console.error('创建数据集失败：', error);
+          console.error('Failed to create dataset:', error);
         }
       },
     });
@@ -114,7 +118,8 @@ export default function Datasets() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-100">数据集</h1>
+          {/* English localization: page title */}
+          <h1 className="text-2xl font-semibold text-gray-100">Datasets</h1>
         </div>
         <div className="flex-1"></div>
         <div>
@@ -122,7 +127,7 @@ export default function Datasets() {
             className="text-gray-200 bg-slate-600 px-4 py-2 rounded-md hover:bg-slate-500 transition-colors"
             onClick={() => openNewDatasetModal()}
           >
-            新建数据集
+            Create Dataset
           </Button>
         </div>
       </TopBar>
@@ -139,16 +144,17 @@ export default function Datasets() {
       <Modal
         isOpen={isNewDatasetModalOpen}
         onClose={() => setIsNewDatasetModalOpen(false)}
-        title="新建数据集"
+        title="Create Dataset"
         size="md"
       >
         <div className="space-y-4 text-gray-200">
           <form onSubmit={handleCreateDataset}>
             <div className="text-sm text-gray-400">
-              将在数据集目录下以输入的名称创建一个新文件夹。
+              A new folder will be created under the datasets directory using the entered name.
             </div>
             <div className="mt-4">
-              <TextInput label="数据集名称" value={newDatasetName} onChange={value => setNewDatasetName(value)} />
+              {/* English localization: input label */}
+              <TextInput label="Dataset Name" value={newDatasetName} onChange={value => setNewDatasetName(value)} />
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
@@ -157,13 +163,13 @@ export default function Datasets() {
                 className="rounded-md bg-gray-700 px-4 py-2 text-gray-200 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 onClick={() => setIsNewDatasetModalOpen(false)}
               >
-                取消
+                Cancel
               </button>
               <button
                 type="submit"
                 className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                创建
+                Create
               </button>
             </div>
           </form>

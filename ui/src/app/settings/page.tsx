@@ -36,7 +36,7 @@ export default function Settings() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-lg">设置</h1>
+          <h1 className="text-lg">Settings</h1>
         </div>
         <div className="flex-1"></div>
       </TopBar>
@@ -47,13 +47,13 @@ export default function Settings() {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="HF_TOKEN" className="block text-sm font-medium mb-2">
-                    Hugging Face 令牌
+                    Hugging Face Token
                     <div className="text-gray-500 text-sm ml-1">
-                      如果需要访问受限/私有模型，请在{' '}
+                      If you need access to restricted/private models, please create a Read Token at{' '}
                       <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noreferrer">
                         Huggingface
                       </a>{' '}
-                      创建一个 Read Token（读取令牌）。
+                      .
                     </div>
                   </label>
                   <input
@@ -63,15 +63,15 @@ export default function Settings() {
                     value={settings.HF_TOKEN}
                     onChange={handleChange}
                     className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-transparent"
-                    placeholder="输入 Hugging Face 令牌"
+                    placeholder="Enter Hugging Face token"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="TRAINING_FOLDER" className="block text-sm font-medium mb-2">
-                    训练输出路径
+                    Training Output Path
                     <div className="text-gray-500 text-sm ml-1">
-                      用于存放训练生成的文件。必须是绝对路径；若留空，将默认使用项目根目录下的 output 文件夹。
+                      Path to store training outputs. Must be an absolute path; defaults to `output` in project root if empty.
                     </div>
                   </label>
                   <input
@@ -81,17 +81,17 @@ export default function Settings() {
                     value={settings.TRAINING_FOLDER}
                     onChange={handleChange}
                     className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-transparent"
-                    placeholder="输入训练输出路径"
+                    placeholder="Enter training output path"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="DATASETS_FOLDER" className="block text-sm font-medium mb-2">
-                    数据集目录路径
+                    Datasets Folder Path
                     <div className="text-gray-500 text-sm ml-1">
-                      存放与读取数据集的目录。
+                      Directory to store and read datasets.
                       <span className="text-orange-800">
-                        警告：本软件可能会修改数据集，建议在其他位置保留备份，或为本软件单独准备一个专用目录。
+                        Warning: the software may modify datasets. Keep backups elsewhere or use a dedicated directory.
                       </span>
                     </div>
                   </label>
@@ -102,7 +102,7 @@ export default function Settings() {
                     value={settings.DATASETS_FOLDER}
                     onChange={handleChange}
                     className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-transparent"
-                    placeholder="输入数据集目录路径"
+                    placeholder="Enter datasets folder path"
                   />
                 </div>
               </div>
@@ -114,11 +114,11 @@ export default function Settings() {
             disabled={status === 'saving'}
             className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {status === 'saving' ? '正在保存...' : '保存设置'}
+            {status === 'saving' ? 'Saving...' : 'Save Settings'}
           </button>
 
-          {status === 'success' && <p className="text-green-500 text-center">设置保存成功！</p>}
-          {status === 'error' && <p className="text-red-500 text-center">保存失败，请重试。</p>}
+          {status === 'success' && <p className="text-green-500 text-center">Settings saved successfully!</p>}
+          {status === 'error' && <p className="text-red-500 text-center">Failed to save. Please retry.</p>}
         </form>
       </MainContent>
     </>

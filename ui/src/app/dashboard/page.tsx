@@ -12,7 +12,7 @@ export default function Dashboard() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-lg">仪表盘</h1>
+          <h1 className="text-lg">Dashboard</h1>
         </div>
         <div className="flex-1"></div>
       </TopBar>
@@ -20,9 +20,9 @@ export default function Dashboard() {
         <GpuMonitor />
         <div className="w-full mt-4">
           <div className="flex justify-between items-center mb-2">
-            <h1 className="text-md">队列</h1>
+            <h1 className="text-md">Queue</h1>
             <div className="text-xs text-gray-500">
-              <Link href="/jobs">查看全部</Link>
+              <Link href="/jobs">View all</Link>
             </div>
           </div>
           <JobsTable onlyActive />

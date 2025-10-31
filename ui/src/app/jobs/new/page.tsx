@@ -148,15 +148,15 @@ export default function TrainingForm() {
           </Button>
         </div>
         <div>
-          {/* 标题在移动端缩小并截断，避免溢出 */}
+          {/* Title: shrink and truncate on mobile to avoid overflow */}
           <h1 className="text-base sm:text-lg truncate max-w-[50vw] sm:max-w-none">
-            {runId ? '编辑训练任务' : '新建训练任务'}
+            {runId ? 'Edit Training Job' : 'New Training Job'}
           </h1>
         </div>
         <div className="flex-1"></div>
         {showAdvancedView && (
           <>
-            {/* GPU 选择器：移动端隐藏，避免顶栏拥挤 */}
+            {/* GPU selector: hidden on mobile to keep top bar compact */}
             <div className="hidden md:block">
               <SelectInput
                 value={`${gpuIDs}`}
@@ -169,7 +169,7 @@ export default function TrainingForm() {
         )}
         {!showAdvancedView && (
           <>
-            {/* 任务类型选择：保持手机端显示，但进一步收窄宽度避免顶栏拥挤 */}
+            {/* Job type selector: keep visible on mobile, narrower width to avoid crowding */}
             <div className="block">
               <SelectInput
                 className="w-[120px] sm:w-[200px] min-w-[100px]"
@@ -204,21 +204,21 @@ export default function TrainingForm() {
 
         <div className="pr-2">
           <Button
-            // 切换视图按钮：移动端缩小字号与内边距并保持不换行
+            // Toggle view button: smaller font/padding on mobile, no wrap
             className="text-gray-200 bg-gray-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
             onClick={() => setShowAdvancedView(!showAdvancedView)}
           >
-            {showAdvancedView ? '显示简易视图' : '显示高级视图'}
+            {showAdvancedView ? 'Show Simple View' : 'Show Advanced View'}
           </Button>
         </div>
         <div>
           <Button
-            // 保存/创建按钮：同样缩小移动端尺寸并保持不换行
+            // Save/Create button: smaller mobile size, no wrap
             className="text-gray-200 bg-green-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
             onClick={() => saveJob()}
             disabled={status === 'saving'}
           >
-            {status === 'saving' ? '保存中...' : runId ? '更新任务' : '创建任务'}
+            {status === 'saving' ? 'Saving...' : runId ? 'Update Job' : 'Create Job'}
           </Button>
         </div>
       </TopBar>
@@ -243,7 +243,7 @@ export default function TrainingForm() {
           <ErrorBoundary
             fallback={
               <div className="flex items-center justify-center h-64 text-lg text-red-600 font-medium bg-red-100 dark:bg-red-900/20 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg">
-                检测到高级任务，请切换到高级视图继续。
+                Advanced configuration detected. Please switch to the Advanced View.
               </div>
             }
           >

@@ -36,8 +36,9 @@ export default function SidebarToggleButton() {
   return (
     <button
       suppressHydrationWarning
-      aria-label={isCollapsed ? '展开侧边菜单' : '收起侧边菜单'}
-      title={isCollapsed ? '展开侧边菜单' : '收起侧边菜单'}
+      // Localize accessible labels to English for consistency with the project
+      aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+      title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
       onClick={toggle}
       // 仅在移动端显示，桌面端隐藏
       className="fixed left-2 top-1/2 -translate-y-1/2 z-50 w-9 h-9 rounded-full bg-gray-800 border border-gray-700 shadow flex items-center justify-center text-gray-200 hover:bg-gray-700 transition-all duration-200 hover:scale-105 active:scale-95 md:hidden"

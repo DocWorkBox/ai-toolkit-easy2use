@@ -8,11 +8,11 @@ import classNames from 'classnames';
 
 const Sidebar = () => {
   const navigation = [
-    { name: '仪表盘', href: '/dashboard', icon: Home },
-    { name: '新建任务', href: '/jobs/new', icon: Plus },
-    { name: '训练队列', href: '/jobs', icon: BrainCircuit },
-    { name: '数据集', href: '/datasets', icon: Images },
-    { name: '设置', href: '/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'New Job', href: '/jobs/new', icon: Plus },
+    { name: 'Queue', href: '/jobs', icon: BrainCircuit },
+    { name: 'Datasets', href: '/datasets', icon: Images },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   const socialsBoxClass =
@@ -66,13 +66,13 @@ const Sidebar = () => {
     ];
 
     if (useHeartIcon) {
-      return <Heart className="w-6 h-6 text-pink-400" aria-label="Doc_workBox 爱心" />;
+      return <Heart className="w-6 h-6 text-pink-400" aria-label="Doc_workBox Heart" />;
     }
 
     return (
       <img
         src={candidates[srcIndex]}
-        alt="Doc_workBox 头像"
+        alt="Doc_workBox Avatar"
         className="w-6 h-6 rounded object-cover"
         onError={() => {
           const next = srcIndex + 1;
@@ -136,7 +136,8 @@ const Sidebar = () => {
           {/* 头像加载失败时回退到爱心图标 */}
           <AvatarOrHeart />
         </div>
-        <div className="text-gray-500 text-sm mb-2 flex-1 pt-2 pl-0">由Doc_workBox汉化</div>
+        {/* 英文化：左侧菜单的 UI 增强署名 */}
+        <div className="text-gray-500 text-sm mb-2 flex-1 pt-2 pl-0">Responsive UI enhancements by Doc_workBox</div>
       </div>
 
       {/* Social links grid */}
