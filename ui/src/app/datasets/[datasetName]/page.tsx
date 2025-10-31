@@ -100,12 +100,14 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
           </Button>
         </div>
         <div>
-          <h1 className="text-lg">Dataset: {datasetName}</h1>
+          {/* 标题在移动端缩小并截断 */}
+          <h1 className="text-base sm:text-lg truncate max-w-[50vw] sm:max-w-none">Dataset: {datasetName}</h1>
         </div>
         <div className="flex-1"></div>
         <div>
+          {/* 添加图片按钮在移动端缩小尺寸并保持不换行 */}
           <Button
-            className="text-gray-200 bg-slate-600 px-3 py-1 rounded-md"
+            className="text-gray-200 bg-slate-600 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
             onClick={() => openImagesModal(datasetName, () => refreshImageList(datasetName))}
           >
             Add Images

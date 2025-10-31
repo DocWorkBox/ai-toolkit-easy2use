@@ -3,6 +3,8 @@
 import GpuMonitor from '@/components/GPUMonitor';
 import JobsTable from '@/components/JobsTable';
 import { TopBar, MainContent } from '@/components/layout';
+import { Button } from '@headlessui/react';
+import { FaChevronLeft } from 'react-icons/fa';
 import Link from 'next/link';
 
 export default function Dashboard() {

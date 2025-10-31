@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Sidebar from '@/components/Sidebar';
+import SidebarToggleButton from '@/components/SidebarToggleButton';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import ConfirmModal from '@/components/ConfirmModal';
 import { Suspense } from 'react';
@@ -31,6 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthWrapper authRequired={authRequired}>
             <div className="flex h-screen bg-gray-950">
               <Sidebar />
+              {/* 固定在页面左侧中间的折叠按钮（手机与电脑端均显示） */}
+              <SidebarToggleButton />
               <main className="flex-1 overflow-auto bg-gray-950 text-gray-100 relative">
                 <Suspense>{children}</Suspense>
               </main>
