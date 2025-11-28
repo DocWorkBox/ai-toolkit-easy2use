@@ -206,6 +206,20 @@ export default function SimpleJob({
               placeholder=""
               required
             />
+            {modelArch?.additionalSections?.includes('model.assistant_lora_path') && (
+              <TextInput
+                label="Training Adapter Path"
+                value={jobConfig.config.process[0].model.assistant_lora_path ?? ''}
+                docKey="config.process[0].model.assistant_lora_path"
+                onChange={(value: string | undefined) => {
+                  if (value?.trim() === '') {
+                    value = undefined;
+                  }
+                  setJobConfig(value, 'config.process[0].model.assistant_lora_path');
+                }}
+                placeholder=""
+              />
+            )}
             {modelArch?.additionalSections?.includes('model.low_vram') && (
               <FormGroup label="选项">
                 <Checkbox
@@ -721,6 +735,45 @@ export default function SimpleJob({
                         />
                       </>
                     )}
+                  </>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+        <div>
+<Card title="高级设置" collapsible>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div>
+                <Checkbox
+                  label="差分引导"
+                  docKey={'train.do_differential_guidance'}
+                  className="pt-1"
+                  checked={jobConfig.config.process[0].train.do_differential_guidance || false}
+                  onChange={value => {
+                    let newValue = value == false ? undefined : value;
+                    setJobConfig(newValue, 'config.process[0].train.do_differential_guidance');
+                    if (!newValue) {
+                      setJobConfig(undefined, 'config.process[0].train.differential_guidance_scale');
+                    } else if (
+                      jobConfig.config.process[0].train.differential_guidance_scale === undefined ||
+                      jobConfig.config.process[0].train.differential_guidance_scale === null
+                    ) {
+                      // set default differential guidance scale to 3.0
+                      setJobConfig(3.0, 'config.process[0].train.differential_guidance_scale');
+                    }
+                  }}
+                />
+                {jobConfig.config.process[0].train.differential_guidance_scale && (
+                  <>
+                    <NumberInput
+                      label="差分引导强度"
+                      className="pt-2"
+                      value={(jobConfig.config.process[0].train.differential_guidance_scale as number) || 3.0}
+                      onChange={value => setJobConfig(value, 'config.process[0].train.differential_guidance_scale')}
+                      placeholder="eg. 3.0"
+                      min={0}
+                    />
                   </>
                 )}
               </div>

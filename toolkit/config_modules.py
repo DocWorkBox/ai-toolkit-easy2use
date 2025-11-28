@@ -541,10 +541,14 @@ class TrainConfig:
         # contrastive loss
         self.do_guidance_loss = kwargs.get('do_guidance_loss', False)
         self.guidance_loss_target: Union[int, List[int, int]] = kwargs.get('guidance_loss_target', 3.0)
+        self.do_guidance_loss_cfg_zero: bool = kwargs.get('do_guidance_loss_cfg_zero', False)
         self.unconditional_prompt: str = kwargs.get('unconditional_prompt', '')
         if isinstance(self.guidance_loss_target, tuple):
             self.guidance_loss_target = list(self.guidance_loss_target)
-        
+
+        self.do_differential_guidance = kwargs.get('do_differential_guidance', False)
+        self.differential_guidance_scale = kwargs.get('differential_guidance_scale', 3.0)
+
         # for multi stage models, how often to switch the boundary
         self.switch_boundary_every: int = kwargs.get('switch_boundary_every', 1)
 
