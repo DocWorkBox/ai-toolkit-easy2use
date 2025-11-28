@@ -1,0 +1,93 @@
+<svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="800" height="500" fill="#1a1a1a"/>
+  
+  <!-- 上半部分 - 常规训练 -->
+  <text x="400" y="40" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">常规训练</text>
+  
+  <!-- 常规训练说明 -->
+  <text x="400" y="70" font-family="Arial, sans-serif" font-size="14" fill="#cccccc" text-anchor="middle">模型逐渐接近目标但难以完全达到</text>
+  
+  <!-- 训练步标签 -->
+  <text x="100" y="110" font-family="Arial, sans-serif" font-size="16" fill="white" font-weight="500">训练步</text>
+  
+  <!-- 时间线 -->
+  <line x1="80" y1="150" x2="720" y2="150" stroke="#4a5568" stroke-width="3"/>
+  
+  <!-- 当前知识（蓝色圆圈） -->
+  <circle cx="150" cy="150" r="25" fill="url(#blueGradient)"/>
+  <text x="150" y="195" font-family="Arial, sans-serif" font-size="15" fill="white" text-anchor="middle" font-weight="500">当前知识</text>
+  
+  <!-- 目标（绿色圆圈） -->
+  <circle cx="550" cy="150" r="25" fill="url(#greenGradient)"/>
+  <text x="550" y="195" font-family="Arial, sans-serif" font-size="15" fill="white" text-anchor="middle" font-weight="500">目标</text>
+  
+  <!-- 红色X（表示差距） -->
+  <text x="250" y="145" font-family="Arial, sans-serif" font-size="28" fill="#ef4444" text-anchor="middle" font-weight="bold">✕</text>
+  
+  <!-- 差距标注 -->
+  <text x="350" y="135" font-family="Arial, sans-serif" font-size="12" fill="#fbbf24" text-anchor="middle">存在差距</text>
+  
+  <!-- 分隔线 -->
+  <rect x="50" y="230" width="700" height="3" fill="#2d3748"/>
+  
+  <!-- 下半部分 - 差分引导 -->
+  <text x="400" y="290" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">差分引导</text>
+  
+  <!-- 差分引导说明 -->
+  <text x="400" y="320" font-family="Arial, sans-serif" font-size="14" fill="#cccccc" text-anchor="middle">放大差异让模型超越目标，学习更充分</text>
+  
+  <!-- 训练步标签 -->
+  <text x="100" y="360" font-family="Arial, sans-serif" font-size="16" fill="white" font-weight="500">训练步</text>
+  
+  <!-- 时间线 -->
+  <line x1="80" y1="400" x2="720" y2="400" stroke="#4a5568" stroke-width="3"/>
+  
+  <!-- 当前知识（蓝色圆圈） -->
+  <circle cx="150" cy="400" r="25" fill="url(#blueGradient)"/>
+  <text x="150" y="445" font-family="Arial, sans-serif" font-size="15" fill="white" text-anchor="middle" font-weight="500">当前知识</text>
+  
+  <!-- 目标（绿色圆圈） -->
+  <circle cx="400" cy="400" r="25" fill="url(#greenGradient)"/>
+  <text x="400" y="445" font-family="Arial, sans-serif" font-size="15" fill="white" text-anchor="middle" font-weight="500">目标</text>
+  
+  <!-- 差分引导目标（黄色圆圈） -->
+  <circle cx="650" cy="400" r="25" fill="url(#yellowGradient)"/>
+  <text x="650" y="430" font-family="Arial, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="500">差分引导</text>
+  <text x="650" y="445" font-family="Arial, sans-serif" font-size="13" fill="white" text-anchor="middle" font-weight="500">目标</text>
+  
+  <!-- 红色X -->
+  <text x="450" y="395" font-family="Arial, sans-serif" font-size="28" fill="#ef4444" text-anchor="middle" font-weight="bold">✕</text>
+  
+  <!-- 差异放大箭头 -->
+  <path d="M 180 370 Q 300 330 380 370" stroke="#f59e0b" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- 差异放大标注 -->
+  <text x="300" y="330" font-family="Arial, sans-serif" font-size="12" fill="#fbbf24" text-anchor="middle">差异放大</text>
+  
+  <!-- 效果标注 -->
+  <text x="500" y="385" font-family="Arial, sans-serif" font-size="12" fill="#10b981" text-anchor="middle">学习超越目标</text>
+  
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="yellowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 箭头标记定义 -->
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#fbbf24"/>
+    </marker>
+  </defs>
+</svg>

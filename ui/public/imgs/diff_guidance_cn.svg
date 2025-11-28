@@ -1,0 +1,69 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="800" height="600" fill="#1f2937"/>
+  
+  <!-- 边框 -->
+  <rect x="20" y="20" width="760" height="560" fill="none" stroke="#dc2626" stroke-width="3" rx="10"/>
+  
+  <!-- 上半部分 - 常规训练 -->
+  <text x="400" y="70" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">常规训练</text>
+  
+  <!-- 常规训练图表 -->
+  <text x="100" y="120" font-family="Arial, sans-serif" font-size="16" fill="white">训练步</text>
+  
+  <!-- 时间线 -->
+  <line x1="80" y1="180" x2="720" y2="180" stroke="#d1d5db" stroke-width="2"/>
+  
+  <!-- 当前知识（蓝色圆圈） -->
+  <circle cx="150" cy="180" r="25" fill="#3b82f6"/>
+  <text x="150" y="230" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">当前知识</text>
+  
+  <!-- 目标（绿色圆圈） -->
+  <circle cx="550" cy="180" r="25" fill="#10b981"/>
+  <text x="550" y="230" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">目标</text>
+  
+  <!-- 红色X -->
+  <text x="250" y="175" font-family="Arial, sans-serif" font-size="24" fill="#ef4444" text-anchor="middle">✕</text>
+  
+  <!-- 分隔线 -->
+  <rect x="20" y="280" width="760" height="40" fill="#374151"/>
+  
+  <!-- 下半部分 - 差分引导 -->
+  <text x="400" y="370" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white" text-anchor="middle">差分引导</text>
+  
+  <!-- 差分引导图表 -->
+  <text x="100" y="420" font-family="Arial, sans-serif" font-size="16" fill="white">训练步</text>
+  
+  <!-- 时间线 -->
+  <line x1="80" y1="480" x2="720" y2="480" stroke="#d1d5db" stroke-width="2"/>
+  
+  <!-- 当前知识（蓝色圆圈） -->
+  <circle cx="150" cy="480" r="25" fill="#3b82f6"/>
+  <text x="150" y="530" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">当前知识</text>
+  
+  <!-- 目标（绿色圆圈） -->
+  <circle cx="400" cy="480" r="25" fill="#10b981"/>
+  <text x="400" y="530" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">目标</text>
+  
+  <!-- 差分引导目标（黄色圆圈） -->
+  <circle cx="650" cy="480" r="25" fill="#f59e0b"/>
+  <text x="650" y="515" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">差分引导</text>
+  <text x="650" y="530" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">目标</text>
+  
+  <!-- 红色X -->
+  <text x="450" y="475" font-family="Arial, sans-serif" font-size="24" fill="#ef4444" text-anchor="middle">✕</text>
+  
+  <!-- 箭头 -->
+  <path d="M 180 450 Q 300 420 380 450" stroke="#d1d5db" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- 箭头标记定义 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#d1d5db"/>
+    </marker>
+  </defs>
+  
+  <!-- 关闭按钮背景 -->
+  <rect x="680" y="540" width="80" height="30" fill="#374151" rx="5"/>
+  <text x="720" y="560" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">关闭</text>
+</svg>
