@@ -358,21 +358,34 @@ const docs: { [key: string]: ConfigDoc } = {
     ),
   },
   'train.do_differential_guidance': {
-    title: 'Differential Guidance',
+    title: '差分引导',
     description: (
       <>
-        Differential Guidance will amplify the difference of the model prediction and the target during training to make
-        a new target. Differential Guidance Scale will be the multiplier for the difference. This is still experimental,
-        but in my tests, it makes the model train faster, and learns details better in every scenario I have tried with
-        it.
+        差分引导会在训练期间放大模型预测与目标之间的差异，从而创建一个新的目标。差分引导强度将作为差异的乘数。这仍然是实验性功能，
+        但在我的测试中，它能让模型训练得更快，并且在所有我尝试过的场景中学习细节的效果更好。
         <br />
         <br />
-        The idea is that normal training inches closer to the target but never actually gets there, because it is
-        limited by the learning rate. With differential guidance, we amplify the difference for a new target beyond the
-        actual target, this would make the model learn to hit or overshoot the target instead of falling short.
+        核心思想是：普通训练会逐渐接近目标但实际上永远无法完全达到，因为它受到学习率的限制。使用差分引导，我们会将差异放大到超越实际目标的新目标，
+        这样可以让模型学会达到或超越目标，而不是达不到目标。
         <br />
         <br />
-        <img src="/imgs/diff_guidance.png" alt="Differential Guidance Diagram" className="max-w-full mx-auto" />
+        <img src="/imgs/diff_guidance_cn_clean.svg" alt="差分引导原理图" className="max-w-full mx-auto rounded-lg shadow-lg" />
+      </>
+    ),
+  },
+  'train.differential_guidance_scale': {
+    title: '差分引导强度',
+    description: (
+      <>
+        控制差分引导效果的强度系数。数值越大，模型预测与目标的差异放大效果越明显，训练时模型会更积极地学习达到或超越目标。
+        <br />
+        <br />
+        推荐值：3.0（默认）
+        <br />
+        调整范围：0.5 - 10.0
+        <br />
+        <br />
+        数值过高可能导致训练不稳定，建议从默认值开始，根据训练效果适当调整。
       </>
     ),
   },
