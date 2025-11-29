@@ -1434,6 +1434,7 @@ class SDTrainer(BaseSDTrainProcess):
         # 预设变量，避免未赋值时报错
         conditional_embeds = None  # 条件文本嵌入
         unconditional_embeds = None  # 无条件文本嵌入（用于CFG等）
+        prompt_kwargs = {}  # 提示词编码的额外参数（如控制图像）
 
         for noisy_latents, noise, timesteps, conditioned_prompts, imgs, adapter_images, clip_images, mask_multiplier, prompt_2 in zip(
                 noisy_latents_list,
