@@ -339,12 +339,12 @@ class SDTrainer(BaseSDTrainProcess):
                 print_acc("***********************************")
                 print_acc("")
 
-                # unload the text encoder
-                if self.is_caching_text_embeddings:
+                # 卸载文本编码器策略：
+                # - 对需要在TE中编码控制图的模型（如QwenEditPlus），保留TE并移到CPU，避免采样/训练阶段调用失败
+                # - 其它模型在开启缓存文本编码时可安全替换为FakeTextEncoder以节省显存
+                if self.is_caching_text_embeddings and not self.sd.encode_control_in_text_embeddings:
                     unload_text_encoder(self.sd)
                 else:
-                    # todo once every model is tested to work, unload properly. Though, this will all be merged into one thing.
-                    # keep legacy usage for now. 
                     self.sd.text_encoder_to("cpu")
                 flush()
         
