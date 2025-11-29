@@ -1431,6 +1431,10 @@ class SDTrainer(BaseSDTrainProcess):
             else:
                 prompt_2_list = [prompts_2]
 
+        # 预设变量，避免未赋值时报错
+        conditional_embeds = None  # 条件文本嵌入
+        unconditional_embeds = None  # 无条件文本嵌入（用于CFG等）
+
         for noisy_latents, noise, timesteps, conditioned_prompts, imgs, adapter_images, clip_images, mask_multiplier, prompt_2 in zip(
                 noisy_latents_list,
                 noise_list,
