@@ -1,0 +1,34 @@
+{
+  "job": "train",
+  "config": {
+    "name": "test_zimage_training",
+    "process": [
+      {
+        "type": "diffusion_train",
+        "training_config": {
+          "model": {
+            "name_or_path": "Tongyi-MAI/Z-Image-Turbo",
+            "quantize": true,
+            "quantize_te": true,
+            "low_vram": true
+          },
+          "train": {
+            "batch_size": 1,
+            "steps": 100,
+            "do_differential_guidance": true
+          },
+          "save": {
+            "dtype": "float16"
+          }
+        },
+        "datasets": [
+          {
+            "folder_path": "./test_dataset",
+            "caption_ext": "txt",
+            "resolution": [512, 512]
+          }
+        ]
+      }
+    ]
+  }
+}
