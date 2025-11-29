@@ -1964,6 +1964,26 @@ class SDTrainer(BaseSDTrainProcess):
                         prior_pred=prior_pred,
                     )
                 else:
+                    # 如果在前面的编码阶段未成功获得文本嵌入，则进行安全回退以避免None报错
+                    if conditional_embeds is None:
+                        # 使用当前批次的提示词编码一个默认嵌入；若无提示词则编码空字符串
+                        fallback_prompts = conditioned_prompts if conditioned_prompts is not None else ['']
+                        conditional_embeds = self.sd.encode_prompt(
+                            fallback_prompts,
+                            prompt_2,
+                            dropout_prob=self.train_config.prompt_dropout_prob,
+                            long_prompts=self.do_long_prompts,
+                            **prompt_kwargs
+                        ).to(self.device_torch, dtype=dtype)
+                    if self.train_config.do_cfg and unconditional_embeds is None:
+                        # 当启用CFG但未生成无条件嵌入时，回退生成一个空提示的无条件嵌入
+                        unconditional_embeds = self.sd.encode_prompt(
+                            self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
+                            self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
+                            dropout_prob=self.train_config.prompt_dropout_prob,
+                            long_prompts=self.do_long_prompts,
+                            **prompt_kwargs
+                        ).to(self.device_torch, dtype=dtype)
                     with self.timer('predict_unet'):
                         noise_pred = self.predict_noise(
                             noisy_latents=noisy_latents.to(self.device_torch, dtype=dtype),

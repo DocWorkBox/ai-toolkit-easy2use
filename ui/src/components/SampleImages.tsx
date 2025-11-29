@@ -151,9 +151,10 @@ export default function SampleImages({ job }: SampleImagesProps) {
   // - 随屏幕大小逐步增加列数，但限制为最多 8 列
   // 直接返回明确的 Tailwind 类，避免被构建时清理
   const gridColsClass = useMemo(() => {
+    // 当每次采样只生成1张图片时，默认从单列开始，避免出现大面积空白
     const cols = Math.min(numSamples, 8);
     const map: { [key: number]: string } = {
-      1: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
+      1: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
       2: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
       3: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4',
       4: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
@@ -198,7 +199,8 @@ export default function SampleImages({ job }: SampleImagesProps) {
               const isEndOfGroup = idx === groupEnd - 1;
 
               // Only enforce a MIN of 3 when the group's planned width is < 3
-              const MIN_COLS = 3;
+              // 当单张采样时不进行占位填充，避免“每次采样之间有两格空白”的视觉问题
+              const MIN_COLS = numSamples <= 1 ? 1 : 3;
               const shouldPad = numSamples < MIN_COLS && groupSize < MIN_COLS;
               const padsNeeded = shouldPad ? MIN_COLS - groupSize : 0;
 
