@@ -339,10 +339,9 @@ class SDTrainer(BaseSDTrainProcess):
                 print_acc("***********************************")
                 print_acc("")
 
-                # 卸载文本编码器策略：
-                # - 对需要在TE中编码控制图的模型（如QwenEditPlus），保留TE并移到CPU，避免采样/训练阶段调用失败
-                # - 其它模型在开启缓存文本编码时可安全替换为FakeTextEncoder以节省显存
-                if self.is_caching_text_embeddings and not self.sd.encode_control_in_text_embeddings:
+                # 采用旧逻辑：开启缓存文本编码时直接替换为 FakeTE，避免持续加载编码器
+                # 非缓存模式则仅迁移到CPU以减少显存占用
+                if self.is_caching_text_embeddings:
                     unload_text_encoder(self.sd)
                 else:
                     self.sd.text_encoder_to("cpu")
@@ -1965,40 +1964,41 @@ class SDTrainer(BaseSDTrainProcess):
                         prior_pred=prior_pred,
                     )
                 else:
-                    # 如果在前面的编码阶段未成功获得文本嵌入，则进行安全回退以避免None报错
-                    # 同时在此处再次从batch提取控制图，避免上游prompt_kwargs未设置导致缺失
-                    if self.sd.encode_control_in_text_embeddings:
-                        if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
-                            # 多图：按控制通道分组并堆叠成批量张量列表
-                            num_controls = len(batch.control_tensor_list[0])
-                            batched_controls = []
-                            for c_idx in range(num_controls):
-                                per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
-                                batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                                batched_controls.append(batched)
-                            prompt_kwargs['control_images'] = batched_controls
-                        elif batch.control_tensor is not None:
-                            # 单图：直接使用批量张量
-                            prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                    if conditional_embeds is None:
-                        # 使用当前批次的提示词编码一个默认嵌入；若无提示词则编码空字符串
-                        fallback_prompts = conditioned_prompts if conditioned_prompts is not None else ['']
-                        conditional_embeds = self.sd.encode_prompt(
-                            fallback_prompts,
-                            prompt_2,
-                            dropout_prob=self.train_config.prompt_dropout_prob,
-                            long_prompts=self.do_long_prompts,
-                            **prompt_kwargs
-                        ).to(self.device_torch, dtype=dtype)
-                    if self.train_config.do_cfg and unconditional_embeds is None:
-                        # 当启用CFG但未生成无条件嵌入时，回退生成一个空提示的无条件嵌入
-                        unconditional_embeds = self.sd.encode_prompt(
-                            self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
-                            self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
-                            dropout_prob=self.train_config.prompt_dropout_prob,
-                            long_prompts=self.do_long_prompts,
-                            **prompt_kwargs
-                        ).to(self.device_torch, dtype=dtype)
+                    # 在未开启缓存文本编码时，进行安全回退以避免None报错
+                    if not self.is_caching_text_embeddings:
+                        # 同时从batch提取控制图，避免上游prompt_kwargs未设置导致缺失
+                        if self.sd.encode_control_in_text_embeddings:
+                            if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
+                                # 多图：按控制通道分组并堆叠成批量张量列表
+                                num_controls = len(batch.control_tensor_list[0])
+                                batched_controls = []
+                                for c_idx in range(num_controls):
+                                    per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
+                                    batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                                    batched_controls.append(batched)
+                                prompt_kwargs['control_images'] = batched_controls
+                            elif batch.control_tensor is not None:
+                                # 单图：直接使用批量张量
+                                prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                        if conditional_embeds is None:
+                            # 使用当前批次的提示词编码一个默认嵌入；若无提示词则编码空字符串
+                            fallback_prompts = conditioned_prompts if conditioned_prompts is not None else ['']
+                            conditional_embeds = self.sd.encode_prompt(
+                                fallback_prompts,
+                                prompt_2,
+                                dropout_prob=self.train_config.prompt_dropout_prob,
+                                long_prompts=self.do_long_prompts,
+                                **prompt_kwargs
+                            ).to(self.device_torch, dtype=dtype)
+                        if self.train_config.do_cfg and unconditional_embeds is None:
+                            # 当启用CFG但未生成无条件嵌入时，回退生成一个空提示的无条件嵌入
+                            unconditional_embeds = self.sd.encode_prompt(
+                                self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
+                                self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
+                                dropout_prob=self.train_config.prompt_dropout_prob,
+                                long_prompts=self.do_long_prompts,
+                                **prompt_kwargs
+                            ).to(self.device_torch, dtype=dtype)
                     with self.timer('predict_unet'):
                         noise_pred = self.predict_noise(
                             noisy_latents=noisy_latents.to(self.device_torch, dtype=dtype),
