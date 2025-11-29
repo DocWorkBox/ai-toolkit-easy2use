@@ -1966,6 +1966,20 @@ class SDTrainer(BaseSDTrainProcess):
                     )
                 else:
                     # 如果在前面的编码阶段未成功获得文本嵌入，则进行安全回退以避免None报错
+                    # 同时在此处再次从batch提取控制图，避免上游prompt_kwargs未设置导致缺失
+                    if self.sd.encode_control_in_text_embeddings:
+                        if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
+                            # 多图：按控制通道分组并堆叠成批量张量列表
+                            num_controls = len(batch.control_tensor_list[0])
+                            batched_controls = []
+                            for c_idx in range(num_controls):
+                                per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
+                                batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                                batched_controls.append(batched)
+                            prompt_kwargs['control_images'] = batched_controls
+                        elif batch.control_tensor is not None:
+                            # 单图：直接使用批量张量
+                            prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
                     if conditional_embeds is None:
                         # 使用当前批次的提示词编码一个默认嵌入；若无提示词则编码空字符串
                         fallback_prompts = conditioned_prompts if conditioned_prompts is not None else ['']
