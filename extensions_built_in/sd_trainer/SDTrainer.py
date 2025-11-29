@@ -1487,11 +1487,23 @@ class SDTrainer(BaseSDTrainProcess):
                         batch_size=noisy_latents.shape[0]
                     )
 
-                with self.timer('encode_prompt'):
+                    with self.timer('encode_prompt'):
                     unconditional_embeds = None
                     prompt_kwargs = {}
-                    if self.sd.encode_control_in_text_embeddings and batch.control_tensor is not None:
-                        prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                    # 传入控制图像到文本编码阶段，支持单图和多图
+                    if self.sd.encode_control_in_text_embeddings:
+                        if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
+                            # 将每个样本的多张控制图整形成按控制通道分组的批量张量列表
+                            # control_tensor_list 结构: [ [img1_ctrlA, img1_ctrlB, ...], [img2_ctrlA, img2_ctrlB, ...], ... ]
+                            num_controls = len(batch.control_tensor_list[0])
+                            batched_controls = []
+                            for c_idx in range(num_controls):
+                                per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
+                                batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                                batched_controls.append(batched)
+                            prompt_kwargs['control_images'] = batched_controls
+                        elif batch.control_tensor is not None:
+                            prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
                     if self.train_config.unload_text_encoder or self.is_caching_text_embeddings:
                         with torch.set_grad_enabled(False):
                             if batch.prompt_embeds is not None:
