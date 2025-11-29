@@ -339,11 +339,12 @@ class SDTrainer(BaseSDTrainProcess):
                 print_acc("***********************************")
                 print_acc("")
 
-                # 采用旧逻辑：开启缓存文本编码时直接替换为 FakeTE，避免持续加载编码器
-                # 非缓存模式则仅迁移到CPU以减少显存占用
+                # unload the text encoder
                 if self.is_caching_text_embeddings:
                     unload_text_encoder(self.sd)
                 else:
+                    # todo once every model is tested to work, unload properly. Though, this will all be merged into one thing.
+                    # keep legacy usage for now. 
                     self.sd.text_encoder_to("cpu")
                 flush()
         
@@ -1430,11 +1431,6 @@ class SDTrainer(BaseSDTrainProcess):
             else:
                 prompt_2_list = [prompts_2]
 
-        # 预设变量，避免未赋值时报错
-        conditional_embeds = None  # 条件文本嵌入
-        unconditional_embeds = None  # 无条件文本嵌入（用于CFG等）
-        prompt_kwargs = {}  # 提示词编码的额外参数（如控制图像）
-
         for noisy_latents, noise, timesteps, conditioned_prompts, imgs, adapter_images, clip_images, mask_multiplier, prompt_2 in zip(
                 noisy_latents_list,
                 noise_list,
@@ -1491,140 +1487,127 @@ class SDTrainer(BaseSDTrainProcess):
                         batch_size=noisy_latents.shape[0]
                     )
 
-                    with self.timer('encode_prompt'):
-                        # 文本编码阶段
-                        unconditional_embeds = None
-                        prompt_kwargs = {}
-                        # 传入控制图像到文本编码阶段，支持单图和多图
-                        if self.sd.encode_control_in_text_embeddings:
-                            if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
-                                # 将每个样本的多张控制图整形成按控制通道分组的批量张量列表
-                                # control_tensor_list 结构: [ [img1_ctrlA, img1_ctrlB, ...], [img2_ctrlA, img2_ctrlB, ...], ... ]
-                                num_controls = len(batch.control_tensor_list[0])
-                                batched_controls = []
-                                for c_idx in range(num_controls):
-                                    per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
-                                    batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                                    batched_controls.append(batched)
-                                prompt_kwargs['control_images'] = batched_controls
-                            elif batch.control_tensor is not None:
-                                prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                        if self.train_config.unload_text_encoder or self.is_caching_text_embeddings:
-                            with torch.set_grad_enabled(False):
-                                if batch.prompt_embeds is not None:
-                                    # 使用缓存的文本嵌入
-                                    conditional_embeds = batch.prompt_embeds.clone().detach().to(
-                                        self.device_torch, dtype=dtype
-                                    )
-                                else:
-                                    embeds_to_use = self.cached_blank_embeds.clone().detach().to(
-                                        self.device_torch, dtype=dtype
-                                    )
-                                    if self.cached_trigger_embeds is not None and not is_reg:
-                                        embeds_to_use = self.cached_trigger_embeds.clone().detach().to(
-                                            self.device_torch, dtype=dtype
-                                        )
-                                    conditional_embeds = concat_prompt_embeds(
-                                        [embeds_to_use] * noisy_latents.shape[0]
-                                    )
-                                if self.train_config.do_cfg:
-                                    unconditional_embeds = self.cached_blank_embeds.clone().detach().to(
-                                        self.device_torch, dtype=dtype
-                                    )
-                                    unconditional_embeds = concat_prompt_embeds(
-                                        [unconditional_embeds] * noisy_latents.shape[0]
-                                    )
-
-                                if isinstance(self.adapter, CustomAdapter):
-                                    self.adapter.is_unconditional_run = False
-
-                        elif grad_on_text_encoder:
-                            with torch.set_grad_enabled(True):
-                                if isinstance(self.adapter, CustomAdapter):
-                                    self.adapter.is_unconditional_run = False
-                                conditional_embeds = self.sd.encode_prompt(
-                                    conditioned_prompts, prompt_2,
-                                    dropout_prob=self.train_config.prompt_dropout_prob,
-                                    long_prompts=self.do_long_prompts,
-                                    **prompt_kwargs
-                                ).to(
-                                    self.device_torch,
-                                    dtype=dtype)
-
-                                if self.train_config.do_cfg:
-                                    if isinstance(self.adapter, CustomAdapter):
-                                        self.adapter.is_unconditional_run = True
-                                    # 计算无条件嵌入
-                                    unconditional_embeds = self.sd.encode_prompt(
-                                        self.batch_negative_prompt,
-                                        self.batch_negative_prompt,
-                                        dropout_prob=self.train_config.prompt_dropout_prob,
-                                        long_prompts=self.do_long_prompts,
-                                        **prompt_kwargs
-                                    ).to(
-                                        self.device_torch,
-                                        dtype=dtype)
-                                    if isinstance(self.adapter, CustomAdapter):
-                                        self.adapter.is_unconditional_run = False
-                        else:
-                            with torch.set_grad_enabled(False):
-                                # 确保文本编码器处于评估模式
-                                if isinstance(self.sd.text_encoder, list):
-                                    for te in self.sd.text_encoder:
-                                        te.eval()
-                                else:
-                                    self.sd.text_encoder.eval()
-                                if isinstance(self.adapter, CustomAdapter):
-                                    self.adapter.is_unconditional_run = False
-                                conditional_embeds = self.sd.encode_prompt(
-                                    conditioned_prompts, prompt_2,
-                                    dropout_prob=self.train_config.prompt_dropout_prob,
-                                    long_prompts=self.do_long_prompts,
-                                    **prompt_kwargs
-                                ).to(
-                                    self.device_torch,
-                                    dtype=dtype)
-                                if self.train_config.do_cfg:
-                                    if isinstance(self.adapter, CustomAdapter):
-                                        self.adapter.is_unconditional_run = True
-                                    unconditional_embeds = self.sd.encode_prompt(
-                                        self.batch_negative_prompt,
-                                        dropout_prob=self.train_config.prompt_dropout_prob,
-                                        long_prompts=self.do_long_prompts,
-                                        **prompt_kwargs
-                                    ).to(
-                                        self.device_torch,
-                                        dtype=dtype)
-                                    if isinstance(self.adapter, CustomAdapter):
-                                        self.adapter.is_unconditional_run = False
-                                
-                                if self.train_config.diff_output_preservation:
-                                    dop_prompts = [p.replace(self.trigger_word, self.train_config.diff_output_preservation_class) for p in conditioned_prompts]
-                                    dop_prompts_2 = None
-                                    if prompt_2 is not None:
-                                        dop_prompts_2 = [p.replace(self.trigger_word, self.train_config.diff_output_preservation_class) for p in prompt_2]
-                                    self.diff_output_preservation_embeds = self.sd.encode_prompt(
-                                        dop_prompts, dop_prompts_2,
-                                        dropout_prob=self.train_config.prompt_dropout_prob,
-                                        long_prompts=self.do_long_prompts,
-                                        **prompt_kwargs
-                                    ).to(
-                                        self.device_torch,
-                                        dtype=dtype)
-                            # 分离梯度，避免影响后续计算
-                            conditional_embeds = conditional_embeds.detach()
-                            if self.train_config.do_cfg:
-                                unconditional_embeds = unconditional_embeds.detach()
-                        
-                        if self.decorator:
-                            conditional_embeds.text_embeds = self.decorator(
-                                conditional_embeds.text_embeds
-                            )
-                            if self.train_config.do_cfg:
-                                unconditional_embeds.text_embeds = self.decorator(
-                                    unconditional_embeds.text_embeds, 
-                                    is_unconditional=True
+                with self.timer('encode_prompt'):
+                    unconditional_embeds = None
+                    prompt_kwargs = {}
+                    if self.sd.encode_control_in_text_embeddings and batch.control_tensor is not None:
+                        prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
+                    if self.train_config.unload_text_encoder or self.is_caching_text_embeddings:
+                        with torch.set_grad_enabled(False):
+                            if batch.prompt_embeds is not None:
+                                # use the cached embeds
+                                conditional_embeds = batch.prompt_embeds.clone().detach().to(
+                                    self.device_torch, dtype=dtype
                                 )
+                            else:
+                                embeds_to_use = self.cached_blank_embeds.clone().detach().to(
+                                    self.device_torch, dtype=dtype
+                                )
+                                if self.cached_trigger_embeds is not None and not is_reg:
+                                    embeds_to_use = self.cached_trigger_embeds.clone().detach().to(
+                                        self.device_torch, dtype=dtype
+                                    )
+                                conditional_embeds = concat_prompt_embeds(
+                                    [embeds_to_use] * noisy_latents.shape[0]
+                                )
+                            if self.train_config.do_cfg:
+                                unconditional_embeds = self.cached_blank_embeds.clone().detach().to(
+                                    self.device_torch, dtype=dtype
+                                )
+                                unconditional_embeds = concat_prompt_embeds(
+                                    [unconditional_embeds] * noisy_latents.shape[0]
+                                )
+
+                            if isinstance(self.adapter, CustomAdapter):
+                                self.adapter.is_unconditional_run = False
+
+                    elif grad_on_text_encoder:
+                        with torch.set_grad_enabled(True):
+                            if isinstance(self.adapter, CustomAdapter):
+                                self.adapter.is_unconditional_run = False
+                            conditional_embeds = self.sd.encode_prompt(
+                                conditioned_prompts, prompt_2,
+                                dropout_prob=self.train_config.prompt_dropout_prob,
+                                long_prompts=self.do_long_prompts,
+                                **prompt_kwargs
+                            ).to(
+                                self.device_torch,
+                                dtype=dtype)
+
+                            if self.train_config.do_cfg:
+                                if isinstance(self.adapter, CustomAdapter):
+                                    self.adapter.is_unconditional_run = True
+                                # todo only do one and repeat it
+                                unconditional_embeds = self.sd.encode_prompt(
+                                    self.batch_negative_prompt,
+                                    self.batch_negative_prompt,
+                                    dropout_prob=self.train_config.prompt_dropout_prob,
+                                    long_prompts=self.do_long_prompts,
+                                    **prompt_kwargs
+                                ).to(
+                                    self.device_torch,
+                                    dtype=dtype)
+                                if isinstance(self.adapter, CustomAdapter):
+                                    self.adapter.is_unconditional_run = False
+                    else:
+                        with torch.set_grad_enabled(False):
+                            # make sure it is in eval mode
+                            if isinstance(self.sd.text_encoder, list):
+                                for te in self.sd.text_encoder:
+                                    te.eval()
+                            else:
+                                self.sd.text_encoder.eval()
+                            if isinstance(self.adapter, CustomAdapter):
+                                self.adapter.is_unconditional_run = False
+                            conditional_embeds = self.sd.encode_prompt(
+                                conditioned_prompts, prompt_2,
+                                dropout_prob=self.train_config.prompt_dropout_prob,
+                                long_prompts=self.do_long_prompts,
+                                **prompt_kwargs
+                            ).to(
+                                self.device_torch,
+                                dtype=dtype)
+                            if self.train_config.do_cfg:
+                                if isinstance(self.adapter, CustomAdapter):
+                                    self.adapter.is_unconditional_run = True
+                                unconditional_embeds = self.sd.encode_prompt(
+                                    self.batch_negative_prompt,
+                                    dropout_prob=self.train_config.prompt_dropout_prob,
+                                    long_prompts=self.do_long_prompts,
+                                    **prompt_kwargs
+                                ).to(
+                                    self.device_torch,
+                                    dtype=dtype)
+                                if isinstance(self.adapter, CustomAdapter):
+                                    self.adapter.is_unconditional_run = False
+                            
+                            if self.train_config.diff_output_preservation:
+                                dop_prompts = [p.replace(self.trigger_word, self.train_config.diff_output_preservation_class) for p in conditioned_prompts]
+                                dop_prompts_2 = None
+                                if prompt_2 is not None:
+                                    dop_prompts_2 = [p.replace(self.trigger_word, self.train_config.diff_output_preservation_class) for p in prompt_2]
+                                self.diff_output_preservation_embeds = self.sd.encode_prompt(
+                                    dop_prompts, dop_prompts_2,
+                                    dropout_prob=self.train_config.prompt_dropout_prob,
+                                    long_prompts=self.do_long_prompts,
+                                    **prompt_kwargs
+                                ).to(
+                                    self.device_torch,
+                                    dtype=dtype)
+                        # detach the embeddings
+                        conditional_embeds = conditional_embeds.detach()
+                        if self.train_config.do_cfg:
+                            unconditional_embeds = unconditional_embeds.detach()
+                    
+                    if self.decorator:
+                        conditional_embeds.text_embeds = self.decorator(
+                            conditional_embeds.text_embeds
+                        )
+                        if self.train_config.do_cfg:
+                            unconditional_embeds.text_embeds = self.decorator(
+                                unconditional_embeds.text_embeds, 
+                                is_unconditional=True
+                            )
 
                 # flush()
                 pred_kwargs = {}
@@ -1964,41 +1947,6 @@ class SDTrainer(BaseSDTrainProcess):
                         prior_pred=prior_pred,
                     )
                 else:
-                    # 在未开启缓存文本编码时，进行安全回退以避免None报错
-                    if not self.is_caching_text_embeddings:
-                        # 同时从batch提取控制图，避免上游prompt_kwargs未设置导致缺失
-                        if self.sd.encode_control_in_text_embeddings:
-                            if getattr(self.sd, 'has_multiple_control_images', False) and batch.control_tensor_list is not None:
-                                # 多图：按控制通道分组并堆叠成批量张量列表
-                                num_controls = len(batch.control_tensor_list[0])
-                                batched_controls = []
-                                for c_idx in range(num_controls):
-                                    per_items = [item_controls[c_idx] for item_controls in batch.control_tensor_list]
-                                    batched = torch.stack(per_items, dim=0).to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                                    batched_controls.append(batched)
-                                prompt_kwargs['control_images'] = batched_controls
-                            elif batch.control_tensor is not None:
-                                # 单图：直接使用批量张量
-                                prompt_kwargs['control_images'] = batch.control_tensor.to(self.sd.device_torch, dtype=self.sd.torch_dtype)
-                        if conditional_embeds is None:
-                            # 使用当前批次的提示词编码一个默认嵌入；若无提示词则编码空字符串
-                            fallback_prompts = conditioned_prompts if conditioned_prompts is not None else ['']
-                            conditional_embeds = self.sd.encode_prompt(
-                                fallback_prompts,
-                                prompt_2,
-                                dropout_prob=self.train_config.prompt_dropout_prob,
-                                long_prompts=self.do_long_prompts,
-                                **prompt_kwargs
-                            ).to(self.device_torch, dtype=dtype)
-                        if self.train_config.do_cfg and unconditional_embeds is None:
-                            # 当启用CFG但未生成无条件嵌入时，回退生成一个空提示的无条件嵌入
-                            unconditional_embeds = self.sd.encode_prompt(
-                                self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
-                                self.batch_negative_prompt if hasattr(self, 'batch_negative_prompt') else [''],
-                                dropout_prob=self.train_config.prompt_dropout_prob,
-                                long_prompts=self.do_long_prompts,
-                                **prompt_kwargs
-                            ).to(self.device_torch, dtype=dtype)
                     with self.timer('predict_unet'):
                         noise_pred = self.predict_noise(
                             noisy_latents=noisy_latents.to(self.device_torch, dtype=dtype),
