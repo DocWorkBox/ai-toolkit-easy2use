@@ -145,10 +145,10 @@ class QwenImageEditPlusModel(QwenImageModel):
         return latents.detach()
 
     def get_prompt_embeds(self, prompt: str, control_images=None) -> PromptEmbeds:
-        # 文本侧允许缺控，避免多控未传时抛错
+        # 允许缺控；若提供控制图，标准化尺寸以稳定序列长度
         if self.pipeline.text_encoder.device != self.device_torch:
             self.pipeline.text_encoder.to(self.device_torch)
-        
+
         processed_control_images = None
         if control_images is not None:
             # 兼容单张/多张
@@ -158,18 +158,20 @@ class QwenImageEditPlusModel(QwenImageModel):
             for ctrl in control_images:
                 if ctrl is None:
                     continue
-                # 将张量转换为 PIL，满足管线期望（避免 pixel_values 报错）
                 if isinstance(ctrl, torch.Tensor):
-                    if len(ctrl.shape) == 3:
+                    # 期望 0-1 归一化，形状为 (bs, ch, h, w) 或 (ch, h, w)
+                    if ctrl.ndim == 3:
                         ctrl = ctrl.unsqueeze(0)
-                    # 转为 float32 以兼容 to_pil_image（避免 BF16 报错），并取 batch 中第一张
-                    ctrl_fp32 = ctrl[0].detach().to(torch.float32).cpu()
-                    ctrl_pil = TF.to_pil_image(ctrl_fp32.clamp(0, 1))
-                    processed_control_images.append(ctrl_pil)
-                elif isinstance(ctrl, Image.Image):
+                    # 按面积 CONDITION_IMAGE_SIZE 等比缩放，避免生成过长的序列
+                    ratio = ctrl.shape[2] / ctrl.shape[3]
+                    width = math.sqrt(CONDITION_IMAGE_SIZE * ratio)
+                    height = width / ratio
+                    width = round(width / 32) * 32
+                    height = round(height / 32) * 32
+                    ctrl = F.interpolate(ctrl, size=(int(height), int(width)), mode="bilinear")
                     processed_control_images.append(ctrl)
                 else:
-                    # 其他类型（如 numpy）亦由 image_processor 处理
+                    # 保留 PIL 或其他类型，交由管线的 image_processor 处理
                     processed_control_images.append(ctrl)
 
         prompt_embeds, prompt_embeds_mask = self.pipeline.encode_prompt(
