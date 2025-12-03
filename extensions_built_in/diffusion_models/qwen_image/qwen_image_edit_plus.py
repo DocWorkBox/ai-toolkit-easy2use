@@ -17,14 +17,7 @@ from toolkit.accelerator import get_accelerator, unwrap_model
 from optimum.quanto import freeze, QTensor
 from toolkit.util.quantize import quantize, get_qtype, quantize_model
 import torch.nn.functional as F
-
-from diffusers import (
-    QwenImageTransformer2DModel,
-    AutoencoderKLQwenImage,
-)
-from transformers import Qwen2_5_VLForConditionalGeneration, Qwen2Tokenizer
-from tqdm import tqdm
-
+from torchvision.transforms import functional as TF
 
 if TYPE_CHECKING:
     from toolkit.data_transfer_object.data_loader import DataLoaderBatchDTO
@@ -62,11 +55,9 @@ class QwenImageEditPlusModel(QwenImageModel):
         self.is_transformer = True
         self.target_lora_modules = ["QwenImageTransformer2DModel"]
 
-        # set true for models that encode control image into text embeddings
+        # 控制图同时参与文本嵌入与潜变量拼接
         self.encode_control_in_text_embeddings = True
-        # control images will come in as a list for encoding some things if true
         self.has_multiple_control_images = True
-        # do not resize control images
         self.use_raw_control_images = True
 
     def load_model(self):
@@ -121,16 +112,9 @@ class QwenImageEditPlusModel(QwenImageModel):
             control_img = control_img.convert("RGB")
             control_img_list.append(control_img)
 
-        # flush for low vram if we are doing that
-        # flush_between_steps = self.model_config.low_vram
-        flush_between_steps = False
-
-        # Fix a bug in diffusers/torch
+        # 采样阶段无需强制 TE 再编码，走管线 resize 与 preprocess
         def callback_on_step_end(pipe, i, t, callback_kwargs):
-            if flush_between_steps:
-                flush()
             latents = callback_kwargs["latents"]
-
             return {"latents": latents}
 
         img = pipeline(
@@ -158,37 +142,41 @@ class QwenImageEditPlusModel(QwenImageModel):
     def condition_noisy_latents(
         self, latents: torch.Tensor, batch: "DataLoaderBatchDTO"
     ):
-        # we get the control image from the batch
         return latents.detach()
 
     def get_prompt_embeds(self, prompt: str, control_images=None) -> PromptEmbeds:
-        # todo handle not caching text encoder
+        # 允许缺控；若提供控制图，标准化尺寸以稳定序列长度
         if self.pipeline.text_encoder.device != self.device_torch:
             self.pipeline.text_encoder.to(self.device_torch)
-            
-        if control_images is None:
-            raise ValueError("Missing control images for QwenImageEditPlusModel")
-        
-        if not isinstance(control_images, List):
-            control_images = [control_images]
 
-        if control_images is not None and len(control_images) > 0:
-            for i in range(len(control_images)):
-                # control images are 0 - 1 scale, shape (bs, ch, height, width)
-                ratio = control_images[i].shape[2] / control_images[i].shape[3]
-                width = math.sqrt(CONDITION_IMAGE_SIZE * ratio)
-                height = width / ratio
-
-                width = round(width / 32) * 32
-                height = round(height / 32) * 32
-
-                control_images[i] = F.interpolate(
-                    control_images[i], size=(height, width), mode="bilinear"
-                )
+        processed_control_images = None
+        if control_images is not None:
+            # 兼容单张/多张
+            if not isinstance(control_images, list):
+                control_images = [control_images]
+            processed_control_images = []
+            for ctrl in control_images:
+                if ctrl is None:
+                    continue
+                if isinstance(ctrl, torch.Tensor):
+                    # 期望 0-1 归一化，形状为 (bs, ch, h, w) 或 (ch, h, w)
+                    if ctrl.ndim == 3:
+                        ctrl = ctrl.unsqueeze(0)
+                    # 按面积 CONDITION_IMAGE_SIZE 等比缩放，避免生成过长的序列
+                    ratio = ctrl.shape[2] / ctrl.shape[3]
+                    width = math.sqrt(CONDITION_IMAGE_SIZE * ratio)
+                    height = width / ratio
+                    width = round(width / 32) * 32
+                    height = round(height / 32) * 32
+                    ctrl = F.interpolate(ctrl, size=(int(height), int(width)), mode="bilinear")
+                    processed_control_images.append(ctrl)
+                else:
+                    # 保留 PIL 或其他类型，交由管线的 image_processor 处理
+                    processed_control_images.append(ctrl)
 
         prompt_embeds, prompt_embeds_mask = self.pipeline.encode_prompt(
             prompt,
-            image=control_images,
+            image=processed_control_images,  # None 表示缺控，交由管线处理
             device=self.device_torch,
             num_images_per_prompt=1,
         )
@@ -199,7 +187,7 @@ class QwenImageEditPlusModel(QwenImageModel):
     def get_noise_prediction(
         self,
         latent_model_input: torch.Tensor,
-        timestep: torch.Tensor,  # 0 to 1000 scale
+        timestep: torch.Tensor,
         text_embeddings: PromptEmbeds,
         batch: "DataLoaderBatchDTO" = None,
         **kwargs,
@@ -211,10 +199,8 @@ class QwenImageEditPlusModel(QwenImageModel):
             
             control_image_res = VAE_IMAGE_SIZE
             if self.model_config.model_kwargs.get("match_target_res", False):
-                # use the current target size to set the control image res
-                control_image_res = height * width * self.pipeline.vae_scale_factor
+                control_image_res = height * self.pipeline.vae_scale_factor * width * self.pipeline.vae_scale_factor
 
-            # pack image tokens
             latent_model_input = latent_model_input.view(
                 batch_size, num_channels_latents, height // 2, 2, width // 2, 2
             )
@@ -226,15 +212,11 @@ class QwenImageEditPlusModel(QwenImageModel):
             raw_packed_latents = latent_model_input
 
             img_h2, img_w2 = height // 2, width // 2
-
-            # build distinct instances per batch item, per mamad8
             img_shapes = [[(1, img_h2, img_w2)] for _ in range(batch_size)]
 
-            # pack controls
             if batch is None:
                 raise ValueError("Batch is required for QwenImageEditPlusModel")
 
-            # split the latents into batch items so we can concat the controls
             packed_latents_list = torch.chunk(latent_model_input, batch_size, dim=0)
             packed_latents_with_controls_list = []
 
@@ -245,90 +227,38 @@ class QwenImageEditPlusModel(QwenImageModel):
                     )
                 b = 0
                 for control_tensor_list in batch.control_tensor_list:
-                    # control tensor list is a list of tensors for this batch item
                     controls = []
-                    # pack control
                     for control_img in control_tensor_list:
-                        # control images are 0 - 1 scale, shape (1, ch, height, width)
-                        control_img = control_img.to(
-                            self.device_torch, dtype=self.torch_dtype
-                        )
-                        # if it is only 3 dim, add batch dim
+                        control_img = control_img.to(self.device_torch, dtype=self.torch_dtype)
                         if len(control_img.shape) == 3:
                             control_img = control_img.unsqueeze(0)
                         ratio = control_img.shape[2] / control_img.shape[3]
                         c_width = math.sqrt(control_image_res * ratio)
                         c_height = c_width / ratio
-
                         c_width = round(c_width / 32) * 32
                         c_height = round(c_height / 32) * 32
-
-                        control_img = F.interpolate(
-                            control_img, size=(c_height, c_width), mode="bilinear"
-                        )
-
-                        # scale to -1 to 1
+                        control_img = F.interpolate(control_img, size=(c_height, c_width), mode="bilinear")
                         control_img = control_img * 2 - 1
-
-                        control_latent = self.encode_images(
-                            control_img,
-                            device=self.device_torch,
-                            dtype=self.torch_dtype,
-                        )
-
-                        clb, cl_num_channels_latents, cl_height, cl_width = (
-                            control_latent.shape
-                        )
-
-                        control = control_latent.view(
-                            1,
-                            cl_num_channels_latents,
-                            cl_height // 2,
-                            2,
-                            cl_width // 2,
-                            2,
-                        )
+                        control_latent = self.encode_images(control_img, device=self.device_torch, dtype=self.torch_dtype)
+                        clb, cl_num_channels_latents, cl_height, cl_width = control_latent.shape
+                        control = control_latent.view(1, cl_num_channels_latents, cl_height // 2, 2, cl_width // 2, 2)
                         control = control.permute(0, 2, 4, 1, 3, 5)
-                        control = control.reshape(
-                            1,
-                            (cl_height // 2) * (cl_width // 2),
-                            num_channels_latents * 4,
-                        )
-
+                        control = control.reshape(1, (cl_height // 2) * (cl_width // 2), num_channels_latents * 4)
                         img_shapes[b].append((1, cl_height // 2, cl_width // 2))
                         controls.append(control)
-
-                    # stack controls on dim 1
-                    control = torch.cat(controls, dim=1).to(
-                        packed_latents_list[b].device,
-                        dtype=packed_latents_list[b].dtype,
-                    )
-                    # concat with latents
-                    packed_latents_with_control = torch.cat(
-                        [packed_latents_list[b], control], dim=1
-                    )
-
-                    packed_latents_with_controls_list.append(
-                        packed_latents_with_control
-                    )
-
+                    control = torch.cat(controls, dim=1).to(packed_latents_list[b].device, dtype=packed_latents_list[b].dtype)
+                    packed_latents_with_control = torch.cat([packed_latents_list[b], control], dim=1)
+                    packed_latents_with_controls_list.append(packed_latents_with_control)
                     b += 1
-
                 latent_model_input = torch.cat(packed_latents_with_controls_list, dim=0)
 
-            prompt_embeds_mask = text_embeddings.attention_mask.to(
-                self.device_torch, dtype=torch.int64
-            )
+            prompt_embeds_mask = text_embeddings.attention_mask.to(self.device_torch, dtype=torch.int64)
             txt_seq_lens = prompt_embeds_mask.sum(dim=1).tolist()
             enc_hs = text_embeddings.text_embeds.to(self.device_torch, self.torch_dtype)
-            prompt_embeds_mask = text_embeddings.attention_mask.to(
-                self.device_torch, dtype=torch.int64
-            )
+            prompt_embeds_mask = text_embeddings.attention_mask.to(self.device_torch, dtype=torch.int64)
 
         noise_pred = self.transformer(
-            hidden_states=latent_model_input.to(
-                self.device_torch, self.torch_dtype
-            ).detach(),
+            hidden_states=latent_model_input.to(self.device_torch, self.torch_dtype).detach(),
             timestep=(timestep / 1000).detach(),
             guidance=None,
             encoder_hidden_states=enc_hs.detach(),
@@ -341,10 +271,7 @@ class QwenImageEditPlusModel(QwenImageModel):
 
         noise_pred = noise_pred[:, : raw_packed_latents.size(1)]
 
-        # unpack
-        noise_pred = noise_pred.view(
-            batch_size, height // 2, width // 2, num_channels_latents, 2, 2
-        )
+        noise_pred = noise_pred.view(batch_size, height // 2, width // 2, num_channels_latents, 2, 2)
         noise_pred = noise_pred.permute(0, 3, 1, 4, 2, 5)
         noise_pred = noise_pred.reshape(batch_size, num_channels_latents, height, width)
         return noise_pred

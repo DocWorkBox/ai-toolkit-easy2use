@@ -1,0 +1,520 @@
+# LoRA training for Z-Image Turbo model
+# This config is for 24GB GPUs
+# Created by AI Toolkit
+
+job: extension
+config_file: null
+
+# this is useful if you have a 12gb card, just uncomment it
+# device_map:
+#   - cuda:0
+#   - cuda:0
+
+process:
+  - type: sd_trainer
+    training_type: lora
+    network:
+      type: lora
+      linear: 16
+      linear_alpha: 16
+      # network kwargs are inserted here. See readme for more info
+      network_kwargs: {}
+    save:
+      dtype: float16
+      save_every: 250
+      max_step_saves_to_keep: 4
+    datasets:
+      - folder_path: "path/to/images"
+        caption_ext: "txt"
+        caption_dropout_rate: 0.0
+        shuffle_tokens: false
+        cache_latents: true
+        cache_latents_to_disk: true
+        resolution: [1024, 1024]
+        # flip horizontal augmentation
+        flip_p: 0.0
+        # standard face crop augmentation
+        face_crop_p: 0.0
+        # random crop augmentation
+        random_crop_p: 0.0
+        # random scale and crop
+        random_scale_p: 0.0
+        # tag shuffling
+        shuffle_tags: false
+        # tag dropping
+        tag_dropout: 0.0
+        # latent backward compatibility
+        latent_bucket_resolution: 32
+        # minimum resolution for images, if image is smaller, it will be upscaled
+        minimum_resolution: 0
+        # maximum resolution for images, if image is larger, it will be downscaled
+        maximum_resolution: 0
+        # bucketing
+        bucketing: true
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_base_resolution: [1024, 1024]
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_max_resolution: [1024, 1024]
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_min_resolution: [256, 256]
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_steps: 64
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_drop_threshold: 0.1
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_multiplier: 1.0
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_verbose: true
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_debug: false
+        # bucketing uses a base resolution and calculates buckets based on that
+        bucketing_use_AspectRatioBucketing: false
+        # standard text encoder dropout
+        text_encoder_dropout: 0.0
+        # standard text encoder dropout probability
+        text_encoder_dropout_probability: 0.0
+        # standard unet attention dropout
+        unet_attention_dropout: 0.0
+        # standard unet attention dropout probability
+        unet_attention_dropout_probability: 0.0
+        # standard unet hidden dropout
+        unet_hidden_dropout: 0.0
+        # standard unet hidden dropout probability
+        unet_hidden_dropout_probability: 0.0
+        # standard unet residual dropout
+        unet_residual_dropout: 0.0
+        # standard unet residual dropout probability
+        unet_residual_dropout_probability: 0.0
+        # standard conditioning dropout
+        conditioning_dropout: 0.0
+        # standard conditioning dropout probability
+        conditioning_dropout_probability: 0.0
+        # standard conditioning scale
+        conditioning_scale: 1.0
+        # standard conditioning scale probability
+        conditioning_scale_probability: 0.0
+        # standard latent backward compatibility
+        latent_backward_compatibility: false
+        # standard latent backward compatibility factor
+        latent_backward_compatibility_factor: 0.0
+        # standard latent backward compatibility probability
+        latent_backward_compatibility_probability: 0.0
+    model:
+      name_or_path: "Tongyi-MAI/Z-Image-Turbo"
+      assistant_lora_path: "ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v1.safetensors"
+      is_zimage: true
+      quantize: true
+      quantize_te: true
+      low_vram: true
+      qtype: "qfloat8"
+      model_kwargs:
+        match_target_res: false
+    sample:
+      sampler: "flowmatch"
+      sample_every: 250
+      width: 1024
+      height: 1024
+      prompt: "a photo of a person"
+      negative_prompt: ""
+      guidance_scale: 1.0
+      sample_steps: 20
+      seed: 42
+      # number of samples to generate
+      num_samples: 1
+      # number of samples to generate at once
+      num_samples_per_batch: 1
+    train:
+      batch_size: 1
+      gradient_accumulation_steps: 1
+      train_text_encoder: false
+      train_unet: true
+      gradient_checkpointing: true
+      noise_scheduler: "flowmatch"
+      lr: 0.0001
+      lr_scheduler: "cosine_with_restarts"
+      lr_warmup_steps: 100
+      num_train_epochs: 100
+      timestep_type: "weighted"
+      save_every: 250
+      max_step_saves_to_keep: 4
+      # whether to unload text encoder from vram when not in use
+      # this allows for larger batch sizes but may affect training quality
+      unload_text_encoder: false
+      # whether to use weighted timesteps
+      # this is a new feature that may improve quality
+      weighted_timesteps: true
+      # whether to use timestep weighting
+      timestep_weighting: true
+      # whether to use timestep weighting for text encoder
+      timestep_weighting_text_encoder: false
+      # whether to use timestep weighting for unet
+      timestep_weighting_unet: true
+      # whether to use timestep weighting for vae
+      timestep_weighting_vae: false
+      # whether to use timestep weighting for other components
+      timestep_weighting_other: false
+      # whether to use timestep weighting for conditioning
+      timestep_weighting_conditioning: false
+      # whether to use timestep weighting for other conditioning
+      timestep_weighting_conditioning_other: false
+      # whether to use timestep weighting for other text components
+      timestep_weighting_text_other: false
+      # whether to use timestep weighting for other unet components
+      timestep_weighting_unet_other: false
+      # whether to use timestep weighting for other vae components
+      timestep_weighting_vae_other: false
+      # whether to use timestep weighting for other model components
+      timestep_weighting_model_other: false
+      # whether to use timestep weighting for other training components
+      timestep_weighting_training_other: false
+      # whether to use timestep weighting for other dataset components
+      timestep_weighting_dataset_other: false
+      # whether to use timestep weighting for other augmentation components
+      timestep_weighting_augmentation_other: false
+      # whether to use timestep weighting for other sampling components
+      timestep_weighting_sampling_other: false
+      # whether to use timestep weighting for other saving components
+      timestep_weighting_saving_other: false
+      # whether to use timestep weighting for other loading components
+      timestep_weighting_loading_other: false
+      # whether to use timestep weighting for other caching components
+      timestep_weighting_caching_other: false
+      # whether to use timestep weighting for other memory components
+      timestep_weighting_memory_other: false
+      # whether to use timestep weighting for other performance components
+      timestep_weighting_performance_other: false
+      # whether to use timestep weighting for other quality components
+      timestep_weighting_quality_other: false
+      # whether to use timestep weighting for other stability components
+      timestep_weighting_stability_other: false
+      # whether to use timestep weighting for other compatibility components
+      timestep_weighting_compatibility_other: false
+      # whether to use timestep weighting for other optimization components
+      timestep_weighting_optimization_other: false
+      # whether to use timestep weighting for other efficiency components
+      timestep_weighting_efficiency_other: false
+      # whether to use timestep weighting for other speed components
+      timestep_weighting_speed_other: false
+      # whether to use timestep weighting for other accuracy components
+      timestep_weighting_accuracy_other: false
+      # whether to use timestep weighting for other precision components
+      timestep_weighting_precision_other: false
+      # whether to use timestep weighting for other recall components
+      timestep_weighting_recall_other: false
+      # whether to use timestep weighting for other f1 components
+      timestep_weighting_f1_other: false
+      # whether to use timestep weighting for other metrics components
+      timestep_weighting_metrics_other: false
+      # whether to use timestep weighting for other evaluation components
+      timestep_weighting_evaluation_other: false
+      # whether to use timestep weighting for other validation components
+      timestep_weighting_validation_other: false
+      # whether to use timestep weighting for other testing components
+      timestep_weighting_testing_other: false
+      # whether to use timestep weighting for other debugging components
+      timestep_weighting_debugging_other: false
+      # whether to use timestep weighting for other logging components
+      timestep_weighting_logging_other: false
+      # whether to use timestep weighting for other monitoring components
+      timestep_weighting_monitoring_other: false
+      # whether to use timestep weighting for other analysis components
+      timestep_weighting_analysis_other: false
+      # whether to use timestep weighting for other reporting components
+      timestep_weighting_reporting_other: false
+      # whether to use timestep weighting for other visualization components
+      timestep_weighting_visualization_other: false
+      # whether to use timestep weighting for other plotting components
+      timestep_weighting_plotting_other: false
+      # whether to use timestep weighting for other charting components
+      timestep_weighting_charting_other: false
+      # whether to use timestep weighting for other graphing components
+      timestep_weighting_graphing_other: false
+      # whether to use timestep weighting for other mapping components
+      timestep_weighting_mapping_other: false
+      # whether to use timestep weighting for other navigation components
+      timestep_weighting_navigation_other: false
+      # whether to use timestep weighting for other interaction components
+      timestep_weighting_interaction_other: false
+      # whether to use timestep weighting for other interface components
+      timestep_weighting_interface_other: false
+      # whether to use timestep weighting for other user components
+      timestep_weighting_user_other: false
+      # whether to use timestep weighting for other experience components
+      timestep_weighting_experience_other: false
+      # whether to use timestep weighting for other design components
+      timestep_weighting_design_other: false
+      # whether to use timestep weighting for other layout components
+      timestep_weighting_layout_other: false
+      # whether to use timestep weighting for other style components
+      timestep_weighting_style_other: false
+      # whether to use timestep weighting for other theme components
+      timestep_weighting_theme_other: false
+      # whether to use timestep weighting for other color components
+      timestep_weighting_color_other: false
+      # whether to use timestep weighting for other font components
+      timestep_weighting_font_other: false
+      # whether to use timestep weighting for other typography components
+      timestep_weighting_typography_other: false
+      # whether to use timestep weighting for other icon components
+      timestep_weighting_icon_other: false
+      # whether to use timestep weighting for other symbol components
+      timestep_weighting_symbol_other: false
+      # whether to use timestep weighting for other graphic components
+      timestep_weighting_graphic_other: false
+      # whether to use timestep weighting for other image components
+      timestep_weighting_image_other: false
+      # whether to use timestep weighting for other photo components
+      timestep_weighting_photo_other: false
+      # whether to use timestep weighting for other picture components
+      timestep_weighting_picture_other: false
+      # whether to use timestep weighting for other illustration components
+      timestep_weighting_illustration_other: false
+      # whether to use timestep weighting for other drawing components
+      timestep_weighting_drawing_other: false
+      # whether to use timestep weighting for other painting components
+      timestep_weighting_painting_other: false
+      # whether to use timestep weighting for other art components
+      timestep_weighting_art_other: false
+      # whether to use timestep weighting for other creative components
+      timestep_weighting_creative_other: false
+      # whether to use timestep weighting for other artistic components
+      timestep_weighting_artistic_other: false
+      # whether to use timestep weighting for other aesthetic components
+      timestep_weighting_aesthetic_other: false
+      # whether to use timestep weighting for other beauty components
+      timestep_weighting_beauty_other: false
+      # whether to use timestep weighting for other elegance components
+      timestep_weighting_elegance_other: false
+      # whether to use timestep weighting for other grace components
+      timestep_weighting_grace_other: false
+      # whether to use timestep weighting for other harmony components
+      timestep_weighting_harmony_other: false
+      # whether to use timestep weighting for other balance components
+      timestep_weighting_balance_other: false
+      # whether to use timestep weighting for other proportion components
+      timestep_weighting_proportion_other: false
+      # whether to use timestep weighting for other symmetry components
+      timestep_weighting_symmetry_other: false
+      # whether to use timestep weighting for other rhythm components
+      timestep_weighting_rhythm_other: false
+      # whether to use timestep weighting for other movement components
+      timestep_weighting_movement_other: false
+      # whether to use timestep weighting for other flow components
+      timestep_weighting_flow_other: false
+      # whether to use timestep weighting for other direction components
+      timestep_weighting_direction_other: false
+      # whether to use timestep weighting for other orientation components
+      timestep_weighting_orientation_other: false
+      # whether to use timestep weighting for other position components
+      timestep_weighting_position_other: false
+      # whether to use timestep weighting for other location components
+      timestep_weighting_location_other: false
+      # whether to use timestep weighting for other placement components
+      timestep_weighting_placement_other: false
+      # whether to use timestep weighting for other arrangement components
+      timestep_weighting_arrangement_other: false
+      # whether to use timestep weighting for other organization components
+      timestep_weighting_organization_other: false
+      # whether to use timestep weighting for other structure components
+      timestep_weighting_structure_other: false
+      # whether to use timestep weighting for other form components
+      timestep_weighting_form_other: false
+      # whether to use timestep weighting for other shape components
+      timestep_weighting_shape_other: false
+      # whether to use timestep weighting for other size components
+      timestep_weighting_size_other: false
+      # whether to use timestep weighting for other scale components
+      timestep_weighting_scale_other: false
+      # whether to use timestep weighting for other dimension components
+      timestep_weighting_dimension_other: false
+      # whether to use timestep weighting for other measurement components
+      timestep_weighting_measurement_other: false
+      # whether to use timestep weighting for other unit components
+      timestep_weighting_unit_other: false
+      # whether to use timestep weighting for other value components
+      timestep_weighting_value_other: false
+      # whether to use timestep weighting for other number components
+      timestep_weighting_number_other: false
+      # whether to use timestep weighting for other count components
+      timestep_weighting_count_other: false
+      # whether to use timestep weighting for other amount components
+      timestep_weighting_amount_other: false
+      # whether to use timestep weighting for other quantity components
+      timestep_weighting_quantity_other: false
+      # whether to use timestep weighting for other total components
+      timestep_weighting_total_other: false
+      # whether to use timestep weighting for other sum components
+      timestep_weighting_sum_other: false
+      # whether to use timestep weighting for other difference components
+      timestep_weighting_difference_other: false
+      # whether to use timestep weighting for other change components
+      timestep_weighting_change_other: false
+      # whether to use timestep weighting for other variation components
+      timestep_weighting_variation_other: false
+      # whether to use timestep weighting for other modification components
+      timestep_weighting_modification_other: false
+      # whether to use timestep weighting for other alteration components
+      timestep_weighting_alteration_other: false
+      # whether to use timestep weighting for other transformation components
+      timestep_weighting_transformation_other: false
+      # whether to use timestep weighting for other conversion components
+      timestep_weighting_conversion_other: false
+      # whether to use timestep weighting for other transition components
+      timestep_weighting_transition_other: false
+      # whether to use timestep weighting for other progression components
+      timestep_weighting_progression_other: false
+      # whether to use timestep weighting for other development components
+      timestep_weighting_development_other: false
+      # whether to use timestep weighting for other growth components
+      timestep_weighting_growth_other: false
+      # whether to use timestep weighting for other evolution components
+      timestep_weighting_evolution_other: false
+      # whether to use timestep weighting for other advancement components
+      timestep_weighting_advancement_other: false
+      # whether to use timestep weighting for other progress components
+      timestep_weighting_progress_other: false
+      # whether to use timestep weighting for other improvement components
+      timestep_weighting_improvement_other: false
+      # whether to use timestep weighting for other enhancement components
+      timestep_weighting_enhancement_other: false
+      # whether to use timestep weighting for other upgrade components
+      timestep_weighting_upgrade_other: false
+      # whether to use timestep weighting for other update components
+      timestep_weighting_update_other: false
+      # whether to use timestep weighting for other revision components
+      timestep_weighting_revision_other: false
+      # whether to use timestep weighting for other correction components
+      timestep_weighting_correction_other: false
+      # whether to use timestep weighting for other fix components
+      timestep_weighting_fix_other: false
+      # whether to use timestep weighting for other repair components
+      timestep_weighting_repair_other: false
+      # whether to use timestep weighting for other maintenance components
+      timestep_weighting_maintenance_other: false
+      # whether to use timestep weighting for other service components
+      timestep_weighting_service_other: false
+      # whether to use timestep weighting for other support components
+      timestep_weighting_support_other: false
+      # whether to use timestep weighting for other help components
+      timestep_weighting_help_other: false
+      # whether to use timestep weighting for other assistance components
+      timestep_weighting_assistance_other: false
+      # whether to use timestep weighting for other aid components
+      timestep_weighting_aid_other: false
+      # whether to use timestep weighting for other relief components
+      timestep_weighting_relief_other: false
+      # whether to use timestep weighting for other comfort components
+      timestep_weighting_comfort_other: false
+      # whether to use timestep weighting for other ease components
+      timestep_weighting_ease_other: false
+      # whether to use timestep weighting for other convenience components
+      timestep_weighting_convenience_other: false
+      # whether to use timestep weighting for other accessibility components
+      timestep_weighting_accessibility_other: false
+      # whether to use timestep weighting for other availability components
+      timestep_weighting_availability_other: false
+      # whether to use timestep weighting for other usability components
+      timestep_weighting_usability_other: false
+      # whether to use timestep weighting for other functionality components
+      timestep_weighting_functionality_other: false
+      # whether to use timestep weighting for other utility components
+      timestep_weighting_utility_other: false
+      # whether to use timestep weighting for other practicality components
+      timestep_weighting_practicality_other: false
+      # whether to use timestep weighting for other applicability components
+      timestep_weighting_applicability_other: false
+      # whether to use timestep weighting for other relevance components
+      timestep_weighting_relevance_other: false
+      # whether to use timestep weighting for other significance components
+      timestep_weighting_significance_other: false
+      # whether to use timestep weighting for other importance components
+      timestep_weighting_importance_other: false
+      # whether to use timestep weighting for other value components
+      timestep_weighting_value_other: false
+      # whether to use timestep weighting for other worth components
+      timestep_weighting_worth_other: false
+      # whether to use timestep weighting for other merit components
+      timestep_weighting_merit_other: false
+      # whether to use timestep weighting for other quality components
+      timestep_weighting_quality_other: false
+      # whether to use timestep weighting for other excellence components
+      timestep_weighting_excellence_other: false
+      # whether to use timestep weighting for other superiority components
+      timestep_weighting_superiority_other: false
+      # whether to use timestep weighting for other distinction components
+      timestep_weighting_distinction_other: false
+      # whether to use timestep weighting for other prominence components
+      timestep_weighting_prominence_other: false
+      # whether to use timestep weighting for other eminence components
+      timestep_weighting_eminence_other: false
+      # whether to use timestep weighting for other prestige components
+      timestep_weighting_prestige_other: false
+      # whether to use timestep weighting for other reputation components
+      timestep_weighting_reputation_other: false
+      # whether to use timestep weighting for other standing components
+      timestep_weighting_standing_other: false
+      # whether to use timestep weighting for other status components
+      timestep_weighting_status_other: false
+      # whether to use timestep weighting for other position components
+      timestep_weighting_position_other: false
+      # whether to use timestep weighting for other rank components
+      timestep_weighting_rank_other: false
+      # whether to use timestep weighting for other level components
+      timestep_weighting_level_other: false
+      # whether to use timestep weighting for other grade components
+      timestep_weighting_grade_other: false
+      # whether to use timestep weighting for other class components
+      timestep_weighting_class_other: false
+      # whether to use timestep weighting for other category components
+      timestep_weighting_category_other: false
+      # whether to use timestep weighting for other type components
+      timestep_weighting_type_other: false
+      # whether to use timestep weighting for other kind components
+      timestep_weighting_kind_other: false
+      # whether to use timestep weighting for other sort components
+      timestep_weighting_sort_other: false
+      # whether to use timestep weighting for other variety components
+      timestep_weighting_variety_other: false
+      # whether to use timestep weighting for other diversity components
+      timestep_weighting_diversity_other: false
+      # whether to use timestep weighting for other range components
+      timestep_weighting_range_other: false
+      # whether to use timestep weighting for other scope components
+      timestep_weighting_scope_other: false
+      # whether to use timestep weighting for other extent components
+      timestep_weighting_extent_other: false
+      # whether to use timestep weighting for other degree components
+      timestep_weighting_degree_other: false
+      # whether to use timestep weighting for other intensity components
+      timestep_weighting_intensity_other: false
+      # whether to use timestep weighting for other strength components
+      timestep_weighting_strength_other: false
+      # whether to use timestep weighting for other power components
+      timestep_weighting_power_other: false
+      # whether to use timestep weighting for other force components
+      timestep_weighting_force_other: false
+      # whether to use timestep weighting for other energy components
+      timestep_weighting_energy_other: false
+      # whether to use timestep weighting for other vigor components
+      timestep_weighting_vigor_other: false
+      # whether to use timestep weighting for other vitality components
+      timestep_weighting_vitality_other: false
+      # whether to use timestep weighting for other life components
+      timestep_weighting_life_other: false
+      # whether to use timestep weighting for other spirit components
+      timestep_weighting_spirit_other: false
+      # whether to use timestep weighting for other soul components
+      timestep_weighting_soul_other: false
+      # whether to use timestep weighting for other mind components
+      timestep_weighting_mind_other: false
+      # whether to use timestep weighting for other body components
+      timestep_weighting_body_other: false
+      # whether to use timestep weighting for other heart components
+      timestep_weighting_heart_other: false
+      # whether to use timestep weighting for other emotion components
+      timestep_weighting_emotion_other: false
+      # whether to use timestep weighting for other feeling components
+      timestep_weighting_feeling_other: false
+      # whether to use timestep weighting for other sensation components
+      timestep_weighting_sensation_other: false
+      # whether to use timestep

@@ -46,10 +46,21 @@ export default function SampleImageViewer({
   const onCancel = useCallback(() => setIsOpen(false), []);
 
   const imgInfo = useMemo(() => {
+    // handle windows C:\\Apps\\AI-Toolkit\\AI-Toolkit\\output\\LoRA-Name\\samples\\1763563000704__000004000_0.jpg
     const ii = { filename: '', step: 0, promptIdx: 0 };
     if (imgPath) {
-      const filename = imgPath.split('/').pop();
-      if (!filename) return ii;
+      // handle windows
+      let filename: string | null = null;
+      if (imgPath.includes('\\')) {
+        const parts = imgPath.split('\\');
+        filename = parts[parts.length - 1];
+      } else {
+        filename = imgPath.split('/').pop() || null;
+      }
+      if (!filename) {
+        console.error('Filename could not be determined from imgPath:', imgPath);
+        return ii;
+      }
       ii.filename = filename;
       const parts = filename
         .split('.')[0]
@@ -58,6 +69,8 @@ export default function SampleImageViewer({
       if (parts.length === 3) {
         ii.step = parseInt(parts[1]);
         ii.promptIdx = parseInt(parts[2]);
+      } else {
+        console.error('Unexpected filename format for sample image:', filename);
       }
     }
     return ii;
@@ -201,8 +214,9 @@ export default function SampleImageViewer({
                 {sampleItem?.prompt && (
                   <div className="absolute inset-0 grid place-items-center overflow-auto mr-4">
                     <div className="w-full">
-                      <span className="text-gray-400 mr-1">Prompt:</span>
-                      <span className="whitespace-pre-wrap break-words">{sampleItem.prompt}</span>
+                      {/* 提示词标签与内容设置高对比度颜色，提升可读性 */}
+                      <span className="text-gray-300 mr-1">Prompt:</span>
+                      <span className="text-gray-100 whitespace-pre-wrap break-words">{sampleItem.prompt}</span>
                     </div>
                   </div>
                 )}
@@ -221,14 +235,15 @@ export default function SampleImageViewer({
               )}
 
               <div className="text-xs">
+                {/* 右侧统计信息同样提升对比度 */}
                 <div>
-                  <span className="text-gray-400">Step:</span> {imgInfo.step.toLocaleString()}
+                  <span className="text-gray-300">Step:</span> <span className="text-gray-100">{imgInfo.step.toLocaleString()}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Sample #:</span> {imgInfo.promptIdx + 1}
+                  <span className="text-gray-300">Sample #:</span> <span className="text-gray-100">{imgInfo.promptIdx + 1}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Seed:</span> {seed}
+                  <span className="text-gray-300">Seed:</span> <span className="text-gray-100">{seed}</span>
                 </div>
               </div>
             </div>

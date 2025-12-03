@@ -14,190 +14,92 @@
 
 ## 环境要求
 
-- Docker Desktop（Windows/macOS）或 Docker Engine（Linux）
-- **NVIDIA GPU + NVIDIA Container Toolkit**（必需，不支持 CPU 运行）
+- Python ≥ 3.10
 - Git（用于拉取仓库）
-- 至少 20GB 可用磁盘空间（用于 Docker 镜像和模型）
+- NVIDIA GPU（显存需满足你的训练或推理需求）
+- Python 虚拟环境（建议）
+- Node.js ≥ 18（用于运行 Web UI）
 
-> **重要提示**：本 Docker 镜像基于 NVIDIA CUDA，仅支持 GPU 运行，不支持纯 CPU 模式。
+## 安装（Linux / Windows）
 
-## Docker 部署（推荐方式）
+> 🐳 **推荐**：如需使用 Docker 快速部署，请查看 [Docker 部署指南](DOCKER_README.md)。
 
-### 方式一：使用预构建镜像（推荐）
-
-直接使用 Docker Hub 上的预构建镜像，无需本地构建：
-
-```bash
-# 拉取最新镜像
-docker pull coco1006/ai-toolkit-easy2use:latest
-
-# 运行容器
-docker run -d \
-  --name ai-toolkit \
-  --gpus all \
-  -p 8675:8675 \
-  -v ${PWD}/models:/models \
-  -v ${PWD}/output:/output \
-  -v ${PWD}/datasets:/datasets \
-  coco1006/ai-toolkit-easy2use:latest
-```
-
-Windows PowerShell：
-
-```powershell
-# 拉取并运行
-docker pull coco1006/ai-toolkit-easy2use:latest
-
-docker run -d `
-  --name ai-toolkit `
-  --gpus all `
-  -p 8675:8675 `
-  -v "${PWD}/models:/models" `
-  -v "${PWD}/output:/output" `
-  -v "${PWD}/datasets:/datasets" `
-  coco1006/ai-toolkit-easy2use:latest
-```
-
-### 方式二：本地构建镜像
-
-如需自定义或使用最新代码，可本地构建：
-
-#### 1）克隆仓库
+### 1）克隆仓库
 
 ```bash
 git clone https://github.com/DocWorkBox/ai-toolkit-easy2use.git
 cd ai-toolkit-easy2use
 ```
 
-#### 2）构建 Docker 镜像
+### 2）创建并激活虚拟环境
+
+Linux / macOS：
 
 ```bash
-# 推荐（跨平台更稳，始终拉取最新基础镜像）
-docker build --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .
-
-# 同时创建 latest 标签
-docker tag ai-toolkit-easy2use:0.7.2 ai-toolkit-easy2use:latest
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-> 如需彻底禁用缓存（更慢但最干净）：`docker build --no-cache --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
-
-> 高级（可选）：不同终端的轻量缓存破坏示例
-- Linux/macOS（Bash）：`docker build --build-arg CACHEBUST=$(date +%s) --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
-- Windows PowerShell：`docker build --build-arg CACHEBUST=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) --pull -t ai-toolkit-easy2use:0.7.2 -f docker/Dockerfile .`
-
-> **注意**：首次构建可能需要 15-30 分钟，请耐心等待。
-
-#### 3）运行本地构建的容器
-
-```bash
-# 运行容器
-docker run -d \
-  --name ai-toolkit \
-  --gpus all \
-  -p 8675:8675 \
-  -v ${PWD}/models:/models \
-  -v ${PWD}/output:/output \
-  -v ${PWD}/datasets:/datasets \
-  ai-toolkit-easy2use:latest
-```
-
-## 访问 Web UI
-
-容器启动后，通过浏览器访问：
-
-- `http://localhost:8675`（本地访问）
-- `http://<your-ip>:8675`（远程访问）
-
-## 目录挂载说明
-
-- `/models`：存放 AI 模型文件（如 FLUX.1-dev 等）
-- `/output`：训练输出和生成结果
-- `/datasets`：训练数据集存放目录
-- 容器内 Web UI 运行在端口 8675
-
-## 容器运行选项
-
-### 标准运行
-
-```bash
-docker run -d \
-  --name ai-toolkit \
-  --gpus all \
-  -p 8675:8675 \
-  -v ${PWD}/models:/models \
-  -v ${PWD}/output:/output \
-  -v ${PWD}/datasets:/datasets \
-  coco1006/ai-toolkit-easy2use:latest
-```
-
-### Windows PowerShell 运行
+Windows（PowerShell）：
 
 ```powershell
-docker run -d `
-  --name ai-toolkit `
-  --gpus all `
-  -p 8675:8675 `
-  -v "${PWD}/models:/models" `
-  -v "${PWD}/output:/output" `
-  -v "${PWD}/datasets:/datasets" `
-  coco1006/ai-toolkit-easy2use:latest
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 ```
 
-> **注意**：`--gpus all` 参数是必需的，因为镜像基于 CUDA，必须使用 GPU 运行。
+### 3）安装 PyTorch（示例，CUDA 12.6 对应版本）
 
-## 容器管理命令
+根据你的 CUDA / 显卡环境调整版本。以下为参考示例：
 
 ```bash
-# 查看容器状态
-docker ps
-
-# 查看容器日志
-docker logs ai-toolkit
-
-# 停止容器
-docker stop ai-toolkit
-
-# 重启容器
-docker restart ai-toolkit
-
-# 删除容器
-docker rm ai-toolkit
-
-# 进入容器调试
-docker exec -it ai-toolkit bash
+pip install --no-cache-dir torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu126
 ```
 
-## 目录挂载说明
+### 4）安装项目依赖
 
-- `/models`：存放 AI 模型文件（如 FLUX.1-dev 等）
-- `/output`：训练输出和生成结果
-- `/datasets`：训练集图片存放
-- 容器内 Web UI 运行在端口 8675
+```bash
+pip install -r requirements.txt
+```
 
-## 传统安装方式（高级用户）
-
-如果您不想使用 Docker，仍可按照传统方式安装：
-
-<details>
-<summary>点击展开传统安装步骤</summary>
+## 运行 UI（中文界面）
 
 ### 环境要求
-- Python ≥ 3.10
-- CUDA ≥ 12.1
-- PyTorch ≥ 2.4.0（CUDA 版本）
-- NVIDIA GPU（显存需满足训练需求）
+
 - Node.js ≥ 18
-- Git
 
-### 安装步骤
-1. 克隆仓库：`git clone https://github.com/DocWorkBox/ai-toolkit-easy2use.git`
-2. 创建 Python 虚拟环境：`python -m venv venv`
-3. 激活虚拟环境：`venv\Scripts\activate`（Windows）或 `source venv/bin/activate`（Linux/macOS）
-4. 安装 PyTorch（CUDA 版本）：`pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121`
-5. 安装项目依赖：`pip install -r requirements.txt`
-6. 构建并运行 UI：`cd ui && npm install && npm run build_and_start`
+UI 为基于 Next.js 的 Web 应用。UI 无需持续运行即可执行训练任务，仅在启动/停止/监控任务时需要使用。
 
-</details>
+### 开发模式
+
+开发模式运行在 `http://localhost:3000`：
+
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+打开浏览器访问：
+
+- `http://localhost:3000/`（首页）
+- `http://localhost:3000/dashboard`（仪表盘）
+- `http://localhost:3000/jobs/new`（新建任务）
+
+### 生产环境
+
+生产环境运行在端口 `8675`。以下命令将安装/更新 UI 及其依赖并启动 UI：
+
+```bash
+cd ui
+npm run build_and_start
+```
+
+启动后可通过以下地址访问：
+
+- `http://localhost:8675`（本地访问）
+- `http://<your-ip>:8675`（服务器部署时的远程访问）
+
+> **注意**：UI 无需持续运行即可执行训练任务。UI 仅用于启动、停止和监控任务。
 
 ## 中文版 UI 截图
 
