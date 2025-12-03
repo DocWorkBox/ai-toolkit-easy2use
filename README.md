@@ -22,6 +22,8 @@
 
 ## 安装（Linux / Windows）
 
+> 🐳 **推荐**：如需使用 Docker 快速部署，请查看 [Docker 部署指南](DOCKER_README.md)。
+
 ### 1）克隆仓库
 
 ```bash
