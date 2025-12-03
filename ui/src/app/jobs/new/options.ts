@@ -472,7 +472,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.2-dev', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/models/FLUX.2-dev', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -503,7 +503,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Tongyi-MAI/Z-Image-Turbo', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/models/Z-Image-Turbo', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -513,7 +513,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.timestep_type': ['weighted', 'sigmoid'],
       'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
       'config.process[0].model.assistant_lora_path': [
-        'ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v1.safetensors',
+        '/models/zimage_turbo_training_adapter_v2.safetensors',
         undefined,
       ],
       'config.process[0].sample.guidance_scale': [1, 4],
