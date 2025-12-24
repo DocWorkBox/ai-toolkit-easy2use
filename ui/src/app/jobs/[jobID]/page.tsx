@@ -25,26 +25,26 @@ interface Page {
 
 const pages: Page[] = [
   {
-    name: 'Overview',
+    name: '概览', // 页面名称中文化
     value: 'overview',
     component: JobOverview,
     mainCss: 'pt-24',
   },
   {
-    name: 'Samples',
+    name: '样例', // 页面名称中文化
     value: 'samples',
     component: SampleImages,
     menuItem: SampleImagesMenu,
     mainCss: 'pt-24',
   },
   {
-    name: 'Loss Graph',
+    name: '损失曲线', // 页面名称中文化
     value: 'loss_log',
     component: JobLossGraph,
     mainCss: 'pt-24',
   },
   {
-    name: 'Config File',
+    name: '配置文件', // 页面名称中文化
     value: 'config',
     component: JobConfigViewer,
     mainCss: 'pt-[80px] px-0 pb-0',
