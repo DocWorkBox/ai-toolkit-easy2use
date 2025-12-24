@@ -182,3 +182,5 @@ cython_debug/
 aitk_db.db
 /notes.md
 /data
+.trae/ # 忽略 Trae IDE 本地文档目录（不推送到远程）
+.vscode/ # 忽略 VSCode 工作区配置目录（不推送到远程）
