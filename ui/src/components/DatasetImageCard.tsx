@@ -37,13 +37,14 @@ const DatasetImageCard: React.FC<DatasetImageCardProps> = ({
       .then(res => res.data)
       .then(data => {
         console.log('Caption fetched:', data);
-
         let captionText = '';
         if (typeof data === 'object' && data !== null) {
           // If data is an object (parsed JSON), convert it back to string
+          // 兼容后端返回 JSON 的情况，保持前端编辑一致性
           captionText = JSON.stringify(data, null, 2);
         } else {
           // Otherwise ensure it's a string
+          // 统一转为字符串，避免类型不一致导致 UI 异常
           captionText = String(data || '');
         }
 

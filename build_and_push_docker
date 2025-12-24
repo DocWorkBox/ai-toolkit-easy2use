@@ -10,12 +10,14 @@ else
 fi
 
 echo "Docker builds from the repo, not this dir. Make sure changes are pushed to the repo."
-echo "Building version: $VERSION and latest"
+# Get current branch to pass to Docker build
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Building version: $VERSION from branch: $GIT_BRANCH"
 # wait 2 seconds
 sleep 2
 
 # Build the image with cache busting
-docker build --build-arg CACHEBUST=$(date +%s) -t aitoolkit:$VERSION -f docker/Dockerfile .
+docker build --build-arg CACHEBUST=$(date +%s) --build-arg GIT_COMMIT=$GIT_BRANCH -t aitoolkit:$VERSION -f docker/Dockerfile .
 
 # Tag with version and latest
 docker tag aitoolkit:$VERSION coco1006/ai-toolkit-easy2use:$VERSION

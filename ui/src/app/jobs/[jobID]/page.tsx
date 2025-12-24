@@ -10,9 +10,10 @@ import JobOverview from '@/components/JobOverview';
 import { redirect } from 'next/navigation';
 import JobActionBar from '@/components/JobActionBar';
 import JobConfigViewer from '@/components/JobConfigViewer';
+import JobLossGraph from '@/components/JobLossGraph';
 import { Job } from '@prisma/client';
 
-type PageKey = 'overview' | 'samples' | 'config';
+type PageKey = 'overview' | 'samples' | 'config' | 'loss_log';
 
 interface Page {
   name: string;
@@ -24,20 +25,26 @@ interface Page {
 
 const pages: Page[] = [
   {
-    name: 'Overview',
+    name: '概览', // 页面名称中文化
     value: 'overview',
     component: JobOverview,
     mainCss: 'pt-24',
   },
   {
-    name: 'Samples',
+    name: '样例', // 页面名称中文化
     value: 'samples',
     component: SampleImages,
     menuItem: SampleImagesMenu,
     mainCss: 'pt-24',
   },
   {
-    name: 'Config File',
+    name: '损失曲线', // 页面名称中文化
+    value: 'loss_log',
+    component: JobLossGraph,
+    mainCss: 'pt-24',
+  },
+  {
+    name: '配置文件', // 页面名称中文化
     value: 'config',
     component: JobConfigViewer,
     mainCss: 'pt-[80px] px-0 pb-0',
