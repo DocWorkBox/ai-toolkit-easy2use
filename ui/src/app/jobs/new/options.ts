@@ -412,8 +412,10 @@ export const modelArchs: ModelArch[] = [
       'model.layer_offloading',
       'model.qie.match_target_res',
     ],
-    // accuracyRecoveryAdapters: {
-    // },
+    accuracyRecoveryAdapters: {
+      // 3bit量化的精度恢复适配器（ARA），提升QIE-2511在超低显存下的精度
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_edit_2511_torchao_uint3.safetensors',
+    },
   },
   {
     name: 'hidream',
