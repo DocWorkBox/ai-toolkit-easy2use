@@ -11,8 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
-eggs/
+downloads/eggs/
 .eggs/
 lib/
 lib64/
@@ -182,5 +181,7 @@ cython_debug/
 aitk_db.db
 /notes.md
 /data
-.trae/ # 忽略 Trae IDE 本地文档目录（不推送到远程）
-.vscode/ # 忽略 VSCode 工作区配置目录（不推送到远程）
+.trae/
+.vscode/
+AI-ToolKit-E2U-portable/
+AI-ToolKit-E2U-portable.zip
