@@ -11,6 +11,7 @@
 - 面向扩散模型（Diffusion Models）的训练与推理一体化工具。
 - 支持常见的图像与视频模型，适配消费级硬件。
 - 提供命令行（CLI）与 Web 用户界面（UI），上手门槛低同时功能完备。
+- 在线镜像：https://www.compshare.cn/images/3AQrtXQPaD6v?referral_code=GTpZynVjkeNEhg7FR23Ikc
 
 ## 环境要求
 
