@@ -384,20 +384,22 @@ export default function SimpleJob({
                 }}
                 options={transformerQuantizationOptions}
               />
-              <SelectInput
-                label="文本编码器"
-                value={jobConfig.config.process[0].model.quantize_te ? jobConfig.config.process[0].model.qtype_te : ''}
-                onChange={value => {
-                  if (value === '') {
-                    setJobConfig(false, 'config.process[0].model.quantize_te');
-                    value = defaultQtype;
-                  } else {
-                    setJobConfig(true, 'config.process[0].model.quantize_te');
-                  }
-                  setJobConfig(value, 'config.process[0].model.qtype_te');
-                }}
-                options={quantizationOptions}
-              />
+              {!disableSections.includes('model.quantize_te') && (
+                <SelectInput
+                  label="文本编码器"
+                  value={jobConfig.config.process[0].model.quantize_te ? jobConfig.config.process[0].model.qtype_te : ''}
+                  onChange={value => {
+                    if (value === '') {
+                      setJobConfig(false, 'config.process[0].model.quantize_te');
+                      value = defaultQtype;
+                    } else {
+                      setJobConfig(true, 'config.process[0].model.quantize_te');
+                    }
+                    setJobConfig(value, 'config.process[0].model.qtype_te');
+                  }}
+                  options={quantizationOptions}
+                />
+              )}
             </Card>
           )}
           {modelArch?.additionalSections?.includes('model.multistage') && (
@@ -592,6 +594,7 @@ export default function SimpleJob({
                     { value: 'adamw', label: 'AdamW' },
                     { value: 'adamw8bit', label: 'AdamW8Bit' },
                     { value: 'automagic', label: 'Automagic' },
+                    { value: 'automagic2', label: 'Automagic v2' },
                     { value: 'prodigyopt', label: 'Prodigy' },
                     { value: 'prodigy8bit', label: 'Prodigy8Bit' },
                   ]}

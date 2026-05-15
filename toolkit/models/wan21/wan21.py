@@ -111,7 +111,7 @@ class AggressiveWanUnloadPipeline(WanPipeline):
     @property
     def _execution_device(self):
         return self._exec_device
-    
+
     def __call__(
         self: WanPipeline,
         prompt: Union[str, List[str]] = None,
@@ -146,7 +146,7 @@ class AggressiveWanUnloadPipeline(WanPipeline):
         transformer_device = self.transformer.device
         text_encoder_device = self.text_encoder.device
         device = self.transformer.device
-        
+
         print("Unloading vae")
         self.vae.to("cpu")
         self.text_encoder.to(device)
@@ -312,7 +312,7 @@ class Wan21(BaseModel):
     _wan_generation_scheduler_config = scheduler_configUniPC
     _wan_expand_timesteps = False
     _wan_vae_path = None
-    
+
     _comfy_te_file = ['text_encoders/umt5_xxl_fp16.safetensors', 'text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors']
     def __init__(
             self,
@@ -331,7 +331,7 @@ class Wan21(BaseModel):
 
         # cache for holding noise
         self.effective_noise = None
-        
+
     def get_bucket_divisibility(self):
         return 16
 
@@ -340,7 +340,7 @@ class Wan21(BaseModel):
     def get_train_scheduler():
         scheduler = CustomFlowMatchEulerDiscreteScheduler(**scheduler_config)
         return scheduler
-    
+
     def load_wan_transformer(self, transformer_path, subfolder=None):
         self.print_and_status_update("Loading transformer")
         dtype = self.torch_dtype
@@ -371,19 +371,19 @@ class Wan21(BaseModel):
                 "Loading LoRA is not supported for Wan2.1 models currently")
 
         flush()
-        
+
         if self.model_config.quantize:
             self.print_and_status_update("Quantizing Transformer")
             quantize_model(self, transformer)
             flush()
-        
+
         if self.model_config.layer_offloading and self.model_config.layer_offloading_transformer_percent > 0:
             MemoryManager.attach(
                 transformer,
                 self.device_torch,
                 offload_percent=self.model_config.layer_offloading_transformer_percent
             )
-        
+
         if self.model_config.low_vram:
             self.print_and_status_update("Moving transformer to CPU")
             transformer.to('cpu')
@@ -400,11 +400,11 @@ class Wan21(BaseModel):
         if os.path.exists(transformer_path):
             subfolder = None
             transformer_path = os.path.join(transformer_path, 'transformer')
-        
-        te_path = "ai-toolkit/umt5_xxl_encoder"   
+
+        te_path = "ai-toolkit/umt5_xxl_encoder"
         if os.path.exists(os.path.join(model_path, 'text_encoder')):
             te_path = model_path
-        
+
         vae_path = self.model_config.extras_name_or_path
         if os.path.exists(os.path.join(model_path, 'vae')):
             vae_path = model_path
@@ -417,7 +417,7 @@ class Wan21(BaseModel):
         flush()
 
         self.print_and_status_update("Loading UMT5EncoderModel")
-        
+
         tokenizer, text_encoder = get_umt5_encoder(
             model_path=te_path,
             tokenizer_subfolder="tokenizer",
@@ -434,7 +434,7 @@ class Wan21(BaseModel):
             quantize(text_encoder, weights=get_qtype(self.model_config.qtype))
             freeze(text_encoder)
             flush()
-        
+
         if self.model_config.layer_offloading and self.model_config.layer_offloading_text_encoder_percent > 0:
             MemoryManager.attach(
                 text_encoder,
@@ -450,7 +450,7 @@ class Wan21(BaseModel):
         scheduler = Wan21.get_train_scheduler()
         self.print_and_status_update("Loading VAE")
         # todo, example does float 32? check if quality suffers
-        
+
         if self._wan_vae_path is not None:
             # load the vae from individual repo
             vae = AutoencoderKLWan.from_pretrained(
@@ -655,6 +655,31 @@ class Wan21(BaseModel):
 
         return latents.to(device, dtype=dtype)
 
+    def decode_latents(self, latents: torch.Tensor, device=None, dtype=None):
+        if device is None:
+            device = self.vae_device_torch
+        if dtype is None:
+            dtype = self.vae_torch_dtype
+
+        if self.vae.device == torch.device('cpu'):
+            self.vae.to(device)
+
+        latents = latents.to(device, dtype=dtype)
+
+        latents_mean = (
+            torch.tensor(self.vae.config.latents_mean)
+            .view(1, self.vae.config.z_dim, 1, 1, 1)
+            .to(latents.device, latents.dtype)
+        )
+        latents_std = torch.tensor(self.vae.config.latents_std).view(
+            1, self.vae.config.z_dim, 1, 1, 1
+        ).to(latents.device, latents.dtype)
+        latents = latents * latents_std + latents_mean
+
+        images = self.vae.decode(latents).sample
+
+        return images.to(device, dtype=dtype)
+
     def get_model_has_grad(self):
         return False
 
@@ -687,9 +712,9 @@ class Wan21(BaseModel):
 
     def convert_lora_weights_before_load(self, state_dict):
         return convert_to_diffusers(state_dict)
-    
+
     def get_base_model_version(self):
         return "wan_2.1"
-    
+
     def get_transformer_block_names(self):
         return ['blocks']

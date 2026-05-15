@@ -21,7 +21,7 @@ from toolkit.util.quantize import quantize, get_qtype, quantize_model
 from transformers import AutoProcessor, Mistral3ForConditionalGeneration
 from .src.model import Flux2, Flux2Params
 from .src.pipeline import Flux2Pipeline
-from .src.autoencoder import AutoEncoder, AutoEncoderParams
+from .src.autoencoder import AutoEncoder, AutoEncoderParams, AutoEncoderSmallDecoderParams
 from safetensors.torch import load_file, save_file
 from PIL import Image
 import torch.nn.functional as F
@@ -99,14 +99,14 @@ class Flux2Model(BaseModel):
         te_path = MISTRAL_PATH
         tokenizer_path = MISTRAL_PATH
         model_path = self.model_config.name_or_path
-        
+
         # Check priority: 1. model_path/text_encoder, 2. model_path/mistral, 3. model_path itself
         possible_paths = [
             os.path.join(model_path, "text_encoder"),
             os.path.join(model_path, "mistral"),
             model_path
         ]
-        
+
         if os.path.isfile(model_path):
             model_dir = os.path.dirname(model_path)
             possible_paths.extend([
@@ -114,14 +114,14 @@ class Flux2Model(BaseModel):
                 os.path.join(model_dir, "mistral"),
                 model_dir
             ])
-        
+
         found_local = False
         for p in possible_paths:
             # Check for config.json as a marker for a transformer model
             if os.path.exists(os.path.join(p, "config.json")):
                 te_path = p
                 self.print_and_status_update(f"Found local Mistral at {te_path}")
-                
+
                 # Check for tokenizer in the same folder or in 'tokenizer' subfolder
                 if os.path.exists(os.path.join(p, "tokenizer_config.json")):
                     tokenizer_path = p
@@ -132,7 +132,7 @@ class Flux2Model(BaseModel):
                 else:
                     # Fallback to te_path if we can't find it elsewhere, might download
                     tokenizer_path = p
-                
+
                 found_local = True
                 break
 
@@ -236,24 +236,29 @@ class Flux2Model(BaseModel):
             vae_path = self.flux2_vae_path
 
         if vae_path is None or not os.path.exists(vae_path):
+            vae_filename = FLUX2_VAE_FILENAME
+            if vae_path is not None:
+                # see if it is a filename for huggingface hub
+                if len(vae_path.split("/")) == 3 and vae_path.endswith(".safetensors"):
+                    vae_filename = vae_path.split("/")[-1]
+                    vae_path = "/".join(vae_path.split("/")[:-1])
             p = vae_path if vae_path is not None else model_path
-            
-            # Check for local VAE in model_path
-            if os.path.exists(os.path.join(model_path, "vae", FLUX2_VAE_FILENAME)):
-                vae_path = os.path.join(model_path, "vae", FLUX2_VAE_FILENAME)
-            elif os.path.exists(os.path.join(model_path, FLUX2_VAE_FILENAME)):
-                vae_path = os.path.join(model_path, FLUX2_VAE_FILENAME)
-            else:
-                 # assume it is from the hub
-                vae_path = huggingface_hub.hf_hub_download(
-                    repo_id=p,
-                    filename=FLUX2_VAE_FILENAME,
-                    token=HF_TOKEN,
-                )
-        with torch.device("meta"):
-            vae = AutoEncoder(AutoEncoderParams())
+            # assume it is from the hub
+            vae_path = huggingface_hub.hf_hub_download(
+                repo_id=p,
+                filename=vae_filename,
+                token=HF_TOKEN,
+            )
 
         vae_state_dict = load_file(vae_path, device="cpu")
+
+        autoencoder_params = AutoEncoderParams()
+        if vae_state_dict['decoder.up.0.block.0.conv1.bias'].shape[0] == 96:
+            # this is the small decoder version
+            autoencoder_params = AutoEncoderSmallDecoderParams()
+
+        with torch.device("meta"):
+            vae = AutoEncoder(autoencoder_params)
 
         # cast to dtype
         for key in vae_state_dict:
@@ -573,3 +578,18 @@ class Flux2Model(BaseModel):
         latents = self.vae.encode(images)
 
         return latents
+
+    def decode_latents(self, latents, device=None, dtype=None):
+        if device is None:
+            device = self.vae_device_torch
+        if dtype is None:
+            dtype = self.vae_torch_dtype
+
+        # Move to vae to device if on cpu
+        if self.vae.device == torch.device("cpu"):
+            self.vae.to(device)
+        latents = latents.to(device, dtype=dtype)
+
+        images = self.vae.decode(latents)
+
+        return images
