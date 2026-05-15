@@ -1,0 +1,69 @@
+---
+job: extension
+config:
+  name: "my_first_anima_lora_v1"
+  process:
+    - type: "sd_trainer"
+      training_folder: "output"
+      device: cuda:0
+      network:
+        type: "lora"
+        linear: 32
+        linear_alpha: 32
+      save:
+        dtype: float16
+        save_every: 250
+        max_step_saves_to_keep: 4
+      datasets:
+        - folder_path: "/path/to/images/folder"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.05
+          shuffle_tokens: false
+          cache_latents_to_disk: true
+          resolution: [512, 1024, 1536]
+      train:
+        batch_size: 1
+        cache_text_embeddings: true
+        steps: 2000
+        gradient_accumulation: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        timestep_type: "linear"
+        optimizer: "adamw"
+        optimizer_params:
+          weight_decay: 0.01
+        lr: 2e-5
+        dtype: bf16
+      model:
+        name_or_path: "circlestone-labs/Anima"
+        arch: "anima"
+        quantize: true
+        qtype: "qfloat8"
+        quantize_te: false
+        low_vram: true
+        model_paths:
+          transformer: "circlestone-labs/Anima/split_files/diffusion_models/anima-base-v1.0.safetensors"
+          vae: "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors"
+          llm: "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors"
+          tokenizer: "Qwen/Qwen3-0.6B-Base"
+          t5_tokenizer: "google-t5/t5-11b"
+        model_kwargs:
+          llm_adapter_lr: 0
+      sample:
+        sampler: "flowmatch"
+        sample_every: 250
+        width: 1024
+        height: 1024
+        prompts:
+          - "a detailed cinematic portrait, soft natural light"
+          - "a small cabin near a lake at sunrise, painterly texture"
+        neg: ""
+        seed: 42
+        walk_seed: true
+        guidance_scale: 4
+        sample_steps: 25
+meta:
+  name: "[name]"
+  version: "1.0"

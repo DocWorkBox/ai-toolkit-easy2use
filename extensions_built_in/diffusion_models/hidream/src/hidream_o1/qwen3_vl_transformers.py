@@ -38,7 +38,11 @@ from transformers.utils import (
     is_torchdynamo_compiling,
 )
 from transformers.utils.deprecation import deprecate_kwarg
-from transformers.utils.generic import merge_with_config_defaults
+try:
+    from transformers.utils.generic import merge_with_config_defaults
+except ImportError:
+    def merge_with_config_defaults(fn):
+        return fn
 from transformers.models.qwen3_vl.configuration_qwen3_vl import (
     Qwen3VLConfig,
     Qwen3VLTextConfig,

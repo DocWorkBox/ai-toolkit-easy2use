@@ -166,6 +166,8 @@ export interface ModelConfig {
   quantize_kwargs?: QuantizeKwargsConfig;
   arch: string;
   low_vram: boolean;
+  vae_path?: string;
+  model_paths?: { [key: string]: string };
   model_kwargs: { [key: string]: any };
   layer_offloading?: boolean;
   layer_offloading_transformer_percent?: number;

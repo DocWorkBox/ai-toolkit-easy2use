@@ -365,6 +365,47 @@ export const modelArchs: ModelArch[] = [
     },
   },
   {
+    name: 'anima',
+    label: 'Anima',
+    group: 'image',
+    defaults: {
+      // Anima ships separate transformer, Qwen Image VAE, and Qwen3-0.6B text encoder weights.
+      'config.process[0].model.name_or_path': ['circlestone-labs/Anima', defaultNameOrPath],
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize_te': [false, false],
+      'config.process[0].model.low_vram': [true, false],
+      'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
+      'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.noise_scheduler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
+      'config.process[0].train.lr': [2e-5, 1e-4],
+      'config.process[0].train.optimizer': ['adamw', 'adamw8bit'],
+      'config.process[0].train.optimizer_params.weight_decay': [0.01, 0.0001],
+      'config.process[0].network.linear': [32, defaultLinearRank],
+      'config.process[0].network.linear_alpha': [32, defaultLinearRank],
+      'config.process[0].sample.width': [1024, 1024],
+      'config.process[0].sample.height': [1024, 1024],
+      'config.process[0].model.model_paths': [
+        {
+          transformer: 'circlestone-labs/Anima/split_files/diffusion_models/anima-base-v1.0.safetensors',
+          vae: 'circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors',
+          llm: 'circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors',
+          tokenizer: 'Qwen/Qwen3-0.6B-Base',
+          t5_tokenizer: 'google-t5/t5-11b',
+        },
+        {},
+      ],
+      'config.process[0].model.model_kwargs': [
+        {
+          llm_adapter_lr: 0,
+        },
+        {},
+      ],
+    },
+    disableSections: ['network.conv', 'model.quantize_te', 'train.unload_text_encoder'],
+    additionalSections: ['model.low_vram', 'model.layer_offloading'],
+  },
+  {
     name: 'qwen_image:2512',
     label: 'Qwen-Image-2512',
     group: 'image',
