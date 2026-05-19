@@ -7,7 +7,7 @@
   "controlnet_block_every_n": null,
   "crossattn_proj_in_channels": 1024,
   "encoder_hidden_states_channels": 1024,
-  "extra_pos_embed_type": "learnable",
+  "extra_pos_embed_type": null,
   "img_context_dim_in": null,
   "img_context_dim_out": 2048,
   "img_context_num_tokens": 256,

@@ -65,6 +65,8 @@ def test_anima_transformer_config_matches_preview3_weight_shape():
 
     # Anima Preview 3 transformer weights use a 2048 hidden size. The public Cosmos 2B config is 4096.
     assert config["num_attention_heads"] * config["attention_head_dim"] == 2048
+    # The Anima checkpoint does not ship diffusers' optional learnable positional embedding parameters.
+    assert config["extra_pos_embed_type"] is None
 
 
 if __name__ == "__main__":
