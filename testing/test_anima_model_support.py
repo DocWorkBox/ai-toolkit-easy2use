@@ -45,6 +45,9 @@ def test_anima_uses_local_diffusers_component_configs():
 def test_anima_tokenizer_loading_does_not_silently_hang_for_local_models():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
+    assert "Building Anima transformer module" in source
+    assert "Reading Anima transformer weights" in source
+    assert "Assigning Anima transformer weights" in source
     assert "Loading Anima Qwen3 tokenizer" in source
     assert "Loading Anima T5 tokenizer" in source
     assert "allow_tokenizer_download" in source

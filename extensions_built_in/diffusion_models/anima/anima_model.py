@@ -355,6 +355,7 @@ class AnimaModel(BaseModel):
         return adapter
 
     def _load_transformer(self, transformer_path: str, dtype: torch.dtype):
+        self.print_and_status_update("Building Anima transformer module")
         config = CosmosTransformer3DModel.load_config(ANIMA_TRANSFORMER_CONFIG)
         with torch.device("meta"):
             transformer = CosmosTransformer3DModel.from_config(config)
@@ -368,14 +369,20 @@ class AnimaModel(BaseModel):
             "model.transformer.",
             "model.diffusion_model.",
         )
+        self.print_and_status_update(f"Reading Anima transformer weights: {transformer_path}")
         state_dict = {}
         with safe_open(transformer_path, framework="pt", device="cpu") as f:
-            for raw_key in f.keys():
+            all_keys = list(f.keys())
+            for raw_key in all_keys:
                 for prefix in prefixes:
                     if raw_key.startswith(prefix):
                         key = raw_key[len(prefix):]
                         if key in target_keys:
                             state_dict[key] = f.get_tensor(raw_key).to(dtype)
+                            if len(state_dict) % 100 == 0:
+                                self.print_and_status_update(
+                                    f"Loaded Anima transformer weights {len(state_dict)}/{len(target_keys)}"
+                                )
                             break
 
         missing_keys = sorted(target_keys - set(state_dict.keys()))
@@ -385,7 +392,9 @@ class AnimaModel(BaseModel):
                 f"Anima transformer weights are missing {len(missing_keys)} expected keys. First missing keys: {preview}"
             )
 
+        self.print_and_status_update("Assigning Anima transformer weights")
         transformer.load_state_dict(state_dict, strict=True, assign=True)
+        self.print_and_status_update("Anima transformer weights loaded")
         return transformer
 
     def _load_tokenizer(self, tokenizer_cls, source: str, label: str):
