@@ -366,6 +366,7 @@ class AnimaModel(BaseModel):
             config=ANIMA_TRANSFORMER_CONFIG,
             torch_dtype=dtype,
             local_files_only=True,
+            low_cpu_mem_usage=False,
         )
 
         if self.model_config.quantize:
@@ -418,6 +419,7 @@ class AnimaModel(BaseModel):
             subfolder="vae",
             torch_dtype=dtype,
             local_files_only=True,
+            low_cpu_mem_usage=False,
         ).to(self.device_torch, dtype=dtype)
 
         self.noise_scheduler = AnimaModel.get_train_scheduler()

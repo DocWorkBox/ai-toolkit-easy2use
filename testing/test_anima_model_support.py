@@ -34,6 +34,7 @@ def test_anima_uses_local_diffusers_component_configs():
     assert 'config=ANIMA_TRANSFORMER_CONFIG' in source
     assert 'config=ANIMA_VAE_CONFIG' in source
     assert 'local_files_only=True' in source
+    assert 'low_cpu_mem_usage=False' in source
     assert '"nvidia/Cosmos-Predict2-2B-Text2Image"' not in source
     assert '"Wan-AI/Wan2.1-T2V-1.3B-Diffusers"' not in source
 
