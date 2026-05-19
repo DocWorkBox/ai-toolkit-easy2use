@@ -100,18 +100,21 @@ def test_anima_quantization_skips_extras_that_receive_5d_latents():
     assert "quantize_model(self, transformer)" not in source
 
 
-def test_anima_sampling_matches_cosmos2_preconditioning_flow():
+def test_anima_sampling_matches_z_image_flowmatch_reference():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    assert "sigma_max = 80.0" in source
-    assert "final_sigmas_type = \"sigma_min\"" in source
-    assert "return randn_tensor(shape, generator=generator, device=device, dtype=dtype) * self.scheduler.config.sigma_max" in source
-    assert "torch.linspace(1.0, self.scheduler.config.sigma_min, num_inference_steps" in source
+    assert "torch.linspace(1.0, 0.0, num_inference_steps + 1" in source
+    assert "sigmas = 3 * sigmas / (1 + 2 * sigmas)" in source
     assert "self.scheduler.set_timesteps(sigmas=sigmas, device=device)" in source
-    assert "current_t = current_sigma / (current_sigma + 1)" in source
-    assert "latent_model_input = (latents * c_in).to(transformer_dtype)" in source
-    assert "noise_pred = (c_skip * latents + c_out * noise_pred).to(transformer_dtype)" in source
-    assert "noise_pred = (latents - noise_pred.float()) / current_sigma" in source
+    assert "velocity = self.transformer(" in source
+    assert "velocity_uncond = self.transformer(" in source
+    assert "velocity = velocity_uncond + guidance_scale * (velocity - velocity_uncond)" in source
+    assert "self.scheduler.step(velocity, timesteps[i], latents" in source
+    assert "vae.decode((latents / latents_std + latents_mean)" in source
+    assert "sigma_max = 80.0" not in source
+    assert "c_skip" not in source
+    assert "c_out" not in source
+    assert "noise_pred = (latents - noise_pred.float()) / current_sigma" not in source
 
 
 def test_anima_transformer_config_matches_preview3_weight_shape():
@@ -136,5 +139,5 @@ if __name__ == "__main__":
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
     test_anima_quantization_skips_extras_that_receive_5d_latents()
-    test_anima_sampling_matches_cosmos2_preconditioning_flow()
+    test_anima_sampling_matches_z_image_flowmatch_reference()
     test_anima_transformer_config_matches_preview3_weight_shape()
