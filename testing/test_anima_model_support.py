@@ -83,6 +83,15 @@ def test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling():
     assert "AdvancedPromptEmbeds(text_embeds=[embed for embed in embeds])" in source
 
 
+def test_anima_quantization_skips_extras_that_receive_5d_latents():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert "def _quantize_transformer_blocks" in source
+    assert "quantize(block, weights=quantization_type)" in source
+    assert "skipping Anima transformer extras quantization" in source
+    assert "quantize_model(self, transformer)" not in source
+
+
 def test_anima_transformer_config_matches_preview3_weight_shape():
     config = json.loads(
         Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
@@ -104,4 +113,5 @@ if __name__ == "__main__":
     test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes()
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
+    test_anima_quantization_skips_extras_that_receive_5d_latents()
     test_anima_transformer_config_matches_preview3_weight_shape()

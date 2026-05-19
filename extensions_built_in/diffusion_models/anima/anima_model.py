@@ -15,6 +15,7 @@ from optimum.quanto import freeze
 from safetensors import safe_open
 from safetensors.torch import load_file
 from transformers import AutoConfig, AutoTokenizer, Qwen3Model, T5TokenizerFast
+from tqdm import tqdm
 
 from toolkit.accelerator import unwrap_model
 from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
@@ -23,7 +24,7 @@ from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.memory_management import MemoryManager
 from toolkit.models.base_model import BaseModel
 from toolkit.samplers.custom_flowmatch_sampler import CustomFlowMatchEulerDiscreteScheduler
-from toolkit.util.quantize import get_qtype, quantize, quantize_model
+from toolkit.util.quantize import get_qtype, quantize
 from .llm_adapter import AnimaLLMAdapter
 
 
@@ -421,6 +422,23 @@ class AnimaModel(BaseModel):
                 ) from e
             raise
 
+    def _quantize_transformer_blocks(self, transformer):
+        quantization_type = get_qtype(self.model_config.qtype)
+        all_blocks = []
+        for name in self.get_transformer_block_names() or []:
+            block_list = getattr(transformer, name, None)
+            if block_list is not None:
+                all_blocks.extend(list(block_list))
+
+        self.print_and_status_update(f" - quantizing {len(all_blocks)} transformer blocks")
+        for block in tqdm(all_blocks):
+            block.to(self.device_torch, dtype=self.torch_dtype, non_blocking=True)
+            quantize(block, weights=quantization_type)
+            freeze(block)
+            block.to("cpu", non_blocking=True)
+
+        self.print_and_status_update(" - skipping Anima transformer extras quantization")
+
     def load_model(self):
         dtype = self.torch_dtype
         model_path = self.model_config.name_or_path or ANIMA_REPO
@@ -432,7 +450,7 @@ class AnimaModel(BaseModel):
 
         if self.model_config.quantize:
             self.print_and_status_update("Quantizing Transformer")
-            quantize_model(self, transformer)
+            self._quantize_transformer_blocks(transformer)
             flush()
 
         if self.model_config.layer_offloading and self.model_config.layer_offloading_transformer_percent > 0:
