@@ -72,6 +72,17 @@ def test_anima_prompt_encoding_guards_empty_unconditional_prompt():
     assert '" " if text is None' in source
 
 
+def test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert "def _batch_text_embeds" in source
+    assert "torch.stack(list(text_embeds), dim=0)" in source
+    assert "prompt_embeds=self._batch_text_embeds(conditional_embeds.text_embeds)" in source
+    assert "negative_prompt_embeds=self._batch_text_embeds(unconditional_embeds.text_embeds)" in source
+    assert "encoder_hidden_states=self._batch_text_embeds(text_embeddings.text_embeds)" in source
+    assert "AdvancedPromptEmbeds(text_embeds=[embed for embed in embeds])" in source
+
+
 def test_anima_transformer_config_matches_preview3_weight_shape():
     config = json.loads(
         Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
@@ -92,4 +103,5 @@ if __name__ == "__main__":
     test_anima_tokenizer_loading_does_not_silently_hang_for_local_models()
     test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes()
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
+    test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
     test_anima_transformer_config_matches_preview3_weight_shape()

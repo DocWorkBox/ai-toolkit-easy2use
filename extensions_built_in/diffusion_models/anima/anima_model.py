@@ -557,6 +557,18 @@ class AnimaModel(BaseModel):
         latents = latents / latents_std + latents_mean
         return self.vae.decode(latents, return_dict=False)[0].squeeze(2)
 
+    @staticmethod
+    def _batch_text_embeds(text_embeds):
+        if isinstance(text_embeds, (list, tuple)):
+            if len(text_embeds) == 0:
+                raise ValueError("Anima text embeddings cannot be empty")
+            if len(text_embeds) == 1 and text_embeds[0].ndim == 3:
+                return text_embeds[0]
+            return torch.stack(list(text_embeds), dim=0)
+        if text_embeds.ndim == 2:
+            return text_embeds.unsqueeze(0)
+        return text_embeds
+
     def generate_single_image(
         self,
         pipeline: AnimaTextToImagePipeline,
@@ -571,8 +583,8 @@ class AnimaModel(BaseModel):
         gen_config.height = int(gen_config.height // sc * sc)
 
         image = pipeline(
-            prompt_embeds=conditional_embeds.text_embeds,
-            negative_prompt_embeds=unconditional_embeds.text_embeds,
+            prompt_embeds=self._batch_text_embeds(conditional_embeds.text_embeds),
+            negative_prompt_embeds=self._batch_text_embeds(unconditional_embeds.text_embeds),
             height=gen_config.height,
             width=gen_config.width,
             num_inference_steps=gen_config.num_inference_steps,
@@ -603,7 +615,9 @@ class AnimaModel(BaseModel):
         pred = self.transformer(
             hidden_states=latents_5d,
             timestep=timestep,
-            encoder_hidden_states=text_embeddings.text_embeds.to(self.device_torch, self.torch_dtype),
+            encoder_hidden_states=self._batch_text_embeds(text_embeddings.text_embeds).to(
+                self.device_torch, self.torch_dtype
+            ),
             padding_mask=padding_mask,
             return_dict=False,
         )[0]
@@ -642,7 +656,7 @@ class AnimaModel(BaseModel):
         if embeds.shape[1] < 512:
             embeds = torch.nn.functional.pad(embeds, (0, 0, 0, 512 - embeds.shape[1]))
         embeds = embeds[:, :512].to(self.device_torch, self.torch_dtype)
-        pe = AdvancedPromptEmbeds(text_embeds=embeds)
+        pe = AdvancedPromptEmbeds(text_embeds=[embed for embed in embeds])
         return pe
 
     def get_model_has_grad(self):
