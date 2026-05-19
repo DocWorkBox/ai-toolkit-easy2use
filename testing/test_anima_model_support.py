@@ -29,6 +29,11 @@ def test_anima_ui_defaults_match_reference_training_config():
     assert "'config.process[0].sample.guidance_scale': [4.5, 4]" in options
     assert "'config.process[0].sample.sample_steps': [35, 25]" in options
     assert "worst quality, low quality, score_1, score_2, score_3, artist name" in options
+    assert "'config.process[0].sample.samples'" in options
+    assert "defaultSampleConfig.samples" in options
+    assert "anime key visual" in options
+    assert "anime screencap" in options
+    assert "anime fantasy art" in options
 
 
 def test_anima_uses_local_diffusers_component_configs():

@@ -391,6 +391,27 @@ export const modelArchs: ModelArch[] = [
         'worst quality, low quality, score_1, score_2, score_3, artist name',
         '',
       ],
+      'config.process[0].sample.samples': [
+        [
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 1girl, solo, long hair, school uniform, cherry blossoms, soft sunlight, anime illustration',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 1boy, solo, fantasy adventurer, cloak, sword, glowing forest, dynamic pose, anime key visual',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 2girls, cafe, casual clothes, warm lighting, detailed background, slice of life, anime screencap',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, dragon girl, horns, wings, ornate dress, floating islands, clouds, vibrant colors, anime fantasy art',
+          },
+        ],
+        defaultSampleConfig.samples,
+      ],
       'config.process[0].model.model_paths': [
         {
           transformer: 'circlestone-labs/Anima/split_files/diffusion_models/anima-base-v1.0.safetensors',

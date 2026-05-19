@@ -58,7 +58,9 @@ config:
         height: 1024
         prompts:
           - "masterpiece, best quality, score_7, safe, 1girl, detailed cinematic portrait, soft natural light"
-          - "masterpiece, best quality, score_7, safe, small cabin near a lake at sunrise, painterly texture"
+          - "masterpiece, best quality, score_7, safe, 1boy, solo, fantasy adventurer, cloak, sword, glowing forest, dynamic pose, anime key visual"
+          - "masterpiece, best quality, score_7, safe, 2girls, cafe, casual clothes, warm lighting, detailed background, slice of life, anime screencap"
+          - "masterpiece, best quality, score_7, safe, dragon girl, horns, wings, ornate dress, floating islands, clouds, vibrant colors, anime fantasy art"
         neg: "worst quality, low quality, score_1, score_2, score_3, artist name"
         seed: 42
         walk_seed: true
