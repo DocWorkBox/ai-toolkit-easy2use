@@ -203,7 +203,9 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
             max_sequence_length=max_sequence_length,
         )
         sigmas_dtype = torch.float32 if torch.backends.mps.is_available() else torch.float64
-        sigmas = torch.linspace(0, 1, num_inference_steps, dtype=sigmas_dtype)
+        # CustomFlowMatchEulerDiscreteScheduler does not invert Cosmos-style 0->1 sigmas.
+        # Use a descending non-zero schedule so current_sigma is valid throughout sampling.
+        sigmas = torch.linspace(1.0, self.scheduler.config.sigma_min, num_inference_steps, dtype=sigmas_dtype)
         self.scheduler.set_timesteps(sigmas=sigmas, device=device)
         timesteps = self.scheduler.timesteps
         num_inference_steps = len(timesteps)

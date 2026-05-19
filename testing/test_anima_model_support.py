@@ -106,6 +106,7 @@ def test_anima_sampling_matches_cosmos2_preconditioning_flow():
     assert "sigma_max = 80.0" in source
     assert "final_sigmas_type = \"sigma_min\"" in source
     assert "return randn_tensor(shape, generator=generator, device=device, dtype=dtype) * self.scheduler.config.sigma_max" in source
+    assert "torch.linspace(1.0, self.scheduler.config.sigma_min, num_inference_steps" in source
     assert "self.scheduler.set_timesteps(sigmas=sigmas, device=device)" in source
     assert "current_t = current_sigma / (current_sigma + 1)" in source
     assert "latent_model_input = (latents * c_in).to(transformer_dtype)" in source
