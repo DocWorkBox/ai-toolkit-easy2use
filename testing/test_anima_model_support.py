@@ -37,6 +37,7 @@ def test_anima_uses_local_diffusers_component_configs():
     assert 'low_cpu_mem_usage=False' in source
     assert "CosmosTransformer3DModel.from_single_file" not in source
     assert "CosmosTransformer3DModel.from_config" in source
+    assert "convert_cosmos_transformer_checkpoint_to_diffusers" in source
     assert "assign=True" in source
     assert '"nvidia/Cosmos-Predict2-2B-Text2Image"' not in source
     assert '"Wan-AI/Wan2.1-T2V-1.3B-Diffusers"' not in source

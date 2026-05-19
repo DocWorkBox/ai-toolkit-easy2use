@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import yaml
 from diffusers import AutoencoderKLWan, CosmosTransformer3DModel
+from diffusers.loaders.single_file_utils import convert_cosmos_transformer_checkpoint_to_diffusers
 from diffusers.pipelines.cosmos.pipeline_output import CosmosImagePipelineOutput
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.utils.torch_utils import randn_tensor
@@ -361,29 +362,16 @@ class AnimaModel(BaseModel):
             transformer = CosmosTransformer3DModel.from_config(config)
 
         target_keys = set(transformer.state_dict().keys())
-        prefixes = (
-            "",
-            "transformer.",
-            "diffusion_model.",
-            "model.",
-            "model.transformer.",
-            "model.diffusion_model.",
-        )
         self.print_and_status_update(f"Reading Anima transformer weights: {transformer_path}")
-        state_dict = {}
-        with safe_open(transformer_path, framework="pt", device="cpu") as f:
-            all_keys = list(f.keys())
-            for raw_key in all_keys:
-                for prefix in prefixes:
-                    if raw_key.startswith(prefix):
-                        key = raw_key[len(prefix):]
-                        if key in target_keys:
-                            state_dict[key] = f.get_tensor(raw_key).to(dtype)
-                            if len(state_dict) % 100 == 0:
-                                self.print_and_status_update(
-                                    f"Loaded Anima transformer weights {len(state_dict)}/{len(target_keys)}"
-                                )
-                            break
+        checkpoint = load_file(transformer_path, device="cpu")
+        self.print_and_status_update("Converting Anima transformer weights to diffusers format")
+        checkpoint = convert_cosmos_transformer_checkpoint_to_diffusers(checkpoint)
+        state_dict = {
+            key: value.to(dtype)
+            for key, value in checkpoint.items()
+            if key in target_keys
+        }
+        self.print_and_status_update(f"Loaded Anima transformer weights {len(state_dict)}/{len(target_keys)}")
 
         missing_keys = sorted(target_keys - set(state_dict.keys()))
         if missing_keys:
