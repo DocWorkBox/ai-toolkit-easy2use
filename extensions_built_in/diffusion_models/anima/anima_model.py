@@ -354,6 +354,20 @@ class AnimaModel(BaseModel):
         adapter.load_state_dict(state_dict, strict=False)
         return adapter
 
+    def _load_tokenizer(self, tokenizer_cls, source: str, label: str):
+        allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", False)
+        local_files_only = os.path.isdir(self.model_config.name_or_path or "") and not allow_download
+        try:
+            return tokenizer_cls.from_pretrained(source, local_files_only=local_files_only)
+        except Exception as e:
+            if local_files_only:
+                raise RuntimeError(
+                    f"Unable to load Anima {label} tokenizer from local cache/path: {source}. "
+                    "Pre-cache it on the server or set model.model_kwargs.allow_tokenizer_download=true "
+                    "to permit Hugging Face downloads during model load."
+                ) from e
+            raise
+
     def load_model(self):
         dtype = self.torch_dtype
         model_path = self.model_config.name_or_path or ANIMA_REPO
@@ -392,10 +406,14 @@ class AnimaModel(BaseModel):
         llm_path = self._resolve_component_path("llm", ANIMA_LLM_FILENAME)
         tokenizer_source = self.model_config.model_paths.get("tokenizer", ANIMA_QWEN_CONFIG)
         t5_tokenizer_source = self.model_config.model_paths.get("t5_tokenizer", "google-t5/t5-11b")
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_source)
-        t5_tokenizer = T5TokenizerFast.from_pretrained(t5_tokenizer_source)
+        self.print_and_status_update("Loading Anima Qwen3 tokenizer")
+        tokenizer = self._load_tokenizer(AutoTokenizer, tokenizer_source, "Qwen3")
+        self.print_and_status_update("Loading Anima T5 tokenizer")
+        t5_tokenizer = self._load_tokenizer(T5TokenizerFast, t5_tokenizer_source, "T5")
+        self.print_and_status_update("Loading Anima Qwen3 weights")
         text_encoder = self._load_qwen3_llm(llm_path, dtype)
         text_encoder.to(self.device_torch, dtype=dtype)
+        self.print_and_status_update("Loading Anima LLM adapter")
         llm_adapter = self._load_llm_adapter(transformer_path, dtype).to(self.device_torch, dtype=dtype)
 
         if self.model_config.quantize_te:

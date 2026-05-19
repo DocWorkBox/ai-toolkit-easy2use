@@ -39,6 +39,15 @@ def test_anima_uses_local_diffusers_component_configs():
     assert '"Wan-AI/Wan2.1-T2V-1.3B-Diffusers"' not in source
 
 
+def test_anima_tokenizer_loading_does_not_silently_hang_for_local_models():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert "Loading Anima Qwen3 tokenizer" in source
+    assert "Loading Anima T5 tokenizer" in source
+    assert "allow_tokenizer_download" in source
+    assert "local_files_only=local_files_only" in source
+
+
 def test_anima_transformer_config_matches_preview3_weight_shape():
     config = json.loads(
         Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
@@ -54,4 +63,5 @@ if __name__ == "__main__":
     test_anima_model_class_is_registered()
     test_anima_ui_defaults_match_reference_training_config()
     test_anima_uses_local_diffusers_component_configs()
+    test_anima_tokenizer_loading_does_not_silently_hang_for_local_models()
     test_anima_transformer_config_matches_preview3_weight_shape()
