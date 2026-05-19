@@ -487,7 +487,7 @@ class AnimaModel(BaseModel):
 
     def generate_single_image(
         self,
-        pipeline: Cosmos2TextToImagePipeline,
+        pipeline: AnimaTextToImagePipeline,
         gen_config: GenerateImageConfig,
         conditional_embeds: AdvancedPromptEmbeds,
         unconditional_embeds: AdvancedPromptEmbeds,
