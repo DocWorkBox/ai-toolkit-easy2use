@@ -51,6 +51,7 @@ def test_anima_tokenizer_loading_does_not_silently_hang_for_local_models():
     assert "Loading Anima Qwen3 tokenizer" in source
     assert "Loading Anima T5 tokenizer" in source
     assert "allow_tokenizer_download" in source
+    assert "snapshot_download" in source
     assert "local_files_only=local_files_only" in source
 
 

@@ -401,7 +401,14 @@ class AnimaModel(BaseModel):
         allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", False)
         local_files_only = os.path.isdir(self.model_config.name_or_path or "") and not allow_download
         try:
-            return tokenizer_cls.from_pretrained(source, local_files_only=local_files_only)
+            tokenizer_source = source
+            if local_files_only and not os.path.isdir(source):
+                tokenizer_source = huggingface_hub.snapshot_download(
+                    repo_id=source,
+                    local_files_only=True,
+                    token=HF_TOKEN,
+                )
+            return tokenizer_cls.from_pretrained(tokenizer_source, local_files_only=local_files_only)
         except Exception as e:
             if local_files_only:
                 raise RuntimeError(
