@@ -15,6 +15,7 @@ from optimum.quanto import freeze
 from safetensors import safe_open
 from safetensors.torch import load_file
 from transformers import AutoConfig, AutoTokenizer, Qwen3Model, T5TokenizerFast
+from transformers.modeling_utils import no_init_weights
 
 from toolkit.accelerator import unwrap_model
 from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
@@ -325,14 +326,18 @@ class AnimaModel(BaseModel):
             return Qwen3Model.from_pretrained(llm_path, torch_dtype=dtype)
 
         config = AutoConfig.from_pretrained(ANIMA_QWEN_CONFIG)
-        with torch.device("meta"):
+        with no_init_weights():
             text_encoder = Qwen3Model(config)
         state_dict = load_file(llm_path, device="cpu")
         if any(key.startswith("model.") for key in state_dict):
             state_dict = {key.removeprefix("model."): value for key, value in state_dict.items()}
         for key in state_dict:
             state_dict[key] = state_dict[key].to(dtype)
-        text_encoder.load_state_dict(state_dict, strict=False, assign=True)
+        missing_keys, unexpected_keys = text_encoder.load_state_dict(state_dict, strict=False, assign=True)
+        if missing_keys:
+            self.print_and_status_update(f"Anima Qwen3 missing {len(missing_keys)} non-critical keys")
+        if unexpected_keys:
+            self.print_and_status_update(f"Anima Qwen3 ignored {len(unexpected_keys)} unexpected keys")
         return text_encoder
 
     def _load_llm_adapter(self, transformer_path: str, dtype: torch.dtype):
