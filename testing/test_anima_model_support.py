@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from toolkit.config_modules import ModelConfig
 from toolkit.util.get_model import get_model_class
@@ -37,7 +38,19 @@ def test_anima_uses_local_diffusers_component_configs():
     assert '"Wan-AI/Wan2.1-T2V-1.3B-Diffusers"' not in source
 
 
+def test_anima_transformer_config_matches_preview3_weight_shape():
+    config = json.loads(
+        Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    # Anima Preview 3 transformer weights use a 2048 hidden size. The public Cosmos 2B config is 4096.
+    assert config["num_attention_heads"] * config["attention_head_dim"] == 2048
+
+
 if __name__ == "__main__":
     test_anima_model_class_is_registered()
     test_anima_ui_defaults_match_reference_training_config()
     test_anima_uses_local_diffusers_component_configs()
+    test_anima_transformer_config_matches_preview3_weight_shape()

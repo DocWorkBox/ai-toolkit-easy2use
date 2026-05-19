@@ -14,7 +14,7 @@
   "in_channels": 16,
   "max_size": [128, 240, 240],
   "mlp_ratio": 4.0,
-  "num_attention_heads": 32,
+  "num_attention_heads": 16,
   "num_layers": 28,
   "out_channels": 16,
   "patch_size": [1, 2, 2],
