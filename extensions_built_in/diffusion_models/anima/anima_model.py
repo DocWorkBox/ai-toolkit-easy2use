@@ -31,6 +31,9 @@ ANIMA_TRANSFORMER_FILENAME = "anima-base-v1.0.safetensors"
 ANIMA_VAE_FILENAME = "qwen_image_vae.safetensors"
 ANIMA_LLM_FILENAME = "qwen_3_06b_base.safetensors"
 ANIMA_QWEN_CONFIG = "Qwen/Qwen3-0.6B-Base"
+ANIMA_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
+ANIMA_TRANSFORMER_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "cosmos_transformer")
+ANIMA_VAE_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "wan_vae")
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
 scheduler_config = {
@@ -360,8 +363,9 @@ class AnimaModel(BaseModel):
         transformer_path = self._resolve_component_path("transformer", ANIMA_TRANSFORMER_FILENAME)
         transformer = CosmosTransformer3DModel.from_single_file(
             transformer_path,
-            config="nvidia/Cosmos-Predict2-2B-Text2Image",
+            config=ANIMA_TRANSFORMER_CONFIG,
             torch_dtype=dtype,
+            local_files_only=True,
         )
 
         if self.model_config.quantize:
@@ -410,9 +414,10 @@ class AnimaModel(BaseModel):
         vae_path = self.model_config.vae_path or self._resolve_component_path("vae", ANIMA_VAE_FILENAME)
         vae = AutoencoderKLWan.from_single_file(
             vae_path,
-            config="Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            config=ANIMA_VAE_CONFIG,
             subfolder="vae",
             torch_dtype=dtype,
+            local_files_only=True,
         ).to(self.device_torch, dtype=dtype)
 
         self.noise_scheduler = AnimaModel.get_train_scheduler()
