@@ -64,6 +64,14 @@ def test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes():
     assert "Adapter-like keys" in source
 
 
+def test_anima_prompt_encoding_guards_empty_unconditional_prompt():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert 'encode_prompt("")' in source
+    assert 'not str(text).strip()' in source
+    assert '" " if text is None' in source
+
+
 def test_anima_transformer_config_matches_preview3_weight_shape():
     config = json.loads(
         Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
@@ -83,4 +91,5 @@ if __name__ == "__main__":
     test_anima_uses_local_diffusers_component_configs()
     test_anima_tokenizer_loading_does_not_silently_hang_for_local_models()
     test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes()
+    test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_transformer_config_matches_preview3_weight_shape()

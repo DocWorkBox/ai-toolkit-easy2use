@@ -615,6 +615,9 @@ class AnimaModel(BaseModel):
         if self.pipeline.llm_adapter.device == torch.device("cpu"):
             self.pipeline.llm_adapter.to(self.device_torch)
         prompts = [prompt] if isinstance(prompt, str) else prompt
+        # Qwen3 tokenizers can return a zero-length sequence for an empty string.
+        # Training calls encode_prompt("") for unconditional embeds, so keep that path non-empty.
+        prompts = [" " if text is None or not str(text).strip() else text for text in prompts]
         inputs = self.pipeline.tokenizer(
             prompts,
             padding=True,
