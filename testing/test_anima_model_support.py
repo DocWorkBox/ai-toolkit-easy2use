@@ -100,6 +100,19 @@ def test_anima_quantization_skips_extras_that_receive_5d_latents():
     assert "quantize_model(self, transformer)" not in source
 
 
+def test_anima_sampling_matches_cosmos2_preconditioning_flow():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert "sigma_max = 80.0" in source
+    assert "final_sigmas_type = \"sigma_min\"" in source
+    assert "return randn_tensor(shape, generator=generator, device=device, dtype=dtype) * self.scheduler.config.sigma_max" in source
+    assert "self.scheduler.set_timesteps(sigmas=sigmas, device=device)" in source
+    assert "current_t = current_sigma / (current_sigma + 1)" in source
+    assert "latent_model_input = (latents * c_in).to(transformer_dtype)" in source
+    assert "noise_pred = (c_skip * latents + c_out * noise_pred).to(transformer_dtype)" in source
+    assert "noise_pred = (latents - noise_pred.float()) / current_sigma" in source
+
+
 def test_anima_transformer_config_matches_preview3_weight_shape():
     config = json.loads(
         Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
@@ -122,4 +135,5 @@ if __name__ == "__main__":
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
     test_anima_quantization_skips_extras_that_receive_5d_latents()
+    test_anima_sampling_matches_cosmos2_preconditioning_flow()
     test_anima_transformer_config_matches_preview3_weight_shape()
