@@ -354,6 +354,40 @@ class AnimaModel(BaseModel):
         adapter.load_state_dict(state_dict, strict=False)
         return adapter
 
+    def _load_transformer(self, transformer_path: str, dtype: torch.dtype):
+        config = CosmosTransformer3DModel.load_config(ANIMA_TRANSFORMER_CONFIG)
+        with torch.device("meta"):
+            transformer = CosmosTransformer3DModel.from_config(config)
+
+        target_keys = set(transformer.state_dict().keys())
+        prefixes = (
+            "",
+            "transformer.",
+            "diffusion_model.",
+            "model.",
+            "model.transformer.",
+            "model.diffusion_model.",
+        )
+        state_dict = {}
+        with safe_open(transformer_path, framework="pt", device="cpu") as f:
+            for raw_key in f.keys():
+                for prefix in prefixes:
+                    if raw_key.startswith(prefix):
+                        key = raw_key[len(prefix):]
+                        if key in target_keys:
+                            state_dict[key] = f.get_tensor(raw_key).to(dtype)
+                            break
+
+        missing_keys = sorted(target_keys - set(state_dict.keys()))
+        if missing_keys:
+            preview = ", ".join(missing_keys[:10])
+            raise ValueError(
+                f"Anima transformer weights are missing {len(missing_keys)} expected keys. First missing keys: {preview}"
+            )
+
+        transformer.load_state_dict(state_dict, strict=True, assign=True)
+        return transformer
+
     def _load_tokenizer(self, tokenizer_cls, source: str, label: str):
         allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", False)
         local_files_only = os.path.isdir(self.model_config.name_or_path or "") and not allow_download
@@ -375,13 +409,7 @@ class AnimaModel(BaseModel):
 
         self.print_and_status_update("Loading Anima transformer")
         transformer_path = self._resolve_component_path("transformer", ANIMA_TRANSFORMER_FILENAME)
-        transformer = CosmosTransformer3DModel.from_single_file(
-            transformer_path,
-            config=ANIMA_TRANSFORMER_CONFIG,
-            torch_dtype=dtype,
-            local_files_only=True,
-            low_cpu_mem_usage=False,
-        )
+        transformer = self._load_transformer(transformer_path, dtype)
 
         if self.model_config.quantize:
             self.print_and_status_update("Quantizing Transformer")
