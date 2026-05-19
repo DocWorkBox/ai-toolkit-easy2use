@@ -342,19 +342,31 @@ class AnimaModel(BaseModel):
         adapter = AnimaLLMAdapter()
         prefixes = [
             "llm_adapter.",
+            "net.llm_adapter.",
             "model.llm_adapter.",
+            "net.model.llm_adapter.",
             "diffusion_model.llm_adapter.",
+            "net.diffusion_model.llm_adapter.",
             "model.diffusion_model.llm_adapter.",
+            "net.model.diffusion_model.llm_adapter.",
+            "transformer.llm_adapter.",
+            "net.transformer.llm_adapter.",
         ]
         state_dict = {}
+        adapter_like_keys = []
         with safe_open(transformer_path, framework="pt", device="cpu") as f:
             for key in f.keys():
+                if ("adapter" in key or "llm" in key) and len(adapter_like_keys) < 10:
+                    adapter_like_keys.append(key)
                 for prefix in prefixes:
                     if key.startswith(prefix):
                         state_dict[key[len(prefix):]] = f.get_tensor(key).to(dtype)
                         break
         if not state_dict:
-            raise ValueError("Anima transformer weights did not contain llm_adapter weights")
+            hint = ", ".join(adapter_like_keys) if adapter_like_keys else "none"
+            raise ValueError(
+                f"Anima transformer weights did not contain llm_adapter weights. Adapter-like keys: {hint}"
+            )
         adapter.load_state_dict(state_dict, strict=False)
         return adapter
 
