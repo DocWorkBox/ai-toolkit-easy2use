@@ -385,6 +385,12 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].network.linear_alpha': [32, defaultLinearRank],
       'config.process[0].sample.width': [1024, 1024],
       'config.process[0].sample.height': [1024, 1024],
+      'config.process[0].sample.guidance_scale': [4.5, 4],
+      'config.process[0].sample.sample_steps': [35, 25],
+      'config.process[0].sample.neg': [
+        'worst quality, low quality, score_1, score_2, score_3, artist name',
+        '',
+      ],
       'config.process[0].model.model_paths': [
         {
           transformer: 'circlestone-labs/Anima/split_files/diffusion_models/anima-base-v1.0.safetensors',

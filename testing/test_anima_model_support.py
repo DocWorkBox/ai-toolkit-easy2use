@@ -26,6 +26,9 @@ def test_anima_ui_defaults_match_reference_training_config():
     assert "llm_adapter_lr: 0" in options
     assert "'config.process[0].network.linear': [32, defaultLinearRank]" in options
     assert "'config.process[0].train.lr': [2e-5" in options
+    assert "'config.process[0].sample.guidance_scale': [4.5, 4]" in options
+    assert "'config.process[0].sample.sample_steps': [35, 25]" in options
+    assert "worst quality, low quality, score_1, score_2, score_3, artist name" in options
 
 
 def test_anima_uses_local_diffusers_component_configs():

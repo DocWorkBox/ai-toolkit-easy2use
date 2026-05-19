@@ -57,13 +57,13 @@ config:
         width: 1024
         height: 1024
         prompts:
-          - "a detailed cinematic portrait, soft natural light"
-          - "a small cabin near a lake at sunrise, painterly texture"
-        neg: ""
+          - "masterpiece, best quality, score_7, safe, 1girl, detailed cinematic portrait, soft natural light"
+          - "masterpiece, best quality, score_7, safe, small cabin near a lake at sunrise, painterly texture"
+        neg: "worst quality, low quality, score_1, score_2, score_3, artist name"
         seed: 42
         walk_seed: true
-        guidance_scale: 4
-        sample_steps: 25
+        guidance_scale: 4.5
+        sample_steps: 35
 meta:
   name: "[name]"
   version: "1.0"
