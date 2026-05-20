@@ -32,7 +32,7 @@ ANIMA_REPO = "circlestone-labs/Anima"
 ANIMA_TRANSFORMER_FILENAME = "anima-base-v1.0.safetensors"
 ANIMA_VAE_FILENAME = "qwen_image_vae.safetensors"
 ANIMA_LLM_FILENAME = "qwen_3_06b_base.safetensors"
-ANIMA_QWEN_CONFIG = "Qwen/Qwen3-0.6B-Base"
+ANIMA_QWEN_CONFIG = "Qwen/Qwen3-0.6B"
 ANIMA_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
 ANIMA_TRANSFORMER_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "cosmos_transformer")
 ANIMA_VAE_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "wan_vae")
@@ -85,13 +85,15 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
         self.vae_scale_factor_temporal = 2 ** sum(self.vae.temperal_downsample)
         self.vae_scale_factor_spatial = 2 ** len(self.vae.temperal_downsample)
         self.video_processor = VideoProcessor(vae_scale_factor=self.vae_scale_factor_spatial)
+        self._comfy_debug = False
+        self._comfy_debug_max_steps = 4
 
     def _encode_prompt(self, prompt, device, dtype, max_sequence_length=512):
         prompts = [prompt] if isinstance(prompt, str) else prompt
-        if all(p.strip() == "" for p in prompts):
-            return torch.zeros(
-                len(prompts), 512, self.llm_adapter.config.target_dim, device=device, dtype=dtype
-            )
+        prompts = ["" if p is None else str(p) for p in prompts]
+        # Keep empty prompts on the same encode path as normal prompts so unconditional
+        # guidance still passes through Qwen3 + LLM adapter, matching inference references.
+        prompts = [" " if p.strip() == "" else p for p in prompts]
         qwen_inputs = self.tokenizer(
             prompts,
             padding=True,
@@ -180,6 +182,8 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
         **kwargs,
     ):
         self._guidance_scale = guidance_scale
+        self._comfy_debug = bool(kwargs.pop("comfy_debug", False))
+        self._comfy_debug_max_steps = int(kwargs.pop("comfy_debug_max_steps", 4))
         device = self._execution_device
         batch_size = 1 if isinstance(prompt, str) else len(prompt) if prompt is not None else prompt_embeds.shape[0]
         prompt_embeds, negative_prompt_embeds = self.encode_prompt(
@@ -192,6 +196,10 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
             device=device,
             max_sequence_length=max_sequence_length,
         )
+        if self._comfy_debug:
+            print(f"[AnimaDebug] cfg={guidance_scale} steps={num_inference_steps} shape(prompt)={tuple(prompt_embeds.shape)} shape(neg)={tuple(negative_prompt_embeds.shape) if negative_prompt_embeds is not None else None}")
+            print(f"[AnimaDebug] prompt mean/std={prompt_embeds.float().mean().item():.6f}/{prompt_embeds.float().std().item():.6f} neg mean/std={negative_prompt_embeds.float().mean().item():.6f}/{negative_prompt_embeds.float().std().item():.6f}")
+
         sigmas = torch.linspace(1.0, 0.0, num_inference_steps + 1, dtype=torch.float32)[:-1]
         sigmas = 3 * sigmas / (1 + 2 * sigmas)
         self.scheduler.set_timesteps(sigmas=sigmas, device=device)
@@ -231,7 +239,24 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                         return_dict=False,
                     )[0].float()
                     velocity = velocity_uncond + guidance_scale * (velocity - velocity_uncond)
+                    if self._comfy_debug and i < self._comfy_debug_max_steps:
+                        delta = (velocity - velocity_uncond).float()
+                        print(
+                            f"[AnimaDebug][step={i}] sigma={sigma.item():.6f} "
+                            f"latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f}) "
+                            f"cond(mean/std)=({(velocity_uncond + delta).mean().item():.6f}/{(velocity_uncond + delta).std().item():.6f}) "
+                            f"uncond(mean/std)=({velocity_uncond.mean().item():.6f}/{velocity_uncond.std().item():.6f}) "
+                            f"delta(mean/std)=({delta.mean().item():.6f}/{delta.std().item():.6f})"
+                        )
+                if (not self.do_classifier_free_guidance) and self._comfy_debug and i < self._comfy_debug_max_steps:
+                    print(
+                        f"[AnimaDebug][step={i}] sigma={sigma.item():.6f} "
+                        f"latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f}) "
+                        f"vel(mean/std)=({velocity.mean().item():.6f}/{velocity.std().item():.6f})"
+                    )
                 latents = self.scheduler.step(velocity, timesteps[i], latents, return_dict=False)[0]
+                if self._comfy_debug and i < self._comfy_debug_max_steps:
+                    print(f"[AnimaDebug][step={i}] post-latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f})")
                 progress_bar.update()
 
         if output_type == "latent":
@@ -649,36 +674,18 @@ class AnimaModel(BaseModel):
             self.pipeline.text_encoder.to(self.device_torch)
         if self.pipeline.llm_adapter.device == torch.device("cpu"):
             self.pipeline.llm_adapter.to(self.device_torch)
+
         prompts = [prompt] if isinstance(prompt, str) else prompt
-        # Qwen3 tokenizers can return a zero-length sequence for an empty string.
-        # Training calls encode_prompt("") for unconditional embeds, so keep that path non-empty.
-        prompts = [" " if text is None or not str(text).strip() else text for text in prompts]
-        inputs = self.pipeline.tokenizer(
-            prompts,
-            padding=True,
-            max_length=1024,
-            truncation=True,
-            return_attention_mask=True,
-            return_tensors="pt",
-        ).to(self.device_torch)
-        outputs = self.pipeline.text_encoder(**inputs, return_dict=True)
-        qwen_hidden_states = outputs.last_hidden_state.to(self.device_torch, self.torch_dtype)
-        t5_inputs = self.pipeline.t5_tokenizer(
-            prompts,
-            padding=True,
-            max_length=1024,
-            truncation=True,
-            return_tensors="pt",
-        ).to(self.device_torch)
-        embeds = self.pipeline.llm_adapter(
-            source_hidden_states=qwen_hidden_states,
-            target_input_ids=t5_inputs.input_ids,
+        prompt_embeds, _ = self.pipeline.encode_prompt(
+            prompt=prompts,
+            do_classifier_free_guidance=False,
+            num_images_per_prompt=1,
+            device=self.device_torch,
+            dtype=self.torch_dtype,
+            max_sequence_length=512,
         )
-        if embeds.shape[1] < 512:
-            embeds = torch.nn.functional.pad(embeds, (0, 0, 0, 512 - embeds.shape[1]))
-        embeds = embeds[:, :512].to(self.device_torch, self.torch_dtype)
-        pe = AdvancedPromptEmbeds(text_embeds=[embed for embed in embeds])
-        return pe
+        prompt_embeds = prompt_embeds.to(self.device_torch, self.torch_dtype)
+        return AdvancedPromptEmbeds(text_embeds=[embed for embed in prompt_embeds])
 
     def get_model_has_grad(self):
         return False

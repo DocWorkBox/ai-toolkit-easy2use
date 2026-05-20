@@ -94,6 +94,8 @@ class SampleConfig:
         self.refiner_start_at = kwargs.get('refiner_start_at',
                                            0.5)  # step to start using refiner on sample if it exists
         self.extra_values = kwargs.get('extra_values', [])
+        self.comfy_debug: bool = kwargs.get('comfy_debug', False)
+        self.comfy_debug_max_steps: int = kwargs.get('comfy_debug_max_steps', 8)
         self.num_frames = kwargs.get('num_frames', 1)
         self.fps: int = kwargs.get('fps', 16)
         if self.num_frames > 1 and self.ext not in ['webp']:
