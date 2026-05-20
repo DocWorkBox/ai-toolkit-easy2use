@@ -114,15 +114,16 @@ export default function Datasets() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-100">数据集</h1>
+          <h1 className="text-base sm:text-lg font-semibold text-gray-100">数据集</h1>
         </div>
         <div className="flex-1"></div>
         <div>
           <Button
-            className="text-white bg-slate-600 px-3 py-1 rounded-md hover:bg-slate-500 transition-colors"
+            className="text-white bg-slate-600 px-2 sm:px-3 py-1 rounded-md hover:bg-slate-500 transition-colors text-sm sm:text-base whitespace-nowrap"
             onClick={() => openNewDatasetModal()}
           >
-            新建数据集
+            <span className="sm:hidden">+ 新建</span>
+            <span className="hidden sm:inline">新建数据集</span>
           </Button>
         </div>
       </TopBar>

@@ -1,15 +1,32 @@
-"use client";
+'use client';
 
-import Link from 'next/link';
-import { Home, Settings, BrainCircuit, Images, Plus, Heart } from 'lucide-react';
-import { FaDiscord, FaYoutube } from 'react-icons/fa6';
-import { SiBilibili } from 'react-icons/si';
 import { useEffect, useState } from 'react';
-import classNames from 'classnames';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Settings, BrainCircuit, Images, Plus, X, Heart } from 'lucide-react';
+import { FaXTwitter, FaDiscord, FaYoutube } from 'react-icons/fa6';
+import { SiBilibili } from 'react-icons/si';
+import { createGlobalState } from 'react-global-hooks';
 import ThemeToggle from './ThemeToggle';
 import ThemeLogo from './ThemeLogo';
 
+export const mobileSidebarState = createGlobalState<boolean>(false);
+
 const Sidebar = () => {
+  const [isMobileOpen, setIsMobileOpen] = mobileSidebarState.use();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname, setIsMobileOpen]);
+
+  useEffect(() => {
+    document.body.style.overflow = isMobileOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileOpen]);
+
   const navigation = [
     { name: '仪表盘', href: '/dashboard', icon: Home },
     { name: '新建任务', href: '/jobs/new', icon: Plus },
@@ -21,33 +38,6 @@ const Sidebar = () => {
   const socialsBoxClass =
     'flex flex-col items-center justify-center p-1 hover:bg-gray-800 rounded-lg transition-colors';
   const socialIconClass = 'w-5 h-5 text-gray-400 hover:text-white';
-
-  const [isOpenOnMobile, setIsOpenOnMobile] = useState(false);
-
-  const toggleCollapse = () => setIsOpenOnMobile(c => !c);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = () => toggleCollapse();
-    window.addEventListener('aitk:toggleSidebar', handler as EventListener);
-    return () => window.removeEventListener('aitk:toggleSidebar', handler as EventListener);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const collapsed = window.innerWidth < 768 ? !isOpenOnMobile : false;
-    window.dispatchEvent(new CustomEvent('aitk:sidebarState', { detail: { collapsed } }));
-  }, [isOpenOnMobile]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onRequest = () => {
-      const collapsed = window.innerWidth < 768 ? !isOpenOnMobile : false;
-      window.dispatchEvent(new CustomEvent('aitk:sidebarState', { detail: { collapsed } }));
-    };
-    window.addEventListener('aitk:requestSidebarState', onRequest as EventListener);
-    return () => window.removeEventListener('aitk:requestSidebarState', onRequest as EventListener);
-  }, [isOpenOnMobile]);
 
   const AvatarOrHeart = () => {
     const [useHeartIcon, setUseHeartIcon] = useState(false);
@@ -82,22 +72,21 @@ const Sidebar = () => {
     );
   };
 
-  return (
-    <div
-      suppressHydrationWarning
-      className={classNames(
-        'flex flex-col bg-gray-900 text-gray-100 transition-all duration-300',
-        isOpenOnMobile ? 'w-[200px] md:w-[240px]' : 'w-0 md:w-[240px] overflow-hidden',
-      )}
-    >
-      <div className="px-4 md:px-3 py-3">
-        <div className="grid grid-cols-[auto_1fr] items-center gap-3 md:flex md:items-center">
-          <div className="row-span-2 md:row-span-1">
-            <ThemeLogo />
-          </div>
-          <span className="font-bold uppercase md:ml-0">OSTRIS</span>
-          <div className="uppercase text-gray-300 text-sm whitespace-nowrap md:ml-0">AI-TOOLKIT-E2U</div>
-        </div>
+  const sidebarContent = (
+    <>
+      <div className="px-4 py-3 flex items-center justify-between">
+        <h1 className="text-l flex items-center gap-2">
+          <ThemeLogo />
+          <span className="font-bold uppercase">OSTRIS</span>
+          <span className="uppercase text-gray-300">AI-TOOLKIT-E2U</span>
+        </h1>
+        <button
+          onClick={() => setIsMobileOpen(false)}
+          className="md:hidden text-gray-400 hover:text-white p-1"
+          aria-label="关闭菜单"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
       <nav className="flex-1">
         <ul className="px-2 py-4 space-y-2">
@@ -106,11 +95,6 @@ const Sidebar = () => {
               <Link
                 href={item.href}
                 className="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
-                onClick={() => {
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    setIsOpenOnMobile(false);
-                  }
-                }}
               >
                 <item.icon className="w-5 h-5 mr-3" />
                 {item.name}
@@ -127,7 +111,7 @@ const Sidebar = () => {
       </div>
 
       <div className="px-1 py-1 border-t border-gray-800">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-3">
           <a href="https://discord.gg/VXmU2f5WEU" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <FaDiscord className={socialIconClass} />
           </a>
@@ -137,10 +121,33 @@ const Sidebar = () => {
           <a href="https://space.bilibili.com/12710942" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <SiBilibili className={socialIconClass} />
           </a>
+          <a href="https://x.com/ostrisai" target="_blank" rel="noreferrer" className={socialsBoxClass}>
+            <FaXTwitter className={socialIconClass} />
+          </a>
           <ThemeToggle />
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="hidden md:flex flex-col w-59 bg-gray-900 text-gray-100">{sidebarContent}</div>
+      <div
+        className={`md:hidden fixed inset-0 bg-black/60 z-40 transition-opacity duration-300 ease-in-out ${
+          isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileOpen(false)}
+        aria-hidden="true"
+      />
+      <div
+        className={`md:hidden fixed top-0 left-0 bottom-0 w-64 max-w-[85vw] bg-gray-900 text-gray-100 z-50 flex flex-col shadow-xl transform transition-transform duration-300 ease-in-out ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {sidebarContent}
+      </div>
+    </>
   );
 };
 

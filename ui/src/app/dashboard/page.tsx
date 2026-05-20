@@ -12,7 +12,7 @@ export default function Dashboard() {
     <>
       <TopBar>
         <div>
-          <h1 className="text-lg">仪表盘</h1>
+          <h1 className="text-base sm:text-lg">仪表盘</h1>
         </div>
         <div className="flex-1"></div>
       </TopBar>

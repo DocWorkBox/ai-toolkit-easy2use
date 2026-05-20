@@ -190,8 +190,8 @@ export default function TrainingForm() {
   return (
     <>
       <TopBar>
-        <div>
-          <Button className="text-gray-500 dark:text-gray-300 px-3 mt-1" onClick={() => history.back()}>
+        <div className="flex-shrink-0">
+          <Button className="text-gray-500 dark:text-gray-300 px-2 sm:px-3 mt-1" onClick={() => history.back()}>
             <FaChevronLeft />
           </Button>
         </div>
@@ -221,7 +221,7 @@ export default function TrainingForm() {
                 导入配置
               </Button>
             </div>
-            <div className="mx-4 bg-gray-200 dark:bg-gray-800 w-1 h-6"></div>
+            <div className="hidden md:block mx-4 bg-gray-200 dark:bg-gray-800 w-1 h-6"></div>
           </>
         )}
         {!showAdvancedView && (
@@ -259,7 +259,7 @@ export default function TrainingForm() {
           </>
         )}
 
-        <div className="pr-2">
+        <div className="pr-1 sm:pr-2 flex-shrink-0">
           <Button
             // 切换视图按钮：移动端缩小字号与内边距并保持不换行
             className="text-gray-200 bg-gray-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
@@ -268,7 +268,7 @@ export default function TrainingForm() {
             {showAdvancedView ? '显示简易视图' : '显示高级视图'}
           </Button>
         </div>
-        <div>
+        <div className="flex-shrink-0">
           <Button
             className="text-white bg-green-600 hover:bg-green-700 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
             onClick={() => saveJob()}
