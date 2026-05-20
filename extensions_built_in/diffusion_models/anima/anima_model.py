@@ -467,25 +467,28 @@ class AnimaModel(BaseModel):
         return transformer
 
     def _load_tokenizer(self, tokenizer_cls, source: str, label: str):
-        allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", False)
-        local_files_only = os.path.isdir(self.model_config.name_or_path or "") and not allow_download
+        allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", True)
+        prefer_cache = os.path.isdir(self.model_config.name_or_path or "") and not os.path.isdir(source)
         try:
             tokenizer_source = source
-            if local_files_only and not os.path.isdir(source):
+            if prefer_cache:
                 tokenizer_source = huggingface_hub.snapshot_download(
                     repo_id=source,
                     local_files_only=True,
                     token=HF_TOKEN,
                 )
-            return tokenizer_cls.from_pretrained(tokenizer_source, local_files_only=local_files_only)
+            return tokenizer_cls.from_pretrained(tokenizer_source, local_files_only=prefer_cache)
         except Exception as e:
-            if local_files_only:
+            if not allow_download:
                 raise RuntimeError(
                     f"Unable to load Anima {label} tokenizer from local cache/path: {source}. "
-                    "Pre-cache it on the server or set model.model_kwargs.allow_tokenizer_download=true "
-                    "to permit Hugging Face downloads during model load."
+                    "Set model.model_kwargs.allow_tokenizer_download=true to permit Hugging Face downloads "
+                    "during model load."
                 ) from e
-            raise
+            self.print_and_status_update(
+                f"Anima {label} tokenizer not found in local cache/path, downloading: {source}"
+            )
+            return tokenizer_cls.from_pretrained(source, local_files_only=False, token=HF_TOKEN)
 
     def _quantize_transformer_blocks(self, transformer):
         quantization_type = get_qtype(self.model_config.qtype)
