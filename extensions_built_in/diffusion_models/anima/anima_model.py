@@ -5,6 +5,7 @@ import huggingface_hub
 import numpy as np
 import torch
 import yaml
+from scipy import stats
 from diffusers import AutoencoderKLWan, CosmosTransformer3DModel
 from diffusers.loaders.single_file_utils import convert_cosmos_transformer_checkpoint_to_diffusers
 from diffusers.pipelines.cosmos.pipeline_output import CosmosImagePipelineOutput
@@ -37,6 +38,9 @@ ANIMA_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
 ANIMA_TRANSFORMER_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "cosmos_transformer")
 ANIMA_VAE_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "wan_vae")
 HF_TOKEN = os.getenv("HF_TOKEN", None)
+ANIMA_BETA_ALPHA = 0.6
+ANIMA_BETA_BETA = 0.6
+ANIMA_SAMPLING_SHIFT = 1.0
 
 scheduler_config = {
     "base_image_seq_len": 256,
@@ -54,6 +58,35 @@ scheduler_config = {
     "use_exponential_sigmas": False,
     "use_karras_sigmas": False,
 }
+
+
+def _time_snr_shift(alpha: float, t: torch.Tensor) -> torch.Tensor:
+    if alpha == 1.0:
+        return t
+    return t * alpha / (t * (alpha - 1.0) + 1.0)
+
+
+def _build_anima_beta_sigmas(
+    num_inference_steps: int,
+    device: torch.device,
+    num_train_timesteps: int = 1000,
+) -> torch.Tensor:
+    t = torch.arange(1, num_train_timesteps + 1, dtype=torch.float32, device=device) / float(num_train_timesteps)
+    base_sigmas = _time_snr_shift(ANIMA_SAMPLING_SHIFT, t)
+    total_timesteps = len(base_sigmas) - 1
+    ts = 1.0 - np.linspace(0.0, 1.0, num_inference_steps, endpoint=False)
+    mapped = stats.beta.ppf(ts, ANIMA_BETA_ALPHA, ANIMA_BETA_BETA) * float(total_timesteps)
+    mapped = np.nan_to_num(mapped, nan=0.0, posinf=float(total_timesteps), neginf=0.0)
+    indices = np.clip(np.rint(mapped).astype(np.int64), 0, total_timesteps)
+
+    sigmas = []
+    last_index = None
+    for index in indices:
+        if last_index is None or index != last_index:
+            sigmas.append(float(base_sigmas[int(index)].item()))
+        last_index = int(index)
+    sigmas.append(0.0)
+    return torch.tensor(sigmas, device=device, dtype=torch.float32)
 
 
 class _NoSafetyChecker:
@@ -177,6 +210,8 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
         output_type="pil",
         return_dict=True,
         max_sequence_length=512,
+        eta=1.0,
+        s_noise=1.0,
         **kwargs,
     ):
         self._guidance_scale = guidance_scale
@@ -192,11 +227,7 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
             device=device,
             max_sequence_length=max_sequence_length,
         )
-        sigmas = torch.linspace(1.0, 0.0, num_inference_steps + 1, dtype=torch.float32)[:-1]
-        sigmas = 3 * sigmas / (1 + 2 * sigmas)
-        self.scheduler.set_timesteps(sigmas=sigmas, device=device)
-        timesteps = self.scheduler.timesteps
-        num_inference_steps = len(timesteps)
+        sigmas = _build_anima_beta_sigmas(num_inference_steps, device=device)
         latents = self.prepare_latents(
             batch_size * num_images_per_prompt,
             self.transformer.config.in_channels,
@@ -208,14 +239,16 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
             generator,
             latents,
         )
+        latents = latents * sigmas[0].to(latents.dtype)
         transformer_dtype = self.transformer.dtype
         padding_mask = latents.new_zeros(1, 1, height, width, dtype=transformer_dtype)
-        with self.progress_bar(total=num_inference_steps) as progress_bar:
-            for i, timestep in enumerate(timesteps):
-                sigma = self.scheduler.sigmas[i].to(device=latents.device, dtype=latents.dtype)
-                timestep = sigma.expand(latents.shape[0]).to(transformer_dtype)
+        with self.progress_bar(total=len(sigmas) - 1) as progress_bar:
+            for i in range(len(sigmas) - 1):
+                sigma = sigmas[i].to(device=latents.device, dtype=latents.dtype)
+                sigma_next = sigmas[i + 1].to(device=latents.device, dtype=latents.dtype)
+                timestep = sigma.expand(latents.shape[0]).float()
                 latent_model_input = latents.to(transformer_dtype)
-                velocity = self.transformer(
+                noise_pred = self.transformer(
                     hidden_states=latent_model_input,
                     timestep=timestep,
                     encoder_hidden_states=prompt_embeds,
@@ -223,20 +256,47 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                     return_dict=False,
                 )[0].float()
                 if self.do_classifier_free_guidance:
-                    velocity_uncond = self.transformer(
+                    noise_pred_uncond = self.transformer(
                         hidden_states=latent_model_input,
                         timestep=timestep,
                         encoder_hidden_states=negative_prompt_embeds,
                         padding_mask=padding_mask,
                         return_dict=False,
                     )[0].float()
-                    velocity = velocity_uncond + guidance_scale * (velocity - velocity_uncond)
-                latents = self.scheduler.step(velocity, timesteps[i], latents, return_dict=False)[0]
+                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred - noise_pred_uncond)
+                denoised = latents - sigma.float() * noise_pred
+                if sigma_next.item() == 0.0:
+                    latents = denoised
+                    progress_bar.update()
+                    continue
+
+                downstep_ratio = 1.0 + (sigma_next / sigma - 1.0) * eta
+                sigma_down = sigma_next * downstep_ratio
+                alpha_next = 1.0 - sigma_next
+                alpha_down = 1.0 - sigma_down
+                renoise_sq = sigma_next**2 - sigma_down**2 * alpha_next**2 / (alpha_down**2)
+                renoise_coeff = renoise_sq.clamp_min(0).sqrt()
+                sigma_down_ratio = sigma_down / sigma
+                latents = sigma_down_ratio.to(latents.dtype) * latents + (1.0 - sigma_down_ratio).to(
+                    latents.dtype
+                ) * denoised
+                if eta > 0:
+                    noise = randn_tensor(
+                        latents.shape,
+                        generator=generator,
+                        device=latents.device,
+                        dtype=latents.dtype,
+                    )
+                    latents = (alpha_next / alpha_down).to(latents.dtype) * latents + noise * s_noise * renoise_coeff.to(
+                        latents.dtype
+                    )
                 progress_bar.update()
 
         if output_type == "latent":
             image = latents[:, :, 0]
         else:
+            if not torch.isfinite(latents).all():
+                raise RuntimeError("Anima latents contain NaN/Inf before VAE decode")
             latents_mean = torch.tensor(self.vae.config.latents_mean).view(1, self.vae.config.z_dim, 1, 1, 1).to(
                 latents.device, latents.dtype
             )
@@ -244,6 +304,8 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                 latents.device, latents.dtype
             )
             video = self.vae.decode((latents / latents_std + latents_mean).to(self.vae.dtype), return_dict=False)[0]
+            if not torch.isfinite(video).all():
+                raise RuntimeError("Anima VAE decode output contains NaN/Inf")
             video = self.video_processor.postprocess_video(video, output_type=output_type)
             image = [batch[0] for batch in video]
             if isinstance(video, torch.Tensor):

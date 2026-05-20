@@ -100,20 +100,25 @@ def test_anima_quantization_skips_extras_that_receive_5d_latents():
     assert "quantize_model(self, transformer)" not in source
 
 
-def test_anima_sampling_matches_z_image_flowmatch_reference():
+def test_anima_sampling_matches_diffusers_anima_default_reference():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    assert "torch.linspace(1.0, 0.0, num_inference_steps + 1" in source
-    assert "sigmas = 3 * sigmas / (1 + 2 * sigmas)" in source
-    assert "self.scheduler.set_timesteps(sigmas=sigmas, device=device)" in source
-    assert "velocity = self.transformer(" in source
-    assert "velocity_uncond = self.transformer(" in source
-    assert "velocity = velocity_uncond + guidance_scale * (velocity - velocity_uncond)" in source
-    assert "self.scheduler.step(velocity, timesteps[i], latents" in source
+    assert "ANIMA_BETA_ALPHA = 0.6" in source
+    assert "ANIMA_BETA_BETA = 0.6" in source
+    assert "def _build_anima_beta_sigmas" in source
+    assert "stats.beta.ppf" in source
+    assert "latents = latents * sigmas[0].to(latents.dtype)" in source
+    assert "noise_pred = self.transformer(" in source
+    assert "noise_pred_uncond = self.transformer(" in source
+    assert "noise_pred = noise_pred_uncond + guidance_scale * (noise_pred - noise_pred_uncond)" in source
+    assert "denoised = latents - sigma.float() * noise_pred" in source
+    assert "downstep_ratio = 1.0 + (sigma_next / sigma - 1.0) * eta" in source
+    assert "renoise_coeff = renoise_sq.clamp_min(0).sqrt()" in source
     assert "vae.decode((latents / latents_std + latents_mean)" in source
     assert "sigma_max = 80.0" not in source
     assert "c_skip" not in source
     assert "c_out" not in source
+    assert "self.scheduler.step(velocity" not in source
     assert "noise_pred = (latents - noise_pred.float()) / current_sigma" not in source
 
 
@@ -139,5 +144,5 @@ if __name__ == "__main__":
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
     test_anima_quantization_skips_extras_that_receive_5d_latents()
-    test_anima_sampling_matches_z_image_flowmatch_reference()
+    test_anima_sampling_matches_diffusers_anima_default_reference()
     test_anima_transformer_config_matches_preview3_weight_shape()
