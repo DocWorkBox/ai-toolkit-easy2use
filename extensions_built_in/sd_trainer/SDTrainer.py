@@ -356,7 +356,7 @@ class SDTrainer(BaseSDTrainProcess):
             # if not (self.model_config.arch in ["flux"]) or self.sd.vae.__class__.__name__ == "AutoencoderPixelMixer":
             #     vae = self.sd.vae
             self.dfe = load_dfe(
-                self.train_config.diffusion_feature_extractor_path, 
+                self.train_config.diffusion_feature_extractor_path,
                 vae=vae,
                 sd=self.sd
             )
@@ -365,6 +365,18 @@ class SDTrainer(BaseSDTrainProcess):
                 # must be set to train for gradient checkpointing to work
                 self.dfe.vision_encoder.train()
                 self.dfe.vision_encoder.gradient_checkpointing = True
+            elif hasattr(self.dfe, 'model') and self.train_config.gradient_checkpointing:
+                if hasattr(self.dfe.model, 'enable_gradient_checkpointing'):
+                    self.dfe.model.train()
+                    self.dfe.model.enable_gradient_checkpointing()
+                if hasattr(self.dfe.model, 'gradient_checkpointing_enable'):
+                    self.dfe.model.train()
+                    self.dfe.model.gradient_checkpointing_enable()
+                elif hasattr(self.dfe.model, 'gradient_checkpointing'):
+                    self.dfe.model.train()
+                    self.dfe.model.gradient_checkpointing = True
+                else:
+                    print_acc("Warning: Could not enable gradient checkpointing on diffusion feature extractor model.")
             else:
                 self.dfe.eval()
 
@@ -664,7 +676,7 @@ class SDTrainer(BaseSDTrainProcess):
                     dfe_loss += torch.nn.functional.mse_loss(pred_feature_list[i], target_feature_list[i], reduction="mean")
 
                 additional_loss += dfe_loss * self.train_config.diffusion_feature_extractor_weight * 100.0
-            elif self.dfe.version in [3, 4, 5, 6, 7, 8]:
+            elif self.dfe.version in [3, 4, 5, 6, 7, 8, 9, 10]:
                 dfe_loss = self.dfe(
                     noise=noise,
                     noise_pred=noise_pred,
@@ -907,7 +919,17 @@ class SDTrainer(BaseSDTrainProcess):
             loss = loss + norm_std_loss
 
 
-        return loss + additional_loss
+        loss = loss + additional_loss
+
+        if self.train_config.max_loss_debug and self.train_config.max_loss is not None:
+            if loss.item() > self.train_config.max_loss:
+                print_acc(f"Loss {loss.item()} is greater than max loss {self.train_config.max_loss}. Clipping to max loss.")
+                print_acc(f"timesteps: {timesteps}")
+
+        if self.train_config.max_loss is not None:
+            loss = torch.clamp(loss, max=self.train_config.max_loss)
+
+        return loss
 
     def preprocess_batch(self, batch: 'DataLoaderBatchDTO'):
         return batch
@@ -1593,6 +1615,8 @@ class SDTrainer(BaseSDTrainProcess):
                                 self.sd.text_encoder.eval()
                             if isinstance(self.adapter, CustomAdapter):
                                 self.adapter.is_unconditional_run = False
+                            if self.sd.encode_control_in_text_embeddings and batch.control_tensor_list is not None:
+                                prompt_kwargs['control_images'] = batch.control_tensor_list
                             conditional_embeds = self.sd.encode_prompt(
                                 conditioned_prompts, prompt_2,
                                 dropout_prob=self.train_config.prompt_dropout_prob,

@@ -11,6 +11,7 @@ type AdditionalSections =
     | 'caption.caption_prompt'
     | 'caption.max_res'
     | 'caption.max_new_tokens'
+    | 'caption.fixed_caption'
     | 'caption.api_concurrency'
     | 'caption.api_base_url'
     | 'caption.api_key'
@@ -58,6 +59,7 @@ export const captionerTypes: CaptionOption[] = [
         ],
         additionalSections: [
             'caption.model_name_or_path2',
+            'caption.fixed_caption',
         ],
         supportsQuantization: true,
         supportsLowVram: true,

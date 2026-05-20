@@ -17,7 +17,7 @@ import { TopBar, MainContent } from '@/components/layout';
 import { Button } from '@headlessui/react';
 import { FaChevronLeft } from 'react-icons/fa';
 import SimpleJob from './SimpleJob';
-import AdvancedJob from './AdvancedJob';
+import AdvancedConfigEditor from '@/components/AdvancedConfigEditor';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { apiClient } from '@/utils/api';
 
@@ -190,8 +190,8 @@ export default function TrainingForm() {
   return (
     <>
       <TopBar>
-        <div>
-          <Button className="text-gray-500 dark:text-gray-300 px-3 mt-1" onClick={() => history.back()}>
+        <div className="flex-shrink-0">
+          <Button className="text-gray-500 dark:text-gray-300 px-2 sm:px-3 mt-1" onClick={() => history.back()}>
             <FaChevronLeft />
           </Button>
         </div>
@@ -221,7 +221,7 @@ export default function TrainingForm() {
                 导入配置
               </Button>
             </div>
-            <div className="mx-4 bg-gray-200 dark:bg-gray-800 w-1 h-6"></div>
+            <div className="hidden md:block mx-4 bg-gray-200 dark:bg-gray-800 w-1 h-6"></div>
           </>
         )}
         {!showAdvancedView && (
@@ -259,7 +259,7 @@ export default function TrainingForm() {
           </>
         )}
 
-        <div className="pr-2">
+        <div className="pr-1 sm:pr-2 flex-shrink-0">
           <Button
             // 切换视图按钮：移动端缩小字号与内边距并保持不换行
             className="text-gray-200 bg-gray-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
@@ -268,7 +268,7 @@ export default function TrainingForm() {
             {showAdvancedView ? '显示简易视图' : '显示高级视图'}
           </Button>
         </div>
-        <div>
+        <div className="flex-shrink-0">
           <Button
             className="text-white bg-green-600 hover:bg-green-700 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-md whitespace-nowrap"
             onClick={() => saveJob()}
@@ -289,17 +289,20 @@ export default function TrainingForm() {
 
       {showAdvancedView ? (
         <div className="pt-[48px] absolute top-0 left-0 w-full h-full overflow-auto">
-          <AdvancedJob
-            jobConfig={jobConfig}
-            setJobConfig={setJobConfig}
-            status={status}
-            handleSubmit={handleSubmit}
-            runId={runId}
-            gpuIDs={gpuIDs}
-            setGpuIDs={setGpuIDs}
-            gpuList={gpuList}
-            datasetOptions={datasetOptions}
-            settings={settings}
+          <AdvancedConfigEditor
+            config={jobConfig}
+            setConfig={setJobConfig}
+            transformOnParse={(parsed: any) => {
+              try {
+                parsed.config.process[0].sqlite_db_path = './aitk_db.db';
+                parsed.config.process[0].training_folder = settings.TRAINING_FOLDER;
+                parsed.config.process[0].device = 'cuda';
+                parsed.config.process[0].performance_log_every = 10;
+              } catch (e) {
+                console.warn(e);
+              }
+              return migrateJobConfig(parsed);
+            }}
           />
         </div>
       ) : (

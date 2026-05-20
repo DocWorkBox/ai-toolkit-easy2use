@@ -50,6 +50,8 @@ class CaptionConfig:
 
 
 class BaseCaptioner(BaseExtensionProcess):
+    caption_config_class = CaptionConfig
+
     def __init__(self, process_id: int, job, config: OrderedDict, **kwargs):
         super(BaseCaptioner, self).__init__(process_id, job, config, **kwargs)
         self.sqlite_db_path = self.config.get("sqlite_db_path", "./aitk_db.db")
@@ -78,7 +80,7 @@ class BaseCaptioner(BaseExtensionProcess):
             self._stop_watcher_started = False
             # self.start_stop_watcher(interval_sec=2.0)
 
-        self.caption_config = CaptionConfig(**self.get_conf("caption", {}))
+        self.caption_config = self.caption_config_class(**self.get_conf("caption", {}))
         self.model = None
         self.processor = None
         self.model2 = None
@@ -92,41 +94,42 @@ class BaseCaptioner(BaseExtensionProcess):
 
     def run(self):
         super(BaseCaptioner, self).run()
-        self.start_stop_watcher()
-        self.update_status("running", "Loading Model")
-        self.load_model()
-        self.update_status("running", "Looking for files")
-        self.find_files()
-        total_files = len(self.file_paths)
-        if total_files == 0:
-            self.update_status("completed", "没有需要打标的文件")
-            print("")
-            print("****************************************************")
-            print("No files needed captioning")
-            print("****************************************************")
-            return
-        self.update_status("running", f"正在打标 {total_files} 个文件")
-        self.run_caption_loop()
+        with torch.no_grad():
+            self.start_stop_watcher()
+            self.update_status("running", "Loading Model")
+            self.load_model()
+            self.update_status("running", "Looking for files")
+            self.find_files()
+            total_files = len(self.file_paths)
+            if total_files == 0:
+                self.update_status("completed", "没有需要打标的文件")
+                print("")
+                print("****************************************************")
+                print("No files needed captioning")
+                print("****************************************************")
+                return
+            self.update_status("running", f"正在打标 {total_files} 个文件")
+            self.run_caption_loop()
 
-        if self.caption_failure_count > 0:
-            failure_lines = [
-                f"{os.path.basename(file_path)}: {message}"
-                for file_path, message in self.caption_failures[:3]
-            ]
-            failure_summary = "；".join(failure_lines)
-            raise RuntimeError(
-                f"打标完成，但有 {self.caption_failure_count} 个文件失败，成功 {self.caption_success_count} 个。"
-                + (f" 失败原因：{failure_summary}" if failure_summary else "")
+            if self.caption_failure_count > 0:
+                failure_lines = [
+                    f"{os.path.basename(file_path)}: {message}"
+                    for file_path, message in self.caption_failures[:3]
+                ]
+                failure_summary = "；".join(failure_lines)
+                raise RuntimeError(
+                    f"打标完成，但有 {self.caption_failure_count} 个文件失败，成功 {self.caption_success_count} 个。"
+                    + (f" 失败原因：{failure_summary}" if failure_summary else "")
+                )
+
+            self.update_status(
+                "completed", f"打标完成，共成功 {self.caption_success_count} 个文件"
             )
+            print("")
 
-        self.update_status(
-            "completed", f"打标完成，共成功 {self.caption_success_count} 个文件"
-        )
-        print("")
-
-        print("****************************************************")
-        print("Captioning complete")
-        print("****************************************************")
+            print("****************************************************")
+            print("Captioning complete")
+            print("****************************************************")
 
     def run_caption_loop(self):
         total_files = len(self.file_paths)
@@ -192,7 +195,7 @@ class BaseCaptioner(BaseExtensionProcess):
         for root, dirs, files in os.walk(self.caption_config.path_to_caption):
             for file in files:
                 if any(
-                    file.lower().endswith(f".{ext}")
+                    file.lower().endswith(f".{ext}") and not file.startswith(".")
                     for ext in self.caption_config.extensions
                 ):
                     full_path = os.path.join(root, file)

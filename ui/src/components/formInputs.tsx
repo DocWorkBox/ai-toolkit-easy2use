@@ -12,7 +12,7 @@ const Select = dynamic(() => import('react-select'), { ssr: false });
 
 const labelClasses = 'block text-xs mb-1 mt-2 text-gray-300';
 const inputClasses =
-  'w-full text-sm px-3 py-1 bg-gray-800 border border-gray-700 rounded-sm focus:ring-2 focus:ring-gray-600 focus:border-transparent text-gray-100';
+  'w-full text-sm px-3 py-1 bg-gray-950 dark:bg-gray-800 border border-gray-700 rounded-sm text-gray-100 placeholder:text-gray-500 focus:ring-2 focus:ring-gray-600 focus:border-transparent';
 
 const sharedSelectStyles = {
   menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
@@ -44,10 +44,22 @@ export interface TextInputProps extends InputProps {
   onChange: (value: string) => void;
   type?: 'text' | 'password';
   disabled?: boolean;
+  suffix?: React.ReactNode;
 }
 
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>((props: TextInputProps, ref) => {
-  const { label, value, onChange, placeholder, required, disabled, type = 'text', className, docKey = null } = props;
+  const {
+    label,
+    value,
+    onChange,
+    placeholder,
+    required,
+    disabled,
+    type = 'text',
+    className,
+    docKey = null,
+    suffix,
+  } = props;
   let { doc } = props;
   if (!doc && docKey) {
     doc = getDoc(docKey);
@@ -64,18 +76,43 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>((props: Te
           )}
         </label>
       )}
-      <input
-        ref={ref}
-        type={type}
-        value={value}
-        onChange={e => {
-          if (!disabled) onChange(e.target.value);
-        }}
-        className={`${inputClasses} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-      />
+      {suffix ? (
+        <div
+          className={classNames(
+            'flex items-stretch w-full bg-gray-950 dark:bg-gray-800 border border-gray-700 rounded-sm focus-within:ring-2 focus-within:ring-gray-600',
+            disabled ? 'opacity-30 cursor-not-allowed' : '',
+          )}
+        >
+          <input
+            ref={ref}
+            type={type}
+            value={value}
+            onChange={e => {
+              if (!disabled) onChange(e.target.value);
+            }}
+            className="flex-1 min-w-0 bg-transparent text-sm px-3 py-1 text-gray-100 placeholder:text-gray-500 focus:outline-none"
+            placeholder={placeholder}
+            required={required}
+            disabled={disabled}
+          />
+          <span className="flex items-center px-2 text-sm text-gray-400 border-l border-gray-700 bg-gray-900/50 select-none">
+            {suffix}
+          </span>
+        </div>
+      ) : (
+        <input
+          ref={ref}
+          type={type}
+          value={value}
+          onChange={e => {
+            if (!disabled) onChange(e.target.value);
+          }}
+          className={`${inputClasses} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 });
@@ -203,30 +240,43 @@ export const NumberInput = (props: NumberInputProps) => {
   );
 };
 
-export interface SelectInputProps extends InputProps {
-  value: string;
+interface SelectInputPropsBase extends InputProps {
   disabled?: boolean;
-  onChange: (value: string) => void;
   options: GroupedSelectOption[] | SelectOption[];
 }
 
+export interface SingleSelectInputProps extends SelectInputPropsBase {
+  multiple?: false;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export interface MultiSelectInputProps extends SelectInputPropsBase {
+  multiple: true;
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+export type SelectInputProps = SingleSelectInputProps | MultiSelectInputProps;
+
 export const SelectInput = (props: SelectInputProps) => {
-  const { label, value, onChange, options, docKey = null } = props;
+  const { label, value, onChange, options, docKey = null, multiple } = props;
   let { doc } = props;
   if (!doc && docKey) {
     doc = getDoc(docKey);
   }
-  let selectedOption: SelectOption | undefined;
-  if (options && options.length > 0) {
-    // see if grouped options
-    if ('options' in options[0]) {
-      selectedOption = (options as GroupedSelectOption[])
-        .flatMap(group => group.options)
-        .find(opt => opt.value === value);
-    } else {
-      selectedOption = (options as SelectOption[]).find(opt => opt.value === value);
-    }
-  }
+
+  const flatOptions: SelectOption[] =
+    options && options.length > 0
+      ? 'options' in options[0]
+        ? (options as GroupedSelectOption[]).flatMap(group => group.options)
+        : (options as SelectOption[])
+      : [];
+
+  const selectedOption = multiple
+    ? flatOptions.filter(opt => (value as string[]).includes(opt.value))
+    : flatOptions.find(opt => opt.value === (value as string));
+
   return (
     <div
       className={classNames(props.className, {
@@ -247,6 +297,7 @@ export const SelectInput = (props: SelectInputProps) => {
         value={selectedOption}
         options={options}
         isDisabled={props.disabled}
+        isMulti={multiple}
         className="aitk-react-select-container"
         classNamePrefix="aitk-react-select"
         // 使用 Portal 将下拉菜单渲染到 body，避免被父容器 overflow 截断
@@ -254,8 +305,11 @@ export const SelectInput = (props: SelectInputProps) => {
         menuPosition="fixed"
         styles={sharedSelectStyles}
         onChange={selected => {
-          if (selected) {
-            onChange((selected as { value: string }).value);
+          if (multiple) {
+            const arr = (selected as { value: string }[] | null) ?? [];
+            (onChange as (v: string[]) => void)(arr.map(o => o.value));
+          } else if (selected) {
+            (onChange as (v: string) => void)((selected as { value: string }).value);
           }
         }}
       />
@@ -611,7 +665,7 @@ export const SliderInput: React.FC<SliderInputProps> = props => {
         </div>
 
         {showValue && (
-          <div className="min-w-[3.5rem] text-right text-sm px-3 py-1 bg-gray-800 border border-gray-700 rounded-sm">
+          <div className="min-w-[3.5rem] text-right text-sm px-3 py-1 bg-gray-950 dark:bg-gray-800 border border-gray-700 rounded-sm">
             {Number.isFinite(value) ? value : ''}
           </div>
         )}

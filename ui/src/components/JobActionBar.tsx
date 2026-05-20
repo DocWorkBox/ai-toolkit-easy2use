@@ -7,6 +7,7 @@ import { startJob, stopJob, deleteJob, getAvaliableJobActions, markJobAsStopped 
 import { startQueue } from '@/utils/queue';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { redirect } from 'next/navigation';
+import { openCaptionDatasetModal } from '@/components/CaptionDatasetModal';
 
 interface JobActionBarProps {
   job: Job;
@@ -29,8 +30,9 @@ export default function JobActionBar({
 
   if (!afterDelete) afterDelete = onRefresh;
 
+  const iconSizeClass = 'w-5 h-5 sm:w-6 sm:h-6';
   return (
-    <div className={`${className}`}>
+    <div className={`flex items-center flex-shrink-0 ${className ?? ''}`}>
       {canStart && (
         <Button
           onClick={async () => {
@@ -42,9 +44,9 @@ export default function JobActionBar({
             }
             if (onRefresh) onRefresh();
           }}
-          className={`ml-2 opacity-100`}
+          className={`ml-1 sm:ml-2 opacity-100`}
         >
-          <Play />
+          <Play className={iconSizeClass} />
         </Button>
       )}
       {canRemoveFromQueue && (
@@ -54,9 +56,9 @@ export default function JobActionBar({
             await markJobAsStopped(job.id);
             if (onRefresh) onRefresh();
           }}
-          className={`ml-2 opacity-100`}
+          className={`ml-1 sm:ml-2 opacity-100`}
         >
-          <X />
+          <X className={iconSizeClass} />
         </Button>
       )}
       {canStop && (
@@ -74,19 +76,35 @@ export default function JobActionBar({
               },
             });
           }}
-          className={`ml-2 opacity-100`}
+          className={`ml-1 sm:ml-2 opacity-100`}
         >
-          <Pause />
+          <Pause className={iconSizeClass} />
         </Button>
       )}
       {!hideView && (
-        <Link href={`/jobs/${job.id}`} className="ml-2 text-gray-200 hover:text-gray-100 inline-block">
-          <Eye />
+        <Link href={`/jobs/${job.id}`} className="ml-1 sm:ml-2 text-gray-200 hover:text-gray-100 inline-block">
+          <Eye className={iconSizeClass} />
         </Link>
       )}
-      {canEdit && (
-        <Link href={`/jobs/new?id=${job.id}`} className="ml-2 hover:text-gray-100 inline-block">
-          <Pen />
+      {job.job_type === 'caption' && canEdit && (
+        <div
+          className="ml-1 sm:ml-2 hover:text-gray-100 inline-block cursor-pointer"
+          onClick={() =>
+            openCaptionDatasetModal(
+              job.job_ref || '',
+              () => {
+                if (onRefresh) onRefresh();
+              },
+              { jobId: job.id },
+            )
+          }
+        >
+          <Pen className={iconSizeClass} />
+        </div>
+      )}
+      {job.job_type === 'train' && canEdit && (
+        <Link href={`/jobs/new?id=${job.id}`} className="ml-1 sm:ml-2 hover:text-gray-100 inline-block">
+          <Pen className={iconSizeClass} />
         </Link>
       )}
       <Button
@@ -113,14 +131,14 @@ export default function JobActionBar({
             },
           });
         }}
-        className={`ml-2 opacity-100`}
+        className={`ml-1 sm:ml-2 opacity-100`}
       >
-        <Trash2 />
+        <Trash2 className={iconSizeClass} />
       </Button>
-      <div className="border-r border-1 border-gray-700 ml-2 inline"></div>
+      <div className="border-r border-1 border-gray-700 ml-1 sm:ml-2 inline"></div>
       <Menu>
-        <MenuButton className={'ml-2'}>
-          <Cog />
+        <MenuButton className={'ml-1 sm:ml-2'}>
+          <Cog className={iconSizeClass} />
         </MenuButton>
         <MenuItems anchor="bottom" className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-4">
           {job.job_type === 'train' && (

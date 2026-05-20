@@ -6,6 +6,7 @@ type Control = 'depth' | 'line' | 'pose' | 'inpaint';
 
 type DisableableSections =
   | 'model.quantize'
+  | 'model.quantize_te'
   | 'train.timestep_type'
   | 'network.conv'
   | 'trigger_word'
@@ -362,6 +363,71 @@ export const modelArchs: ModelArch[] = [
     accuracyRecoveryAdapters: {
       '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_torchao_uint3.safetensors',
     },
+  },
+  {
+    name: 'anima',
+    label: 'Anima',
+    group: 'image',
+    defaults: {
+      // Anima component weights are resolved from the main model directory/repo.
+      'config.process[0].model.name_or_path': ['circlestone-labs/Anima', defaultNameOrPath],
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize_te': [false, false],
+      'config.process[0].model.low_vram': [true, false],
+      'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
+      'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.noise_scheduler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
+      'config.process[0].train.lr': [2e-5, 1e-4],
+      'config.process[0].train.optimizer': ['adamw', 'adamw8bit'],
+      'config.process[0].train.optimizer_params.weight_decay': [0.01, 0.0001],
+      'config.process[0].network.linear': [32, defaultLinearRank],
+      'config.process[0].network.linear_alpha': [32, defaultLinearRank],
+      'config.process[0].sample.width': [1024, 1024],
+      'config.process[0].sample.height': [1024, 1024],
+      'config.process[0].sample.guidance_scale': [4.5, 4],
+      'config.process[0].sample.sample_steps': [35, 25],
+      'config.process[0].sample.neg': [
+        'worst quality, low quality, score_1, score_2, score_3, artist name',
+        '',
+      ],
+      'config.process[0].sample.samples': [
+        [
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 1girl, solo, long hair, school uniform, cherry blossoms, soft sunlight, anime illustration',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 1boy, solo, fantasy adventurer, cloak, sword, glowing forest, dynamic pose, anime key visual',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, 2girls, cafe, casual clothes, warm lighting, detailed background, slice of life, anime screencap',
+          },
+          {
+            prompt:
+              'masterpiece, best quality, score_7, safe, dragon girl, horns, wings, ornate dress, floating islands, clouds, vibrant colors, anime fantasy art',
+          },
+        ],
+        defaultSampleConfig.samples,
+      ],
+      'config.process[0].model.model_paths': [
+        {
+          tokenizer: 'Qwen/Qwen3-0.6B-Base',
+          t5_tokenizer: 'google-t5/t5-11b',
+        },
+        {},
+      ],
+      'config.process[0].model.model_kwargs': [
+        {
+          llm_adapter_lr: 0,
+        },
+        {},
+      ],
+    },
+    disableSections: ['network.conv', 'model.quantize_te', 'train.unload_text_encoder'],
+    additionalSections: ['model.low_vram', 'model.layer_offloading'],
   },
   {
     name: 'qwen_image:2512',
@@ -957,6 +1023,40 @@ export const modelArchs: ModelArch[] = [
     },
     disableSections: ['network.conv'],
     additionalSections: ['model.low_vram'],
+  },
+  {
+    name: 'hidream_o1',
+    label: 'HiDream-O1',
+    group: 'image',
+    defaults: {
+      'config.process[0].model.name_or_path': ['HiDream-ai/HiDream-O1-Image', defaultNameOrPath],
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize_te': [false, false],
+      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
+      'config.process[0].network.conv': [undefined, 16],
+      'config.process[0].network.conv_alpha': [undefined, 16],
+      'config.process[0].train.max_loss': [1.0, undefined],
+      'config.process[0].network.network_kwargs.ignore_if_contains': [['lm_head','patch_embed', 'visual'], []],
+      'config.process[0].network.transformer_only': [false, undefined],
+      'config.process[0].sample.width': [2048, 1024],
+      'config.process[0].sample.height': [2048, 1024],
+      'config.process[0].model.model_kwargs': [
+        {
+          noise_scale_inference: 8.0,
+          noise_scale: 8.0,
+        },
+        {},
+      ],
+    },
+    disableSections: [
+      'network.conv',
+      'model.quantize_te',
+      'train.unload_text_encoder',
+    ],
+    additionalSections: [
+      'model.low_vram',
+      'model.layer_offloading',
+    ],
   },
 ].sort((a, b) => {
   // Sort by label, case-insensitive
