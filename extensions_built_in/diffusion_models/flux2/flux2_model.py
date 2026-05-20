@@ -46,7 +46,7 @@ scheduler_config = {
     "use_dynamic_shifting": True,
 }
 
-MISTRAL_PATH = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+MISTRAL_PATH = "/datasets/studio/huggingface/models/Mistral-Small-3.1-24B-Instruct-2503"
 FLUX2_VAE_FILENAME = "ae.safetensors"
 FLUX2_TRANSFORMER_FILENAME = "flux2-dev.safetensors"
 

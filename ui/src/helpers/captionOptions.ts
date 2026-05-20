@@ -47,15 +47,15 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Ace Step',
         group: 'music',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['ACE-Step/acestep-transcriber', defaultNameOrPath],
-            'config.process[0].caption.model_name_or_path2': ['ACE-Step/acestep-captioner', undefined],
+            'config.process[0].caption.model_name_or_path': ['/datasets/studio/huggingface/models/acestep-transcriber', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path2': ['/datasets/studio/huggingface/models/acestep-captioner', undefined],
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
         },
         name_or_path_options: [
-            { value: 'ACE-Step/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
+            { value: '/datasets/studio/huggingface/models/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
         ],
         name_or_path2_options: [
-            { value: 'ACE-Step/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
+            { value: '/datasets/studio/huggingface/models/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
         ],
         additionalSections: [
             'caption.model_name_or_path2',
@@ -69,7 +69,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Qwen3-VL',
         group: 'image',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/datasets/ComfyUI/models/prompt_generator/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.prompt_template': [defaultCaptionPromptTemplate, undefined],
             'config.process[0].caption.target_lang': [defaultCaptionTargetLanguage, undefined],
@@ -81,7 +81,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: '/datasets/ComfyUI/models/prompt_generator/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [

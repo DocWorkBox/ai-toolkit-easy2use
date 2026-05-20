@@ -12,7 +12,7 @@ from .src.model import Klein9BParams, Klein4BParams
 class Flux2KleinModel(Flux2Model):
     flux2_klein_te_path: str = None
     flux2_te_type: str = "qwen"  # "mistral" or "qwen"
-    flux2_vae_path: str = "ai-toolkit/flux2_vae"
+    flux2_vae_path: str = "/datasets/studio/huggingface/models/flux2_vae/ae.safetensors"
     flux2_is_guidance_distilled: bool = False
 
     def __init__(
@@ -120,7 +120,7 @@ class Flux2KleinModel(Flux2Model):
 
 class Flux2Klein4BModel(Flux2KleinModel):
     arch = "flux2_klein_4b"
-    flux2_klein_te_path: str = "Qwen/Qwen3-4B"
+    flux2_klein_te_path: str = "/datasets/studio/huggingface/models/Qwen3-4B"
     flux2_te_filename: str = "flux-2-klein-base-4b.safetensors"
 
     def get_flux2_params(self):
@@ -132,7 +132,7 @@ class Flux2Klein4BModel(Flux2KleinModel):
 
 class Flux2Klein9BModel(Flux2KleinModel):
     arch = "flux2_klein_9b"
-    flux2_klein_te_path: str = "Qwen/Qwen3-8B"
+    flux2_klein_te_path: str = "/datasets/studio/huggingface/models/Qwen3-8B"
     flux2_te_filename: str = "flux-2-klein-base-9b.safetensors"
 
     def get_flux2_params(self):
