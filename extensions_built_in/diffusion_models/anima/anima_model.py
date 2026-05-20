@@ -255,7 +255,7 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                             f"uncond(mean/std)=({velocity_uncond.mean().item():.6f}/{velocity_uncond.std().item():.6f}) "
                             f"delta(mean/std)=({delta.mean().item():.6f}/{delta.std().item():.6f})"
                         )
-                elif self._comfy_debug and i < self._comfy_debug_max_steps:
+                if (not self.do_classifier_free_guidance) and self._comfy_debug and i < self._comfy_debug_max_steps:
                     print(
                         f"[AnimaDebug][step={i}] sigma={sigma.item():.6f} "
                         f"latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f}) "
