@@ -20,9 +20,11 @@ def test_anima_ui_defaults_match_reference_training_config():
     assert "name: 'anima'" in options
     assert "label: 'Anima'" in options
     assert "circlestone-labs/Anima" in options
-    assert "anima-base-v1.0.safetensors" in options
-    assert "qwen_image_vae.safetensors" in options
-    assert "qwen_3_06b_base.safetensors" in options
+    assert "anima-base-v1.0.safetensors" not in options
+    assert "qwen_image_vae.safetensors" not in options
+    assert "qwen_3_06b_base.safetensors" not in options
+    assert "tokenizer: 'Qwen/Qwen3-0.6B-Base'" in options
+    assert "t5_tokenizer: 'google-t5/t5-11b'" in options
     assert "llm_adapter_lr: 0" in options
     assert "'config.process[0].network.linear': [32, defaultLinearRank]" in options
     assert "'config.process[0].train.lr': [2e-5" in options
