@@ -69,7 +69,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.1-dev', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/black-forest-labs/FLUX.1-dev', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -83,7 +83,7 @@ export const modelArchs: ModelArch[] = [
     group: 'instruction',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.1-Kontext-dev', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/black-forest-labs/FLUX.1-Kontext-dev', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -157,7 +157,7 @@ export const modelArchs: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       'config.process[0].model.name_or_path': ['lodestones/Zeta-Chroma/zeta-chroma-base-x0-pixel-dino-distance.safetensors', defaultNameOrPath],
-      'config.process[0].model.extras_name_or_path': ['Tongyi-MAI/Z-Image-Turbo', undefined],
+      'config.process[0].model.extras_name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image-Turbo', undefined],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -172,7 +172,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Wan-AI/Wan2.1-T2V-1.3B-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Wan-AI/Wan2.1-T2V-1.3B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [false, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -190,7 +190,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Wan-AI/Wan2.1-I2V-14B-480P-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -209,7 +209,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Wan-AI/Wan2.1-I2V-14B-720P-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-720P-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -228,7 +228,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Wan-AI/Wan2.1-T2V-14B-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-T2V-14B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -246,7 +246,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['ai-toolkit/Wan2.2-T2V-A14B-Diffusers-bf16', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Wan-AI/Wan2.2-T2V-A14B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -277,7 +277,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['ai-toolkit/Wan2.2-I2V-A14B-Diffusers-bf16', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Wan-AI/Wan2.2-I2V-A14B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -313,7 +313,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Wan-AI/Wan2.2-TI2V-5B-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Wan-AI/Wan2.2-TI2V-5B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -349,7 +349,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Qwen/Qwen-Image', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Qwen/Qwen-Image', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -370,7 +370,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // Anima component weights are resolved from the main model directory/repo.
-      'config.process[0].model.name_or_path': ['circlestone-labs/Anima', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/circlestone-labs/Anima', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [false, false],
       'config.process[0].model.low_vram': [true, false],
@@ -435,7 +435,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Qwen/Qwen-Image-2512', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Qwen/Qwen-Image-2512', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -458,7 +458,7 @@ export const modelArchs: ModelArch[] = [
     group: 'instruction',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Qwen/Qwen-Image-Edit', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Qwen/Qwen-Image-Edit', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -479,7 +479,7 @@ export const modelArchs: ModelArch[] = [
     group: 'instruction',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Qwen/Qwen-Image-Edit-2509', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/Qwen/Qwen-Image-Edit-2509', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -513,7 +513,7 @@ export const modelArchs: ModelArch[] = [
     group: 'instruction',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Qwen/Qwen-Image-Edit-2511', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Qwen/Qwen-Image-Edit-2511', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -547,7 +547,7 @@ export const modelArchs: ModelArch[] = [
     group: 'instruction',
     defaults: {
       // FireRed-Image-Edit-1.1 uses the Qwen Image Edit Plus compatible pipeline.
-      'config.process[0].model.name_or_path': ['FireRedTeam/FireRed-Image-Edit-1.1', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/FireRedTeam/FireRed-Image-Edit-1.1', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -667,7 +667,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.2-dev', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/black-forest-labs/FLUX.2-dev', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -698,7 +698,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Tongyi-MAI/Z-Image-Turbo', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image-Turbo', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -708,7 +708,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.timestep_type': ['weighted', 'sigmoid'],
       'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
       'config.process[0].model.assistant_lora_path': [
-        'ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors',
+        '/model/HuggingFace/ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors',
         undefined,
       ],
       'config.process[0].sample.guidance_scale': [1, 4],
@@ -723,7 +723,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Tongyi-MAI/Z-Image', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -743,8 +743,8 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['ostris/Z-Image-De-Turbo', defaultNameOrPath],
-      'config.process[0].model.extras_name_or_path': ['Tongyi-MAI/Z-Image-Turbo', undefined],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/zhaotutu12/Z-Image-De-Turbo', defaultNameOrPath],
+      'config.process[0].model.extras_name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image-Turbo', undefined],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -766,7 +766,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Lightricks/LTX-2', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Lightricks/LTX-2', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -793,7 +793,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -820,7 +820,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.2-klein-base-4B', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/black-forest-labs/FLUX.2-klein-base-4B', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -851,7 +851,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['baidu/ERNIE-Image', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/PaddlePaddle/ERNIE-Image', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -873,7 +873,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['black-forest-labs/FLUX.2-klein-base-9B', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/black-forest-labs/FLUX.2-klein-base-9B', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -904,7 +904,7 @@ export const modelArchs: ModelArch[] = [
     group: 'audio',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_xl_base_aio.safetensors', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_xl_base_aio.safetensors', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
@@ -959,7 +959,7 @@ export const modelArchs: ModelArch[] = [
     group: 'audio',
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_base_aio.safetensors', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/HuggingFace/ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_base_aio.safetensors', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],
