@@ -88,6 +88,7 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
 
     def _encode_prompt(self, prompt, device, dtype, max_sequence_length=512):
         prompts = [prompt] if isinstance(prompt, str) else prompt
+        prompts = ["" if p is None else str(p) for p in prompts]
         if all(p.strip() == "" for p in prompts):
             return torch.zeros(
                 len(prompts), 512, self.llm_adapter.config.target_dim, device=device, dtype=dtype
@@ -650,33 +651,12 @@ class AnimaModel(BaseModel):
         if self.pipeline.llm_adapter.device == torch.device("cpu"):
             self.pipeline.llm_adapter.to(self.device_torch)
         prompts = [prompt] if isinstance(prompt, str) else prompt
-        # Qwen3 tokenizers can return a zero-length sequence for an empty string.
-        # Training calls encode_prompt("") for unconditional embeds, so keep that path non-empty.
-        prompts = [" " if text is None or not str(text).strip() else text for text in prompts]
-        inputs = self.pipeline.tokenizer(
+        embeds = self.pipeline._encode_prompt(
             prompts,
-            padding=True,
-            max_length=1024,
-            truncation=True,
-            return_attention_mask=True,
-            return_tensors="pt",
-        ).to(self.device_torch)
-        outputs = self.pipeline.text_encoder(**inputs, return_dict=True)
-        qwen_hidden_states = outputs.last_hidden_state.to(self.device_torch, self.torch_dtype)
-        t5_inputs = self.pipeline.t5_tokenizer(
-            prompts,
-            padding=True,
-            max_length=1024,
-            truncation=True,
-            return_tensors="pt",
-        ).to(self.device_torch)
-        embeds = self.pipeline.llm_adapter(
-            source_hidden_states=qwen_hidden_states,
-            target_input_ids=t5_inputs.input_ids,
+            device=self.device_torch,
+            dtype=self.torch_dtype,
+            max_sequence_length=512,
         )
-        if embeds.shape[1] < 512:
-            embeds = torch.nn.functional.pad(embeds, (0, 0, 0, 512 - embeds.shape[1]))
-        embeds = embeds[:, :512].to(self.device_torch, self.torch_dtype)
         pe = AdvancedPromptEmbeds(text_embeds=[embed for embed in embeds])
         return pe
 
