@@ -85,6 +85,8 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
         self.vae_scale_factor_temporal = 2 ** sum(self.vae.temperal_downsample)
         self.vae_scale_factor_spatial = 2 ** len(self.vae.temperal_downsample)
         self.video_processor = VideoProcessor(vae_scale_factor=self.vae_scale_factor_spatial)
+        self._comfy_debug = False
+        self._comfy_debug_max_steps = 4
 
     def _encode_prompt(self, prompt, device, dtype, max_sequence_length=512):
         prompts = [prompt] if isinstance(prompt, str) else prompt
@@ -180,6 +182,8 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
         **kwargs,
     ):
         self._guidance_scale = guidance_scale
+        self._comfy_debug = bool(kwargs.pop("comfy_debug", False))
+        self._comfy_debug_max_steps = int(kwargs.pop("comfy_debug_max_steps", 4))
         device = self._execution_device
         batch_size = 1 if isinstance(prompt, str) else len(prompt) if prompt is not None else prompt_embeds.shape[0]
         prompt_embeds, negative_prompt_embeds = self.encode_prompt(
@@ -192,6 +196,10 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
             device=device,
             max_sequence_length=max_sequence_length,
         )
+        if self._comfy_debug:
+            print(f"[AnimaDebug] cfg={guidance_scale} steps={num_inference_steps} shape(prompt)={tuple(prompt_embeds.shape)} shape(neg)={tuple(negative_prompt_embeds.shape) if negative_prompt_embeds is not None else None}")
+            print(f"[AnimaDebug] prompt mean/std={prompt_embeds.float().mean().item():.6f}/{prompt_embeds.float().std().item():.6f} neg mean/std={negative_prompt_embeds.float().mean().item():.6f}/{negative_prompt_embeds.float().std().item():.6f}")
+
         sigmas = torch.linspace(1.0, 0.0, num_inference_steps + 1, dtype=torch.float32)[:-1]
         sigmas = 3 * sigmas / (1 + 2 * sigmas)
         self.scheduler.set_timesteps(sigmas=sigmas, device=device)
@@ -231,7 +239,24 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                         return_dict=False,
                     )[0].float()
                     velocity = velocity_uncond + guidance_scale * (velocity - velocity_uncond)
+                    if self._comfy_debug and i < self._comfy_debug_max_steps:
+                        delta = (velocity - velocity_uncond).float()
+                        print(
+                            f"[AnimaDebug][step={i}] sigma={sigma.item():.6f} "
+                            f"latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f}) "
+                            f"cond(mean/std)=({(velocity_uncond + delta).mean().item():.6f}/{(velocity_uncond + delta).std().item():.6f}) "
+                            f"uncond(mean/std)=({velocity_uncond.mean().item():.6f}/{velocity_uncond.std().item():.6f}) "
+                            f"delta(mean/std)=({delta.mean().item():.6f}/{delta.std().item():.6f})"
+                        )
+                elif self._comfy_debug and i < self._comfy_debug_max_steps:
+                    print(
+                        f"[AnimaDebug][step={i}] sigma={sigma.item():.6f} "
+                        f"latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f}) "
+                        f"vel(mean/std)=({velocity.mean().item():.6f}/{velocity.std().item():.6f})"
+                    )
                 latents = self.scheduler.step(velocity, timesteps[i], latents, return_dict=False)[0]
+                if self._comfy_debug and i < self._comfy_debug_max_steps:
+                    print(f"[AnimaDebug][step={i}] post-latent(mean/std)=({latents.float().mean().item():.6f}/{latents.float().std().item():.6f})")
                 progress_bar.update()
 
         if output_type == "latent":

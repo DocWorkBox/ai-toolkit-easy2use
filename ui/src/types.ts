@@ -205,6 +205,8 @@ export interface SampleConfig {
   walk_seed: boolean;
   guidance_scale: number;
   sample_steps: number;
+  comfy_debug?: boolean;
+  comfy_debug_max_steps?: number;
   num_frames: number;
   fps: number;
 }
