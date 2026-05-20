@@ -223,18 +223,24 @@ class AnimaTextToImagePipeline(DiffusionPipeline):
                 sigma = self.scheduler.sigmas[i].to(device=latents.device, dtype=latents.dtype)
                 timestep = sigma.expand(latents.shape[0]).to(transformer_dtype)
                 latent_model_input = latents.to(transformer_dtype)
-                velocity = self.transformer(
-                    hidden_states=latent_model_input,
-                    timestep=timestep,
-                    encoder_hidden_states=prompt_embeds,
-                    padding_mask=padding_mask,
-                    return_dict=False,
-                )[0].float()
                 if self.do_classifier_free_guidance:
-                    velocity_uncond = self.transformer(
+                    latent_model_input_cfg = torch.cat([latent_model_input, latent_model_input], dim=0)
+                    timestep_cfg = torch.cat([timestep, timestep], dim=0)
+                    prompt_embeds_cfg = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
+                    velocity_cfg = self.transformer(
+                        hidden_states=latent_model_input_cfg,
+                        timestep=timestep_cfg,
+                        encoder_hidden_states=prompt_embeds_cfg,
+                        padding_mask=padding_mask,
+                        return_dict=False,
+                    )[0].float()
+                    velocity_uncond, velocity_cond = velocity_cfg.chunk(2, dim=0)
+                    velocity = velocity_uncond + guidance_scale * (velocity_cond - velocity_uncond)
+                else:
+                    velocity = self.transformer(
                         hidden_states=latent_model_input,
                         timestep=timestep,
-                        encoder_hidden_states=negative_prompt_embeds,
+                        encoder_hidden_states=prompt_embeds,
                         padding_mask=padding_mask,
                         return_dict=False,
                     )[0].float()
