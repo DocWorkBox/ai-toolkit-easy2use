@@ -157,7 +157,7 @@ export const modelArchs: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       'config.process[0].model.name_or_path': ['lodestones/Zeta-Chroma/zeta-chroma-base-x0-pixel-dino-distance.safetensors', defaultNameOrPath],
-      'config.process[0].model.extras_name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image-Turbo', undefined],
+      'config.process[0].model.extras_name_or_path': ['Tongyi-MAI/Z-Image-Turbo', undefined],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -190,7 +190,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI//Wan2.1-I2V-14B-480P-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -209,7 +209,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-720P-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI//Wan2.1-I2V-14B-720P-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -228,7 +228,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI/Wan2.1-T2V-14B-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Wan-AI//Wan2.1-T2V-14B-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
@@ -708,7 +708,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.timestep_type': ['weighted', 'sigmoid'],
       'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
       'config.process[0].model.assistant_lora_path': [
-        '/model/HuggingFace/ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors',
+        'ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors',
         undefined,
       ],
       'config.process[0].sample.guidance_scale': [1, 4],
@@ -744,7 +744,7 @@ export const modelArchs: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       'config.process[0].model.name_or_path': ['/model/ModelScope/zhaotutu12/Z-Image-De-Turbo', defaultNameOrPath],
-      'config.process[0].model.extras_name_or_path': ['/model/ModelScope/Tongyi-MAI/Z-Image-Turbo', undefined],
+      'config.process[0].model.extras_name_or_path': ['Tongyi-MAI/Z-Image-Turbo', undefined],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].model.low_vram': [true, false],

@@ -52,10 +52,10 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
         },
         name_or_path_options: [
-            { value: '/model/HuggingFace/ACE-Step/acestep-transcriber', label: '/model/HuggingFace/ACE-Step/acestep-transcriber' },
+            { value: '/model/HuggingFace/ACE-Step/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
         ],
         name_or_path2_options: [
-            { value: '/model/HuggingFace/ACE-Step/acestep-captioner', label: '/model/HuggingFace/ACE-Step/acestep-captioner' },
+            { value: '/model/HuggingFace/ACE-Step/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
         ],
         additionalSections: [
             'caption.model_name_or_path2',
@@ -81,7 +81,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: '/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', label: '/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct' },
+            { value: '/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [
