@@ -1192,6 +1192,25 @@ export default function SimpleJob({
                     { value: 'ddpm', label: 'DDPM' },
                   ]}
                 />
+                {modelArch?.name === 'anima' && (
+                  <>
+                    <Checkbox
+                      label="Comfy 对齐调试"
+                      checked={!!jobConfig.config.process[0].sample.comfy_debug}
+                      onChange={value => setJobConfig(value, 'config.process[0].sample.comfy_debug')}
+                      className="pt-2"
+                    />
+                    <NumberInput
+                      label="调试步数上限"
+                      value={jobConfig.config.process[0].sample.comfy_debug_max_steps ?? 8}
+                      onChange={value => setJobConfig(value, 'config.process[0].sample.comfy_debug_max_steps')}
+                      placeholder="eg. 8"
+                      className="pt-2"
+                      min={1}
+                      required
+                    />
+                  </>
+                )}
                 <NumberInput
                   label="引导强度"
                   value={jobConfig.config.process[0].sample.guidance_scale}

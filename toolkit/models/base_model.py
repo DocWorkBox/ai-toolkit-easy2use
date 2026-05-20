@@ -645,6 +645,10 @@ class BaseModel:
                             raise ValueError(
                                 "Refiner is only supported for XL models")
 
+                    if hasattr(gen_config, 'comfy_debug') and gen_config.comfy_debug:
+                        extra['comfy_debug'] = True
+                        extra['comfy_debug_max_steps'] = int(getattr(gen_config, 'comfy_debug_max_steps', 8))
+
                     conditional_embeds = conditional_embeds.to(
                         self.device_torch, dtype=self.unet.dtype)
                     unconditional_embeds = unconditional_embeds.to(
