@@ -2,6 +2,57 @@ import { SelectOption } from '@/types';
 
 export const defaultCaptionPromptTemplate = '详细描述 (Detailed Description)';
 export const defaultCaptionTargetLanguage = '英语 (English)';
+export const animaCaptionPromptTemplate = 'Anima格式 (Anima Image LoRA)';
+
+const animaImageLoraCaptionPrompt = `You are an expert image captioning model for Anima Image LoRA training.
+
+Analyze the input image and output one single-line, comma-separated, Danbooru-style English tag caption.
+
+Follow this tag order:
+[quality/meta/year/safety tags], [1girl/1boy/1other etc], [character], [series], [artist], [general tags]
+
+Within each section, tag order can be arbitrary.
+
+Start with suitable quality/meta/year/safety tags, for example:
+masterpiece, best quality, newest, safe
+
+Automatically decide the caption focus:
+- If the image mainly shows a specific repeated or consistent character, focus on stable character identity: hair, eyes, outfit, colors, accessories, footwear, archetype, and distinctive visual traits.
+- If the image mainly shows a consistent visual style rather than one fixed character, focus on style: medium, linework, shading, color palette, rendering, texture, and art direction.
+- If both are important, include both character traits and style traits, but prioritize stable visual information.
+
+Do not invent character names, series names, artist names, or unseen details. If unknown, omit those sections rather than writing "unknown character", "unknown series", or "unknown artist".
+
+For sprite sheets, model sheets, character sheets, turnaround sheets, sticker sheets, or repeated character layouts, treat the image as one character design or one style sample. Do NOT describe layout or structure.
+
+Do not mention:
+sprite sheet, character sheet, model sheet, multiple views, front view, side view, back view, walking animation, running animation, frame sequence, grid layout, rows, columns, frame count.
+
+Only describe the visible character design and/or visual style. The user may add a separate trigger word for special formats.
+
+Use concise tags only. Do not write sentences. Do not explain. Do not use markdown.
+
+Bad example:
+masterpiece, best quality, newest, safe, 1girl, sprite sheet, walking animation, 8 frames, front view, side view, back view, grid layout, white background
+
+Bad example:
+This image shows a cute anime girl walking in multiple directions on a sprite sheet.
+
+Good character caption example:
+masterpiece, best quality, newest, safe, 1girl, black hair, straight hair, hime cut, red hair bow, red ribbon, red dress, sleeveless dress, white detached sleeves, white collar, yellow neckerchief, white trim, frilled hem, white apron, white socks, black shoes, shrine maiden outfit, chibi, pixel art, cute, simple shading, clean outline, retro game style
+
+Good style caption example:
+masterpiece, best quality, newest, safe, 1girl, chibi, pixel art, retro game style, clean lineart, simple shading, limited palette, sharp pixel edges, cute character design, flat color, small character sprite, game asset style
+
+Good realistic character caption example:
+masterpiece, best quality, newest, safe, 1girl, long black hair, brown eyes, white blouse, black pleated skirt, red necktie, loafers, school uniform, slim build, soft lighting, anime style, clean lineart, detailed eyes
+
+Good painterly style caption example:
+masterpiece, best quality, newest, safe, 1girl, fantasy outfit, soft shading, painterly, watercolor, pastel colors, delicate lineart, dreamy atmosphere, detailed background, warm lighting, storybook illustration style
+
+Now analyze the image and output only the final single-line comma-separated tag caption.`;
+
+const captionPromptTemplatesWithoutLanguageSuffix = new Set([animaCaptionPromptTemplate]);
 
 export const captionPromptTemplates: Record<string, string> = {
   '标签生成 (Tag Generation)':
@@ -20,6 +71,7 @@ export const captionPromptTemplates: Record<string, string> = {
   // '视频摘要 (Video Summary)': 'Summarize the key events and narrative points in this video.',
   // '短篇故事 (Story)': 'Write a short, imaginative story inspired by this image or video.',
   'Danbooru Tags (Anime)': 'Describe this image using Danbooru tags, separated by commas.',
+  [animaCaptionPromptTemplate]: animaImageLoraCaptionPrompt,
 };
 
 export const captionPromptTemplateOptions: SelectOption[] = Object.keys(captionPromptTemplates).map(key => ({
@@ -40,6 +92,10 @@ export function buildCaptionPrompt(templateKey?: string, targetLanguage?: string
 
   const baseText = captionPromptTemplates[safeTemplateKey] || captionPromptTemplates[defaultCaptionPromptTemplate];
   let suffix = '';
+
+  if (captionPromptTemplatesWithoutLanguageSuffix.has(safeTemplateKey)) {
+    return baseText;
+  }
 
   if (safeTargetLanguage.includes('中文') && !safeTargetLanguage.includes('双语')) {
     suffix = '\n\n请直接输出中文描述，不要包含任何开场白（如“好的”、“这是一段描述”等）或结束语。';
