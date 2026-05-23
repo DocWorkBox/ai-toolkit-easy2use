@@ -1,21 +1,15 @@
 import os
 from typing import List, Optional
 
-import huggingface_hub
 import numpy as np
 import torch
 import yaml
 from scipy import stats
-from diffusers import AutoencoderKLWan, CosmosTransformer3DModel
-from diffusers.loaders.single_file_utils import convert_cosmos_transformer_checkpoint_to_diffusers
 from diffusers.pipelines.cosmos.pipeline_output import CosmosImagePipelineOutput
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.utils.torch_utils import randn_tensor
 from diffusers.video_processor import VideoProcessor
 from optimum.quanto import freeze
-from safetensors import safe_open
-from safetensors.torch import load_file
-from transformers import AutoConfig, AutoTokenizer, Qwen3Model, T5TokenizerFast
 from tqdm import tqdm
 
 from toolkit.accelerator import unwrap_model
@@ -26,17 +20,9 @@ from toolkit.memory_management import MemoryManager
 from toolkit.models.base_model import BaseModel
 from toolkit.samplers.custom_flowmatch_sampler import CustomFlowMatchEulerDiscreteScheduler
 from toolkit.util.quantize import get_qtype, quantize
-from .llm_adapter import AnimaLLMAdapter
 
 
-ANIMA_REPO = "circlestone-labs/Anima"
-ANIMA_TRANSFORMER_FILENAME = "anima-base-v1.0.safetensors"
-ANIMA_VAE_FILENAME = "qwen_image_vae.safetensors"
-ANIMA_LLM_FILENAME = "qwen_3_06b_base.safetensors"
-ANIMA_QWEN_CONFIG = "Qwen/Qwen3-0.6B-Base"
-ANIMA_CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
-ANIMA_TRANSFORMER_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "cosmos_transformer")
-ANIMA_VAE_CONFIG = os.path.join(ANIMA_CONFIG_DIR, "wan_vae")
+ANIMA_REPO = "circlestone-labs/Anima-Base-v1.0-Diffusers"
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 ANIMA_BETA_ALPHA = 0.6
 ANIMA_BETA_BETA = 0.6
@@ -341,154 +327,17 @@ class AnimaModel(BaseModel):
     def get_bucket_divisibility(self):
         return 16
 
-    def _resolve_component_path(self, key: str, filename: str) -> str:
-        configured = self.model_config.model_paths.get(key)
-        if configured:
-            if os.path.exists(configured):
-                return configured
-            if "/" in configured and configured.endswith(".safetensors"):
-                parts = configured.split("/")
-                try:
-                    return huggingface_hub.hf_hub_download(
-                        repo_id="/".join(parts[:2]),
-                        filename="/".join(parts[2:]),
-                        token=HF_TOKEN,
-                    )
-                except Exception:
-                    pass
-
-        model_path = self.model_config.name_or_path or ANIMA_REPO
-        if os.path.isdir(model_path):
-            candidates = [
-                os.path.join(model_path, filename),
-                os.path.join(model_path, "split_files", filename),
-                os.path.join(model_path, "split_files", "diffusion_models", filename),
-                os.path.join(model_path, "split_files", "vae", filename),
-                os.path.join(model_path, "split_files", "text_encoders", filename),
-            ]
-            for candidate in candidates:
-                if os.path.exists(candidate):
-                    return candidate
-        if os.path.isfile(model_path) and key == "transformer":
-            return model_path
-
-        repo_id = model_path if "/" in model_path and not model_path.endswith(".safetensors") else ANIMA_REPO
-        remote_candidates = [
-            filename,
-            f"split_files/diffusion_models/{filename}",
-            f"split_files/vae/{filename}",
-            f"split_files/text_encoders/{filename}",
-        ]
-        for remote_name in remote_candidates:
-            try:
-                return huggingface_hub.hf_hub_download(repo_id=repo_id, filename=remote_name, token=HF_TOKEN)
-            except Exception:
-                continue
-        raise FileNotFoundError(f"Unable to resolve Anima {key} file: {filename}")
-
-    def _load_qwen3_llm(self, llm_path: str, dtype: torch.dtype):
-        if os.path.isdir(llm_path):
-            return Qwen3Model.from_pretrained(llm_path, torch_dtype=dtype)
-
-        config = AutoConfig.from_pretrained(ANIMA_QWEN_CONFIG)
-        text_encoder = Qwen3Model(config)
-        state_dict = load_file(llm_path, device="cpu")
-        if any(key.startswith("model.") for key in state_dict):
-            state_dict = {key.removeprefix("model."): value for key, value in state_dict.items()}
-        for key in state_dict:
-            state_dict[key] = state_dict[key].to(dtype)
-        missing_keys, unexpected_keys = text_encoder.load_state_dict(state_dict, strict=False, assign=True)
-        if missing_keys:
-            self.print_and_status_update(f"Anima Qwen3 missing {len(missing_keys)} non-critical keys")
-        if unexpected_keys:
-            self.print_and_status_update(f"Anima Qwen3 ignored {len(unexpected_keys)} unexpected keys")
-        return text_encoder
-
-    def _load_llm_adapter(self, transformer_path: str, dtype: torch.dtype):
-        adapter = AnimaLLMAdapter()
-        prefixes = [
-            "llm_adapter.",
-            "net.llm_adapter.",
-            "model.llm_adapter.",
-            "net.model.llm_adapter.",
-            "diffusion_model.llm_adapter.",
-            "net.diffusion_model.llm_adapter.",
-            "model.diffusion_model.llm_adapter.",
-            "net.model.diffusion_model.llm_adapter.",
-            "transformer.llm_adapter.",
-            "net.transformer.llm_adapter.",
-        ]
-        state_dict = {}
-        adapter_like_keys = []
-        with safe_open(transformer_path, framework="pt", device="cpu") as f:
-            for key in f.keys():
-                if ("adapter" in key or "llm" in key) and len(adapter_like_keys) < 10:
-                    adapter_like_keys.append(key)
-                for prefix in prefixes:
-                    if key.startswith(prefix):
-                        state_dict[key[len(prefix):]] = f.get_tensor(key).to(dtype)
-                        break
-        if not state_dict:
-            hint = ", ".join(adapter_like_keys) if adapter_like_keys else "none"
-            raise ValueError(
-                f"Anima transformer weights did not contain llm_adapter weights. Adapter-like keys: {hint}"
-            )
-        adapter.load_state_dict(state_dict, strict=False)
-        return adapter
-
-    def _load_transformer(self, transformer_path: str, dtype: torch.dtype):
-        self.print_and_status_update("Building Anima transformer module")
-        config = CosmosTransformer3DModel.load_config(ANIMA_TRANSFORMER_CONFIG)
-        with torch.device("meta"):
-            transformer = CosmosTransformer3DModel.from_config(config)
-
-        target_keys = set(transformer.state_dict().keys())
-        self.print_and_status_update(f"Reading Anima transformer weights: {transformer_path}")
-        checkpoint = load_file(transformer_path, device="cpu")
-        self.print_and_status_update("Converting Anima transformer weights to diffusers format")
-        checkpoint = convert_cosmos_transformer_checkpoint_to_diffusers(checkpoint)
-        state_dict = {
-            key: value.to(dtype)
-            for key, value in checkpoint.items()
-            if key in target_keys
-        }
-        self.print_and_status_update(f"Loaded Anima transformer weights {len(state_dict)}/{len(target_keys)}")
-
-        missing_keys = sorted(target_keys - set(state_dict.keys()))
-        if missing_keys:
-            preview = ", ".join(missing_keys[:10])
-            raise ValueError(
-                f"Anima transformer weights are missing {len(missing_keys)} expected keys. First missing keys: {preview}"
-            )
-
-        self.print_and_status_update("Assigning Anima transformer weights")
-        transformer.load_state_dict(state_dict, strict=True, assign=True)
-        self.print_and_status_update("Anima transformer weights loaded")
-        return transformer
-
-    def _load_tokenizer(self, tokenizer_cls, source: str, label: str):
-        allow_download = self.model_config.model_kwargs.get("allow_tokenizer_download", True)
-        prefer_cache = os.path.isdir(self.model_config.name_or_path or "") and not os.path.isdir(source)
+    def load_diffusers_pipeline(self, model_path: str, dtype: torch.dtype):
+        kwargs = {"dtype": dtype}
+        if HF_TOKEN:
+            kwargs["token"] = HF_TOKEN
         try:
-            tokenizer_source = source
-            if prefer_cache:
-                tokenizer_source = huggingface_hub.snapshot_download(
-                    repo_id=source,
-                    local_files_only=True,
-                    token=HF_TOKEN,
-                )
-            return tokenizer_cls.from_pretrained(tokenizer_source, local_files_only=prefer_cache)
-        except Exception as e:
-            if not allow_download:
-                raise RuntimeError(
-                    f"Unable to load Anima {label} tokenizer from local cache/path: {source}. "
-                    "Set model.model_kwargs.allow_tokenizer_download=true to permit Hugging Face downloads "
-                    "during model load."
-                ) from e
-            self.print_and_status_update(
-                f"Anima {label} tokenizer not found in local cache/path, downloading: {source}"
-            )
-            return tokenizer_cls.from_pretrained(source, local_files_only=False, token=HF_TOKEN)
+            return DiffusionPipeline.from_pretrained(model_path, **kwargs)
+        except TypeError as e:
+            if "dtype" not in str(e):
+                raise
+            kwargs["torch_dtype"] = kwargs.pop("dtype")
+            return DiffusionPipeline.from_pretrained(model_path, **kwargs)
 
     def _quantize_transformer_blocks(self, transformer):
         quantization_type = get_qtype(self.model_config.qtype)
@@ -512,9 +361,14 @@ class AnimaModel(BaseModel):
         model_path = self.model_config.name_or_path or ANIMA_REPO
         self.print_and_status_update("Loading Anima model")
 
-        self.print_and_status_update("Loading Anima transformer")
-        transformer_path = self._resolve_component_path("transformer", ANIMA_TRANSFORMER_FILENAME)
-        transformer = self._load_transformer(transformer_path, dtype)
+        self.print_and_status_update("Loading Anima Diffusers pipeline")
+        diffusers_pipe = self.load_diffusers_pipeline(model_path, dtype)
+        transformer = diffusers_pipe.transformer
+        text_encoder = diffusers_pipe.text_encoder
+        tokenizer = diffusers_pipe.tokenizer
+        t5_tokenizer = diffusers_pipe.t5_tokenizer
+        llm_adapter = diffusers_pipe.text_conditioner
+        vae = diffusers_pipe.vae
 
         if self.model_config.quantize:
             self.print_and_status_update("Quantizing Transformer")
@@ -535,19 +389,9 @@ class AnimaModel(BaseModel):
             transformer.to(self.device_torch, dtype=dtype)
         flush()
 
-        self.print_and_status_update("Loading Anima Qwen3 text encoder")
-        llm_path = self._resolve_component_path("llm", ANIMA_LLM_FILENAME)
-        tokenizer_source = self.model_config.model_paths.get("tokenizer", ANIMA_QWEN_CONFIG)
-        t5_tokenizer_source = self.model_config.model_paths.get("t5_tokenizer", "google-t5/t5-11b")
-        self.print_and_status_update("Loading Anima Qwen3 tokenizer")
-        tokenizer = self._load_tokenizer(AutoTokenizer, tokenizer_source, "Qwen3")
-        self.print_and_status_update("Loading Anima T5 tokenizer")
-        t5_tokenizer = self._load_tokenizer(T5TokenizerFast, t5_tokenizer_source, "T5")
-        self.print_and_status_update("Loading Anima Qwen3 weights")
-        text_encoder = self._load_qwen3_llm(llm_path, dtype)
+        self.print_and_status_update("Preparing Anima text encoder")
         text_encoder.to(self.device_torch, dtype=dtype)
-        self.print_and_status_update("Loading Anima LLM adapter")
-        llm_adapter = self._load_llm_adapter(transformer_path, dtype).to(self.device_torch, dtype=dtype)
+        llm_adapter.to(self.device_torch, dtype=dtype)
 
         if self.model_config.quantize_te:
             self.print_and_status_update("Quantizing Text Encoder")
@@ -562,16 +406,8 @@ class AnimaModel(BaseModel):
                 offload_percent=self.model_config.layer_offloading_text_encoder_percent,
             )
 
-        self.print_and_status_update("Loading Anima VAE")
-        vae_path = self.model_config.vae_path or self._resolve_component_path("vae", ANIMA_VAE_FILENAME)
-        vae = AutoencoderKLWan.from_single_file(
-            vae_path,
-            config=ANIMA_VAE_CONFIG,
-            subfolder="vae",
-            torch_dtype=dtype,
-            local_files_only=True,
-            low_cpu_mem_usage=False,
-        ).to(self.device_torch, dtype=dtype)
+        self.print_and_status_update("Preparing Anima VAE")
+        vae.to(self.device_torch, dtype=dtype)
 
         self.noise_scheduler = AnimaModel.get_train_scheduler()
         pipe = AnimaTextToImagePipeline(
@@ -752,7 +588,7 @@ class AnimaModel(BaseModel):
         return False
 
     def save_model(self, output_path, meta, save_dtype):
-        transformer: CosmosTransformer3DModel = unwrap_model(self.model)
+        transformer = unwrap_model(self.model)
         transformer.save_pretrained(
             save_directory=os.path.join(output_path, "transformer"),
             safe_serialization=True,
