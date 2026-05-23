@@ -331,31 +331,39 @@ class AnimaModel(BaseModel):
         kwargs = {"dtype": dtype}
         if HF_TOKEN:
             kwargs["token"] = HF_TOKEN
-        if model_path == ANIMA_REPO or os.path.isfile(os.path.join(model_path, "modular_model_index.json")):
-            self.print_and_status_update("Loading Anima modular Diffusers pipeline")
-            try:
-                from diffusers import ModularPipeline
-            except ImportError as e:
-                raise RuntimeError(
-                    "Anima Diffusers requires a diffusers build with ModularPipeline support. "
-                    "Install the diffusers Anima PR pinned in requirements_base.txt."
-                ) from e
-
-            modular_pipe = ModularPipeline.from_pretrained(model_path, token=HF_TOKEN)
-            try:
-                modular_pipe.load_components(torch_dtype=dtype)
-            except TypeError as e:
-                if "torch_dtype" not in str(e):
-                    raise
-                modular_pipe.load_components(dtype=dtype)
-            return modular_pipe
         try:
+            self.print_and_status_update("Loading Anima official Diffusers pipeline")
             return DiffusionPipeline.from_pretrained(model_path, **kwargs)
         except TypeError as e:
             if "dtype" not in str(e):
                 raise
             kwargs["torch_dtype"] = kwargs.pop("dtype")
+            self.print_and_status_update("Loading Anima official Diffusers pipeline with torch_dtype")
             return DiffusionPipeline.from_pretrained(model_path, **kwargs)
+        except OSError as e:
+            if "model_index.json" not in str(e):
+                raise
+            if not os.path.isfile(os.path.join(model_path, "modular_model_index.json")):
+                raise
+
+        self.print_and_status_update("Loading Anima modular Diffusers pipeline fallback")
+        try:
+            from diffusers import ModularPipeline
+        except ImportError as e:
+            raise RuntimeError(
+                "Anima Diffusers requires a diffusers build with ModularPipeline support. "
+                "Install the diffusers Anima PR pinned in requirements_base.txt."
+            ) from e
+
+        modular_pipe = ModularPipeline.from_pretrained(model_path, token=HF_TOKEN)
+        self.print_and_status_update("Loading Anima modular Diffusers components")
+        try:
+            modular_pipe.load_components(torch_dtype=dtype)
+        except TypeError as e:
+            if "torch_dtype" not in str(e):
+                raise
+            modular_pipe.load_components(dtype=dtype)
+        return modular_pipe
 
     def _quantize_transformer_blocks(self, transformer):
         quantization_type = get_qtype(self.model_config.qtype)

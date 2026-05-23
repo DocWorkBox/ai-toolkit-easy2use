@@ -48,6 +48,8 @@ def test_anima_uses_official_diffusers_components_directly():
     assert "diffusers/pull/13732" in requirements
     assert "DiffusionPipeline.from_pretrained" in source
     assert "ModularPipeline.from_pretrained" in source
+    assert "Loading Anima official Diffusers pipeline" in source
+    assert "Loading Anima modular Diffusers pipeline fallback" in source
     assert "modular_model_index.json" in source
     assert "AnimaModularPipeline" not in source
     assert "diffusers_module.AnimaModularPipeline" not in source
@@ -75,7 +77,8 @@ def test_anima_diffusers_pipeline_owns_tokenizer_loading():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
     assert "Loading Anima Diffusers pipeline" in source
-    assert "Loading Anima modular Diffusers pipeline" in source
+    assert "Loading Anima official Diffusers pipeline" in source
+    assert "Loading Anima modular Diffusers pipeline fallback" in source
     assert "Loading Anima Qwen3 tokenizer" not in source
     assert "Loading Anima T5 tokenizer" not in source
     assert "allow_tokenizer_download" not in source
