@@ -25,7 +25,7 @@ export default function FilesWidget({ jobID, jobName }: { jobID: string; jobName
       <div className="bg-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          <h2 className="font-semibold text-gray-100">Checkpoints</h2>
+          <h2 className="font-semibold text-gray-100">模型文件</h2>
           <span className="px-2 py-0.5 bg-gray-700 rounded-full text-xs text-gray-300">{files.length}</span>
         </div>
         {files.length > 0 && (
@@ -43,7 +43,7 @@ export default function FilesWidget({ jobID, jobName }: { jobID: string; jobName
               );
             }}
           >
-            merge
+            融合
           </span>
         )}
       </div>
@@ -58,7 +58,7 @@ export default function FilesWidget({ jobID, jobName }: { jobID: string; jobName
         {status === 'error' && (
           <div className="flex items-center justify-center py-4 text-rose-400 space-x-2">
             <AlertCircle className="w-4 h-4" />
-            <span className="text-sm">Error loading checkpoints</span>
+            <span className="text-sm">Checkpoint 加载失败</span>
           </div>
         )}
 
@@ -98,7 +98,7 @@ export default function FilesWidget({ jobID, jobName }: { jobID: string; jobName
         )}
 
         {['success', 'refreshing'].includes(status) && files.length === 0 && (
-          <div className="text-center py-4 text-gray-400 text-sm">No checkpoints available</div>
+          <div className="text-center py-4 text-gray-400 text-sm">暂无 Checkpoint 文件</div>
         )}
       </div>
     </div>

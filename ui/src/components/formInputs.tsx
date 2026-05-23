@@ -304,6 +304,7 @@ export const SelectInput = (props: SelectInputProps) => {
         menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
         menuPosition="fixed"
         styles={sharedSelectStyles}
+        placeholder={props.placeholder}
         onChange={selected => {
           if (multiple) {
             const arr = (selected as { value: string }[] | null) ?? [];
