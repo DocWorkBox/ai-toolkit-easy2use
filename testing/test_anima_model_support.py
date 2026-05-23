@@ -41,12 +41,16 @@ def test_anima_ui_defaults_match_reference_training_config():
 
 def test_anima_uses_official_diffusers_components_directly():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+    requirements = Path("requirements_base.txt").read_text(encoding="utf-8")
 
     assert 'ANIMA_REPO = "circlestone-labs/Anima-Base-v1.0-Diffusers"' in source
+    assert "57c5cee7d2cd34bf7239b1f66f1fbe13e54713bc" in requirements
+    assert "diffusers/pull/13732" in requirements
     assert "DiffusionPipeline.from_pretrained" in source
     assert "ModularPipeline.from_pretrained" in source
     assert "modular_model_index.json" in source
-    assert "AnimaModularPipeline" in source
+    assert "AnimaModularPipeline" not in source
+    assert "diffusers_module.AnimaModularPipeline" not in source
     assert "load_components" in source
     assert "text_conditioner" in source
     assert "diffusers_pipe.transformer" in source
