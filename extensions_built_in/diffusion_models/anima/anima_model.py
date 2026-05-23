@@ -334,6 +334,7 @@ class AnimaModel(BaseModel):
         if model_path == ANIMA_REPO or os.path.isfile(os.path.join(model_path, "modular_model_index.json")):
             self.print_and_status_update("Loading Anima modular Diffusers pipeline")
             try:
+                import diffusers as diffusers_module
                 from diffusers import ModularPipeline
             except ImportError as e:
                 raise RuntimeError(
@@ -341,6 +342,8 @@ class AnimaModel(BaseModel):
                     "Update diffusers to a version that supports modular_model_index.json."
                 ) from e
 
+            if not hasattr(diffusers_module, "AnimaModularPipeline"):
+                diffusers_module.AnimaModularPipeline = ModularPipeline
             modular_pipe = ModularPipeline.from_pretrained(model_path, token=HF_TOKEN)
             try:
                 modular_pipe.load_components(torch_dtype=dtype)

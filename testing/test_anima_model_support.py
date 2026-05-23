@@ -46,6 +46,7 @@ def test_anima_uses_official_diffusers_components_directly():
     assert "DiffusionPipeline.from_pretrained" in source
     assert "ModularPipeline.from_pretrained" in source
     assert "modular_model_index.json" in source
+    assert "AnimaModularPipeline" in source
     assert "load_components" in source
     assert "text_conditioner" in source
     assert "diffusers_pipe.transformer" in source
