@@ -368,7 +368,11 @@ class AnimaModel(BaseModel):
         local_files_only = os.path.isdir(model_path)
         for component_name in ANIMA_COMPONENT_LOAD_ORDER:
             self.print_and_status_update(f"Loading Anima component: {component_name}")
-            load_kwargs = {"token": HF_TOKEN, "local_files_only": local_files_only}
+            load_kwargs = {
+                "token": HF_TOKEN,
+                "local_files_only": local_files_only,
+                "pretrained_model_name_or_path": model_path,
+            }
             if component_name in ANIMA_TORCH_DTYPE_COMPONENTS:
                 load_kwargs["torch_dtype"] = dtype
             try:
@@ -379,7 +383,15 @@ class AnimaModel(BaseModel):
                 load_kwargs["dtype"] = load_kwargs.pop("torch_dtype")
                 modular_pipe.load_components(component_name, **load_kwargs)
             if getattr(modular_pipe, component_name, None) is None:
-                raise RuntimeError(f"Anima component did not load: {component_name}")
+                component_spec = modular_pipe.get_component_spec(component_name)
+                self.print_and_status_update(f"Retrying Anima component with direct spec load: {component_name}")
+                try:
+                    loaded_component = component_spec.load(**load_kwargs)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to load Anima component `{component_name}`. Component spec: {component_spec}"
+                    ) from e
+                modular_pipe.update_components(**{component_name: loaded_component})
             self.print_and_status_update(f"Loaded Anima component: {component_name}")
         return modular_pipe
 

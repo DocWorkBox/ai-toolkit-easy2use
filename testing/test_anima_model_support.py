@@ -54,7 +54,11 @@ def test_anima_uses_official_diffusers_components_directly():
     assert "ANIMA_COMPONENT_LOAD_ORDER" in source
     assert "Loading Anima component: {component_name}" in source
     assert "Loaded Anima component: {component_name}" in source
+    assert "Retrying Anima component with direct spec load: {component_name}" in source
+    assert "component_spec.load(**load_kwargs)" in source
+    assert "modular_pipe.update_components(**{component_name: loaded_component})" in source
     assert "local_files_only" in source
+    assert '"pretrained_model_name_or_path": model_path' in source
     assert "AnimaModularPipeline" not in source
     assert "diffusers_module.AnimaModularPipeline" not in source
     assert "load_components" in source
