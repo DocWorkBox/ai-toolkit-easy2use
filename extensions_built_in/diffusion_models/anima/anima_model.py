@@ -27,6 +27,15 @@ HF_TOKEN = os.getenv("HF_TOKEN", None)
 ANIMA_BETA_ALPHA = 0.6
 ANIMA_BETA_BETA = 0.6
 ANIMA_SAMPLING_SHIFT = 1.0
+ANIMA_COMPONENT_LOAD_ORDER = (
+    "tokenizer",
+    "t5_tokenizer",
+    "text_encoder",
+    "text_conditioner",
+    "transformer",
+    "vae",
+)
+ANIMA_TORCH_DTYPE_COMPONENTS = {"text_encoder", "text_conditioner", "transformer", "vae"}
 
 scheduler_config = {
     "base_image_seq_len": 256,
@@ -356,13 +365,22 @@ class AnimaModel(BaseModel):
             ) from e
 
         modular_pipe = ModularPipeline.from_pretrained(model_path, token=HF_TOKEN)
-        self.print_and_status_update("Loading Anima modular Diffusers components")
-        try:
-            modular_pipe.load_components(torch_dtype=dtype)
-        except TypeError as e:
-            if "torch_dtype" not in str(e):
-                raise
-            modular_pipe.load_components(dtype=dtype)
+        local_files_only = os.path.isdir(model_path)
+        for component_name in ANIMA_COMPONENT_LOAD_ORDER:
+            self.print_and_status_update(f"Loading Anima component: {component_name}")
+            load_kwargs = {"token": HF_TOKEN, "local_files_only": local_files_only}
+            if component_name in ANIMA_TORCH_DTYPE_COMPONENTS:
+                load_kwargs["torch_dtype"] = dtype
+            try:
+                modular_pipe.load_components(component_name, **load_kwargs)
+            except TypeError as e:
+                if "torch_dtype" not in str(e):
+                    raise
+                load_kwargs["dtype"] = load_kwargs.pop("torch_dtype")
+                modular_pipe.load_components(component_name, **load_kwargs)
+            if getattr(modular_pipe, component_name, None) is None:
+                raise RuntimeError(f"Anima component did not load: {component_name}")
+            self.print_and_status_update(f"Loaded Anima component: {component_name}")
         return modular_pipe
 
     def _quantize_transformer_blocks(self, transformer):

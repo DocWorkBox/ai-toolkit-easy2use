@@ -51,6 +51,10 @@ def test_anima_uses_official_diffusers_components_directly():
     assert "Loading Anima official Diffusers pipeline" in source
     assert "Loading Anima modular Diffusers pipeline fallback" in source
     assert "modular_model_index.json" in source
+    assert "ANIMA_COMPONENT_LOAD_ORDER" in source
+    assert "Loading Anima component: {component_name}" in source
+    assert "Loaded Anima component: {component_name}" in source
+    assert "local_files_only" in source
     assert "AnimaModularPipeline" not in source
     assert "diffusers_module.AnimaModularPipeline" not in source
     assert "load_components" in source
@@ -79,6 +83,7 @@ def test_anima_diffusers_pipeline_owns_tokenizer_loading():
     assert "Loading Anima Diffusers pipeline" in source
     assert "Loading Anima official Diffusers pipeline" in source
     assert "Loading Anima modular Diffusers pipeline fallback" in source
+    assert "Loading Anima component: {component_name}" in source
     assert "Loading Anima Qwen3 tokenizer" not in source
     assert "Loading Anima T5 tokenizer" not in source
     assert "allow_tokenizer_download" not in source
