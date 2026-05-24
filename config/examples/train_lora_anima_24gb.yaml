@@ -37,7 +37,7 @@ config:
         lr: 2e-5
         dtype: bf16
       model:
-        name_or_path: "/model/ModelScope/circlestone-labs/Anima-Base-v1.0-Diffusers"
+        name_or_path: "circlestone-labs/Anima-Base-v1.0-Diffusers"
         arch: "anima"
         quantize: true
         qtype: "qfloat8"
