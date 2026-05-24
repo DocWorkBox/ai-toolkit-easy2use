@@ -772,8 +772,116 @@ class AnimaModel(BaseModel):
     def get_transformer_block_names(self) -> Optional[List[str]]:
         return ["transformer_blocks"]
 
+    @staticmethod
+    def _replace_pairs(key: str, replacements: List[tuple[str, str]]) -> str:
+        for old, new in replacements:
+            key = key.replace(old, new)
+        return key
+
+    @staticmethod
+    def _anima_diffusers_to_comfy_lora_key(key: str) -> str:
+        underscore_replacements = [
+            ("transformer_blocks_", "blocks_"),
+            ("_attn1_to_q", "_self_attn_q_proj"),
+            ("_attn1_to_k", "_self_attn_k_proj"),
+            ("_attn1_to_v", "_self_attn_v_proj"),
+            ("_attn1_to_out_0", "_self_attn_output_proj"),
+            ("_attn2_to_q", "_cross_attn_q_proj"),
+            ("_attn2_to_k", "_cross_attn_k_proj"),
+            ("_attn2_to_v", "_cross_attn_v_proj"),
+            ("_attn2_to_out_0", "_cross_attn_output_proj"),
+            ("_ff_net_0_proj", "_mlp_layer1"),
+            ("_ff_net_2", "_mlp_layer2"),
+            ("_norm1_linear_1", "_adaln_modulation_self_attn_1"),
+            ("_norm1_linear_2", "_adaln_modulation_self_attn_2"),
+            ("_norm2_linear_1", "_adaln_modulation_cross_attn_1"),
+            ("_norm2_linear_2", "_adaln_modulation_cross_attn_2"),
+            ("_norm3_linear_1", "_adaln_modulation_mlp_1"),
+            ("_norm3_linear_2", "_adaln_modulation_mlp_2"),
+        ]
+        dotted_replacements = [
+            ("diffusion_model.transformer_blocks.", "diffusion_model.blocks."),
+            (".attn1.to_q.", ".self_attn.q_proj."),
+            (".attn1.to_k.", ".self_attn.k_proj."),
+            (".attn1.to_v.", ".self_attn.v_proj."),
+            (".attn1.to_out.0.", ".self_attn.output_proj."),
+            (".attn2.to_q.", ".cross_attn.q_proj."),
+            (".attn2.to_k.", ".cross_attn.k_proj."),
+            (".attn2.to_v.", ".cross_attn.v_proj."),
+            (".attn2.to_out.0.", ".cross_attn.output_proj."),
+            (".ff.net.0.proj.", ".mlp.layer1."),
+            (".ff.net.2.", ".mlp.layer2."),
+            (".norm1.linear_1.", ".adaln_modulation_self_attn.1."),
+            (".norm1.linear_2.", ".adaln_modulation_self_attn.2."),
+            (".norm2.linear_1.", ".adaln_modulation_cross_attn.1."),
+            (".norm2.linear_2.", ".adaln_modulation_cross_attn.2."),
+            (".norm3.linear_1.", ".adaln_modulation_mlp.1."),
+            (".norm3.linear_2.", ".adaln_modulation_mlp.2."),
+        ]
+
+        if key.startswith("lora_transformer_"):
+            key = "lora_unet_" + key[len("lora_transformer_"):]
+            key = AnimaModel._replace_pairs(key, underscore_replacements)
+
+        key = key.replace("transformer.", "diffusion_model.")
+        return AnimaModel._replace_pairs(key, dotted_replacements)
+
+    @staticmethod
+    def _anima_comfy_to_diffusers_lora_key(key: str) -> str:
+        underscore_replacements = [
+            ("blocks_", "transformer_blocks_"),
+            ("_self_attn_q_proj", "_attn1_to_q"),
+            ("_self_attn_k_proj", "_attn1_to_k"),
+            ("_self_attn_v_proj", "_attn1_to_v"),
+            ("_self_attn_output_proj", "_attn1_to_out_0"),
+            ("_cross_attn_q_proj", "_attn2_to_q"),
+            ("_cross_attn_k_proj", "_attn2_to_k"),
+            ("_cross_attn_v_proj", "_attn2_to_v"),
+            ("_cross_attn_output_proj", "_attn2_to_out_0"),
+            ("_mlp_layer1", "_ff_net_0_proj"),
+            ("_mlp_layer2", "_ff_net_2"),
+            ("_adaln_modulation_self_attn_1", "_norm1_linear_1"),
+            ("_adaln_modulation_self_attn_2", "_norm1_linear_2"),
+            ("_adaln_modulation_cross_attn_1", "_norm2_linear_1"),
+            ("_adaln_modulation_cross_attn_2", "_norm2_linear_2"),
+            ("_adaln_modulation_mlp_1", "_norm3_linear_1"),
+            ("_adaln_modulation_mlp_2", "_norm3_linear_2"),
+        ]
+        dotted_replacements = [
+            ("diffusion_model.blocks.", "diffusion_model.transformer_blocks."),
+            (".self_attn.q_proj.", ".attn1.to_q."),
+            (".self_attn.k_proj.", ".attn1.to_k."),
+            (".self_attn.v_proj.", ".attn1.to_v."),
+            (".self_attn.output_proj.", ".attn1.to_out.0."),
+            (".cross_attn.q_proj.", ".attn2.to_q."),
+            (".cross_attn.k_proj.", ".attn2.to_k."),
+            (".cross_attn.v_proj.", ".attn2.to_v."),
+            (".cross_attn.output_proj.", ".attn2.to_out.0."),
+            (".mlp.layer1.", ".ff.net.0.proj."),
+            (".mlp.layer2.", ".ff.net.2."),
+            (".adaln_modulation_self_attn.1.", ".norm1.linear_1."),
+            (".adaln_modulation_self_attn.2.", ".norm1.linear_2."),
+            (".adaln_modulation_cross_attn.1.", ".norm2.linear_1."),
+            (".adaln_modulation_cross_attn.2.", ".norm2.linear_2."),
+            (".adaln_modulation_mlp.1.", ".norm3.linear_1."),
+            (".adaln_modulation_mlp.2.", ".norm3.linear_2."),
+        ]
+
+        if key.startswith("lora_unet_"):
+            key = "lora_transformer_" + key[len("lora_unet_"):]
+            key = AnimaModel._replace_pairs(key, underscore_replacements)
+
+        key = AnimaModel._replace_pairs(key, dotted_replacements)
+        return key.replace("diffusion_model.", "transformer.")
+
     def convert_lora_weights_before_save(self, state_dict):
-        return {key.replace("transformer.", "diffusion_model."): value for key, value in state_dict.items()}
+        new_sd = {}
+        for key, value in state_dict.items():
+            new_sd[self._anima_diffusers_to_comfy_lora_key(key)] = value
+        return new_sd
 
     def convert_lora_weights_before_load(self, state_dict):
-        return {key.replace("diffusion_model.", "transformer."): value for key, value in state_dict.items()}
+        new_sd = {}
+        for key, value in state_dict.items():
+            new_sd[self._anima_comfy_to_diffusers_lora_key(key)] = value
+        return new_sd
