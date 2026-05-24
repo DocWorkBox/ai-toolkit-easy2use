@@ -1,11 +1,13 @@
 from pathlib import Path
 import json
-
-from toolkit.config_modules import ModelConfig
-from toolkit.util.get_model import get_model_class
+import pytest
 
 
 def test_anima_model_class_is_registered():
+    pytest.importorskip("torch")
+    from toolkit.config_modules import ModelConfig
+    from toolkit.util.get_model import get_model_class
+
     config = ModelConfig(name_or_path="circlestone-labs/Anima", arch="anima")
 
     model_class = get_model_class(config)
@@ -137,6 +139,22 @@ def test_anima_transformer_config_matches_preview3_weight_shape():
     assert config["num_attention_heads"] * config["attention_head_dim"] == 2048
     # The Anima checkpoint does not ship diffusers' optional learnable positional embedding parameters.
     assert config["extra_pos_embed_type"] is None
+
+
+def test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert 'key.startswith("lora_transformer_")' in source
+    assert '"lora_unet_" + key[len("lora_transformer_"):]' in source
+    assert 'key.startswith("lora_unet_")' in source
+    assert '"lora_transformer_" + key[len("lora_unet_"):]' in source
+    assert '("transformer_blocks_", "blocks_")' in source
+    assert '("_attn1_to_out_0", "_self_attn_output_proj")' in source
+    assert '("_attn2_to_out_0", "_cross_attn_output_proj")' in source
+    assert '("_ff_net_0_proj", "_mlp_layer1")' in source
+    assert '("_norm1_linear_1", "_adaln_modulation_self_attn_1")' in source
+    assert '(".attn1.to_out.0.", ".self_attn.output_proj.")' in source
+    assert '(".norm3.linear_2.", ".adaln_modulation_mlp.2.")' in source
 
 
 if __name__ == "__main__":
