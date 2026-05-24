@@ -369,8 +369,8 @@ export const modelArchs: ModelArch[] = [
     label: 'Anima',
     group: 'image',
     defaults: {
-      // Anima component weights are resolved from the main model directory/repo.
-      'config.process[0].model.name_or_path': ['circlestone-labs/Anima', defaultNameOrPath],
+      // Official Diffusers-format Anima bundle includes transformer, VAE, text encoders, and tokenizers.
+      'config.process[0].model.name_or_path': ['circlestone-labs/Anima-Base-v1.0-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [false, false],
       'config.process[0].model.low_vram': [true, false],
@@ -411,13 +411,6 @@ export const modelArchs: ModelArch[] = [
           },
         ],
         defaultSampleConfig.samples,
-      ],
-      'config.process[0].model.model_paths': [
-        {
-          tokenizer: 'Qwen/Qwen3-0.6B-Base',
-          t5_tokenizer: 'google-t5/t5-11b',
-        },
-        {},
       ],
       'config.process[0].model.model_kwargs': [
         {
