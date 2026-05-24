@@ -163,10 +163,17 @@ def test_anima_uses_remote_diffusers_transformer_config():
 def test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    assert 'new_key.startswith("lora_transformer_")' in source
-    assert '"lora_unet_" + new_key[len("lora_transformer_"):]' in source
-    assert 'new_key.startswith("lora_unet_")' in source
-    assert '"lora_transformer_" + new_key[len("lora_unet_"):]' in source
+    assert 'key.startswith("lora_transformer_")' in source
+    assert '"lora_unet_" + key[len("lora_transformer_"):]' in source
+    assert 'key.startswith("lora_unet_")' in source
+    assert '"lora_transformer_" + key[len("lora_unet_"):]' in source
+    assert '("transformer_blocks_", "blocks_")' in source
+    assert '("_attn1_to_out_0", "_self_attn_output_proj")' in source
+    assert '("_attn2_to_out_0", "_cross_attn_output_proj")' in source
+    assert '("_ff_net_0_proj", "_mlp_layer1")' in source
+    assert '("_norm1_linear_1", "_adaln_modulation_self_attn_1")' in source
+    assert '(".attn1.to_out.0.", ".self_attn.output_proj.")' in source
+    assert '(".norm3.linear_2.", ".adaln_modulation_mlp.2.")' in source
 
 
 if __name__ == "__main__":
