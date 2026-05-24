@@ -370,7 +370,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     defaults: {
       // Official Diffusers-format Anima bundle includes transformer, VAE, text encoders, and tokenizers.
-      'config.process[0].model.name_or_path': ['circlestone-labs/Anima-Base-v1.0-Diffusers', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Anima-Base-v1.0-Diffusers', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [false, false],
       'config.process[0].model.low_vram': [true, false],
