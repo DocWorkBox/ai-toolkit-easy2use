@@ -665,7 +665,21 @@ class AnimaModel(BaseModel):
         return ["transformer_blocks"]
 
     def convert_lora_weights_before_save(self, state_dict):
-        return {key.replace("transformer.", "diffusion_model."): value for key, value in state_dict.items()}
+        new_sd = {}
+        for key, value in state_dict.items():
+            new_key = key
+            if new_key.startswith("lora_transformer_"):
+                new_key = "lora_unet_" + new_key[len("lora_transformer_"):]
+            new_key = new_key.replace("transformer.", "diffusion_model.")
+            new_sd[new_key] = value
+        return new_sd
 
     def convert_lora_weights_before_load(self, state_dict):
-        return {key.replace("diffusion_model.", "transformer."): value for key, value in state_dict.items()}
+        new_sd = {}
+        for key, value in state_dict.items():
+            new_key = key
+            if new_key.startswith("lora_unet_"):
+                new_key = "lora_transformer_" + new_key[len("lora_unet_"):]
+            new_key = new_key.replace("diffusion_model.", "transformer.")
+            new_sd[new_key] = value
+        return new_sd

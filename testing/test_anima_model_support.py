@@ -160,6 +160,15 @@ def test_anima_uses_remote_diffusers_transformer_config():
     assert "ANIMA_VAE_CONFIG" not in source
 
 
+def test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+
+    assert 'new_key.startswith("lora_transformer_")' in source
+    assert '"lora_unet_" + new_key[len("lora_transformer_"):]' in source
+    assert 'new_key.startswith("lora_unet_")' in source
+    assert '"lora_transformer_" + new_key[len("lora_unet_"):]' in source
+
+
 if __name__ == "__main__":
     test_anima_model_class_is_registered()
     test_anima_ui_defaults_match_reference_training_config()
@@ -171,3 +180,4 @@ if __name__ == "__main__":
     test_anima_quantization_skips_extras_that_receive_5d_latents()
     test_anima_sampling_matches_diffusers_anima_default_reference()
     test_anima_uses_remote_diffusers_transformer_config()
+    test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix()
