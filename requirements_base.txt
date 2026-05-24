@@ -1,7 +1,7 @@
 torchao==0.10.0
 safetensors
-git+https://github.com/huggingface/diffusers.git@dc8d9032171c83741fd37ed2b12bc9d8274464f3
-#pip install git+https://github.com/huggingface/diffusers.git@refs/pull/13432/head
+git+https://github.com/huggingface/diffusers.git@57c5cee7d2cd34bf7239b1f66f1fbe13e54713bc
+# Anima Diffusers support: https://github.com/huggingface/diffusers/pull/13732
 transformers==5.5.3
 lycoris-lora==1.8.3
 flatten_json

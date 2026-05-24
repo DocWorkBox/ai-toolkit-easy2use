@@ -1,5 +1,4 @@
 from pathlib import Path
-import json
 import pytest
 
 
@@ -8,7 +7,7 @@ def test_anima_model_class_is_registered():
     from toolkit.config_modules import ModelConfig
     from toolkit.util.get_model import get_model_class
 
-    config = ModelConfig(name_or_path="circlestone-labs/Anima", arch="anima")
+    config = ModelConfig(name_or_path="circlestone-labs/Anima-Base-v1.0-Diffusers", arch="anima")
 
     model_class = get_model_class(config)
 
@@ -21,12 +20,12 @@ def test_anima_ui_defaults_match_reference_training_config():
 
     assert "name: 'anima'" in options
     assert "label: 'Anima'" in options
-    assert "circlestone-labs/Anima" in options
+    assert "/model/ModelScope/circlestone-labs/Anima-Base-v1.0-Diffusers" in options
+    assert "circlestone-labs/Anima'" not in options
     assert "anima-base-v1.0.safetensors" not in options
     assert "qwen_image_vae.safetensors" not in options
     assert "qwen_3_06b_base.safetensors" not in options
-    assert "tokenizer: 'Qwen/Qwen3-0.6B-Base'" in options
-    assert "t5_tokenizer: 'google-t5/t5-11b'" in options
+    assert "'config.process[0].model.model_paths'" not in options
     assert "llm_adapter_lr: 0" in options
     assert "'config.process[0].network.linear': [32, defaultLinearRank]" in options
     assert "'config.process[0].train.lr': [2e-5" in options
@@ -40,42 +39,68 @@ def test_anima_ui_defaults_match_reference_training_config():
     assert "anime fantasy art" in options
 
 
-def test_anima_uses_local_diffusers_component_configs():
+def test_anima_uses_official_diffusers_components_directly():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
+    requirements = Path("requirements_base.txt").read_text(encoding="utf-8")
 
-    assert 'config=ANIMA_TRANSFORMER_CONFIG' in source
-    assert 'config=ANIMA_VAE_CONFIG' in source
-    assert 'local_files_only=True' in source
-    assert 'low_cpu_mem_usage=False' in source
+    assert 'ANIMA_REPO = "circlestone-labs/Anima-Base-v1.0-Diffusers"' in source
+    assert "57c5cee7d2cd34bf7239b1f66f1fbe13e54713bc" in requirements
+    assert "diffusers/pull/13732" in requirements
+    assert "DiffusionPipeline.from_pretrained" in source
+    assert "ModularPipeline.from_pretrained" in source
+    assert "Loading Anima official Diffusers pipeline" in source
+    assert "Loading Anima modular Diffusers pipeline fallback" in source
+    assert "modular_model_index.json" in source
+    assert "ANIMA_COMPONENT_LOAD_ORDER" in source
+    assert "Loading Anima component: {component_name}" in source
+    assert "Loaded Anima component: {component_name}" in source
+    assert "Retrying Anima component with direct spec load: {component_name}" in source
+    assert "component_spec.load(**load_kwargs)" in source
+    assert "modular_pipe.update_components(**{component_name: loaded_component})" in source
+    assert "local_files_only" in source
+    assert '"pretrained_model_name_or_path": model_path' in source
+    assert "AnimaModularPipeline" not in source
+    assert "diffusers_module.AnimaModularPipeline" not in source
+    assert "load_components" in source
+    assert "text_conditioner" in source
+    assert "diffusers_pipe.transformer" in source
+    assert "diffusers_pipe.text_encoder" in source
+    assert "diffusers_pipe.tokenizer" in source
+    assert "diffusers_pipe.t5_tokenizer" in source
+    assert "diffusers_pipe.vae" in source
+    assert "_resolve_component_path" not in source
+    assert "_load_transformer" not in source
+    assert "_load_qwen3_llm" not in source
+    assert "_load_llm_adapter" not in source
+    assert "_load_tokenizer" not in source
     assert "CosmosTransformer3DModel.from_single_file" not in source
-    assert "CosmosTransformer3DModel.from_config" in source
-    assert "convert_cosmos_transformer_checkpoint_to_diffusers" in source
-    assert "assign=True" in source
+    assert "CosmosTransformer3DModel.from_config" not in source
+    assert "convert_cosmos_transformer_checkpoint_to_diffusers" not in source
+    assert "assign=True" not in source
     assert '"nvidia/Cosmos-Predict2-2B-Text2Image"' not in source
     assert '"Wan-AI/Wan2.1-T2V-1.3B-Diffusers"' not in source
 
 
-def test_anima_tokenizer_loading_does_not_silently_hang_for_local_models():
+def test_anima_diffusers_pipeline_owns_tokenizer_loading():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    assert "Building Anima transformer module" in source
-    assert "Reading Anima transformer weights" in source
-    assert "Assigning Anima transformer weights" in source
-    assert "Loading Anima Qwen3 tokenizer" in source
-    assert "Loading Anima T5 tokenizer" in source
-    assert "allow_tokenizer_download" in source
-    assert "snapshot_download" in source
-    assert "local_files_only=True" in source
-    assert "not found in local cache/path, downloading" in source
-    assert "local_files_only=False" in source
+    assert "Loading Anima Diffusers pipeline" in source
+    assert "Loading Anima official Diffusers pipeline" in source
+    assert "Loading Anima modular Diffusers pipeline fallback" in source
+    assert "Loading Anima component: {component_name}" in source
+    assert "Loading Anima Qwen3 tokenizer" not in source
+    assert "Loading Anima T5 tokenizer" not in source
+    assert "allow_tokenizer_download" not in source
+    assert "snapshot_download" not in source
+    assert "not found in local cache/path, downloading" not in source
 
 
-def test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes():
+def test_anima_uses_diffusers_text_conditioner_component():
     source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    assert '"net.llm_adapter."' in source
-    assert '"net.diffusion_model.llm_adapter."' in source
-    assert "Adapter-like keys" in source
+    assert "llm_adapter = diffusers_pipe.text_conditioner" in source
+    assert "llm_adapter=llm_adapter" in source
+    assert "Adapter-like keys" not in source
 
 
 def test_anima_prompt_encoding_guards_empty_unconditional_prompt():
@@ -128,17 +153,11 @@ def test_anima_sampling_matches_diffusers_anima_default_reference():
     assert "noise_pred = (latents - noise_pred.float()) / current_sigma" not in source
 
 
-def test_anima_transformer_config_matches_preview3_weight_shape():
-    config = json.loads(
-        Path("extensions_built_in/diffusion_models/anima/configs/cosmos_transformer/config.json").read_text(
-            encoding="utf-8"
-        )
-    )
+def test_anima_uses_remote_diffusers_transformer_config():
+    source = Path("extensions_built_in/diffusion_models/anima/anima_model.py").read_text(encoding="utf-8")
 
-    # Anima Preview 3 transformer weights use a 2048 hidden size. The public Cosmos 2B config is 4096.
-    assert config["num_attention_heads"] * config["attention_head_dim"] == 2048
-    # The Anima checkpoint does not ship diffusers' optional learnable positional embedding parameters.
-    assert config["extra_pos_embed_type"] is None
+    assert "ANIMA_TRANSFORMER_CONFIG" not in source
+    assert "ANIMA_VAE_CONFIG" not in source
 
 
 def test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix():
@@ -160,11 +179,12 @@ def test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix():
 if __name__ == "__main__":
     test_anima_model_class_is_registered()
     test_anima_ui_defaults_match_reference_training_config()
-    test_anima_uses_local_diffusers_component_configs()
-    test_anima_tokenizer_loading_does_not_silently_hang_for_local_models()
-    test_anima_llm_adapter_loader_accepts_raw_checkpoint_prefixes()
+    test_anima_uses_official_diffusers_components_directly()
+    test_anima_diffusers_pipeline_owns_tokenizer_loading()
+    test_anima_uses_diffusers_text_conditioner_component()
     test_anima_prompt_encoding_guards_empty_unconditional_prompt()
     test_anima_advanced_prompt_embeds_are_batched_for_training_and_sampling()
     test_anima_quantization_skips_extras_that_receive_5d_latents()
     test_anima_sampling_matches_diffusers_anima_default_reference()
-    test_anima_transformer_config_matches_preview3_weight_shape()
+    test_anima_uses_remote_diffusers_transformer_config()
+    test_anima_lora_export_uses_comfyui_generic_diffusion_model_prefix()
