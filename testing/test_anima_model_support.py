@@ -44,8 +44,10 @@ def test_anima_uses_official_diffusers_components_directly():
     requirements = Path("requirements_base.txt").read_text(encoding="utf-8")
 
     assert 'ANIMA_REPO = "circlestone-labs/Anima-Base-v1.0-Diffusers"' in source
-    assert "57c5cee7d2cd34bf7239b1f66f1fbe13e54713bc" in requirements
+    assert "DocWorkBox/diffusers.git@5fef6eaa15dd260d904958850d99d8f624dd5301" in requirements
     assert "diffusers/pull/13732" in requirements
+    assert "Qwen Image txt_seq_lens" in requirements
+    assert "Ernie Image dtype fixes" in requirements
     assert "DiffusionPipeline.from_pretrained" in source
     assert "ModularPipeline.from_pretrained" in source
     assert "Loading Anima official Diffusers pipeline" in source
