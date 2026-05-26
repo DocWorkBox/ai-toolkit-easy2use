@@ -1,6 +1,6 @@
 torchao==0.10.0
 safetensors
-git+https://github.com/DocWorkBox/diffusers.git@5fef6eaa15dd260d904958850d99d8f624dd5301
+git+https://github.com/DocWorkBox/diffusers.git@5fef6eaa197f5bc8ba20d4fa8b797b30dcd92960
 # Temporary Anima Diffusers + ai-toolkit compatibility fork.
 # Base: https://github.com/huggingface/diffusers/pull/13732
 # Includes Qwen Image txt_seq_lens and Ernie Image dtype fixes from dc8d9032171c83741fd37ed2b12bc9d8274464f3.
