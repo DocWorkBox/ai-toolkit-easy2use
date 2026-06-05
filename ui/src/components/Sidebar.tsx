@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Settings, BrainCircuit, Images, Plus, X } from 'lucide-react';
-import { FaXTwitter, FaDiscord, FaYoutube } from 'react-icons/fa6';
-import { SiBilibili } from 'react-icons/si';
+import { FaDiscord, FaYoutube } from 'react-icons/fa6';
 import { createGlobalState } from 'react-global-hooks';
 import ThemeToggle from './ThemeToggle';
 import ThemeLogo from './ThemeLogo';
@@ -104,18 +103,12 @@ const Sidebar = () => {
 
       {/* Social links grid */}
       <div className="px-1 py-1 border-t border-gray-800">
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <a href="https://discord.gg/VXmU2f5WEU" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <FaDiscord className={socialIconClass} />
           </a>
           <a href="https://www.youtube.com/@Doc_workBox" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <FaYoutube className={socialIconClass} />
-          </a>
-          <a href="https://space.bilibili.com/12710942" target="_blank" rel="noreferrer" className={socialsBoxClass}>
-            <SiBilibili className={socialIconClass} />
-          </a>
-          <a href="https://x.com/ostrisai" target="_blank" rel="noreferrer" className={socialsBoxClass}>
-            <FaXTwitter className={socialIconClass} />
           </a>
           <ThemeToggle />
         </div>
