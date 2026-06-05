@@ -303,6 +303,7 @@ export const SelectInput = (props: SelectInputProps) => {
         // 使用 Portal 将下拉菜单渲染到 body，避免被父容器 overflow 截断
         menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
         menuPosition="fixed"
+        menuPlacement="auto"
         styles={sharedSelectStyles}
         placeholder={props.placeholder}
         onChange={selected => {

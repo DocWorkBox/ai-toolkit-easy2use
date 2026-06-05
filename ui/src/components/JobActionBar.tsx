@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { Eye, Trash2, Pen, Play, Pause, Cog, X } from 'lucide-react';
+import { Eye, Trash2, Pen, Play, Pause, Cog, X, Copy, Save, OctagonX } from 'lucide-react';
 import { Button } from '@headlessui/react';
 import { openConfirm } from '@/components/ConfirmModal';
 import { Job } from '@prisma/client';
-import { startJob, stopJob, deleteJob, getAvaliableJobActions, markJobAsStopped } from '@/utils/jobs';
+import { startJob, stopJob, deleteJob, getAvaliableJobActions, markJobAsStopped, saveJobNow } from '@/utils/jobs';
 import { startQueue } from '@/utils/queue';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { redirect } from 'next/navigation';
@@ -109,9 +109,9 @@ export default function JobActionBar({
       )}
       <Button
         onClick={() => {
-          let message = `确定要删除任务 "${job.name}" 吗？这将从磁盘永久删除它。`;
+          let message = `确定要删除任务 "${job.name}" 吗？这也会从磁盘永久删除它。`;
           if (job.status === 'running') {
-            message += ' 警告：任务正在运行中。请尽可能先停止它。';
+            message += ' 警告：任务正在运行中，请尽可能先停止它。';
           }
           openConfirm({
             title: '删除任务',
@@ -140,22 +140,37 @@ export default function JobActionBar({
         <MenuButton className={'ml-1 sm:ml-2'}>
           <Cog className={iconSizeClass} />
         </MenuButton>
-        <MenuItems anchor="bottom" className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-4">
+        <MenuItems anchor="bottom" className="bg-gray-900 border border-gray-700 rounded shadow-lg w-52 px-2 py-2 mt-4">
           {job.job_type === 'train' && (
             <MenuItem>
               <Link
                 href={`/jobs/new?cloneId=${job.id}`}
-                className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded block text-gray-200"
+                className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded flex items-center gap-2"
               >
+                <Copy className="w-4 h-4" />
                 克隆任务
               </Link>
             </MenuItem>
           )}
+          {canStop && (
+            <MenuItem>
+              <div
+                className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded flex items-center gap-2"
+                onClick={async () => {
+                  await saveJobNow(job.id);
+                  if (onRefresh) onRefresh();
+                }}
+              >
+                <Save className="w-4 h-4" />
+                下一步保存
+              </div>
+            </MenuItem>
+          )}
           <MenuItem>
             <div
-              className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded text-gray-200"
+              className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded flex items-center gap-2"
               onClick={() => {
-                let message = `确定要强制标记此任务为已停止吗？如果状态卡住，这将把状态设为'stopped'。请仅在确认任务确实已停止时执行此操作。这**不会**停止正在运行的任务。`;
+                let message = `确定要强制标记此任务为已停止吗？如果状态卡住，这会把任务状态设为 'stopped'。请仅在确认任务确实已停止时执行，此操作不会停止正在运行的任务。`;
                 openConfirm({
                   title: '强制标记为已停止',
                   message: message,
@@ -168,6 +183,7 @@ export default function JobActionBar({
                 });
               }}
             >
+              <OctagonX className="w-4 h-4" />
               强制标记为已停止
             </div>
           </MenuItem>

@@ -91,7 +91,7 @@ class BlankNetwork:
         pass
 
 
-UNET_IN_CHANNELS = 4  # Stable Diffusion の in_channels は 4 で固定。XLも同じ。
+UNET_IN_CHANNELS = 4  # Stable Diffusion 銇?in_channels 銇?4 銇у浐瀹氥€俋L銈傚悓銇樸€?
 # VAE_SCALE_FACTOR = 8  # 2 ** (len(vae.config.block_out_channels) - 1) = 8
 
 
@@ -167,14 +167,14 @@ class BaseModel:
         self.is_transformer = False
 
         self.sample_prompts_cache = None
-        
+
         self.accuracy_recovery_adapter: Union[None, 'LoRASpecialNetwork'] = None
         self.is_multistage = False
         # a list of multistage boundaries starting with train step 1000 to first idx
         self.multistage_boundaries: List[float] = [0.0]
         # a list of trainable multistage boundaries
         self.trainable_multistage_boundaries: List[int] = [0]
-        
+
         # set true for models that encode control image into text embeddings
         self.encode_control_in_text_embeddings = False
         # control images will come in as a list for encoding some things if true
@@ -183,14 +183,14 @@ class BaseModel:
         self.use_raw_control_images = False
         # defines if the model supports model paths. Only some will
         self.supports_model_paths = False
-        
+
         # use new lokr format (default false for old models for backwards compatibility)
         self.use_old_lokr_format = True
-        
+
         # when padding to make batch size work, which side padding to use, right or left
         # some llms need left side padding, others need right side
         self.te_padding_side = "right"
-        
+
         # can be used on models to invalidate cache if things change.
         self.latent_space_version = None
 
@@ -198,16 +198,16 @@ class BaseModel:
     @property
     def unet(self):
         return self.model
-    
+
     # set unet to model
     @unet.setter
     def unet(self, value):
         self.model = value
-        
+
     @property
     def transformer(self):
         return self.model
-    
+
     @transformer.setter
     def transformer(self, value):
         self.model = value
@@ -256,6 +256,10 @@ class BaseModel:
     def is_lumina2(self):
         return self.arch == 'lumina2'
 
+    @property
+    def text_embedding_space_version(self):
+        return self.arch
+
     def get_bucket_divisibility(self):
         if self.vae is None:
             return 8
@@ -264,7 +268,7 @@ class BaseModel:
         except:
             # if we have a custom vae, it might not have this
             divisibility = 8
-        
+
         # flux packs this again,
         if self.is_flux:
             divisibility = divisibility * 2
@@ -306,15 +310,15 @@ class BaseModel:
     def get_prompt_embeds(self, prompt: str, control_images=None) -> PromptEmbeds:
         raise NotImplementedError(
             "get_prompt_embeds must be implemented in child classes")
-        
+
     def get_model_has_grad(self):
         raise NotImplementedError(
             "get_model_has_grad must be implemented in child classes")
-    
+
     def get_te_has_grad(self):
         raise NotImplementedError(
             "get_te_has_grad must be implemented in child classes")
-        
+
     def save_model(self, output_path, meta, save_dtype):
         # todo handle dtype without overloading anything (vram, cpu, etc)
         unwrap_model(self.pipeline).save_pretrained(
@@ -520,7 +524,7 @@ class BaseModel:
                         # load the control image if out model uses it in text encoding
                         if has_control_images and self.encode_control_in_text_embeddings:
                             ctrl_img_list = []
-                    
+
                             if gen_config.ctrl_img is not None:
                                 ctrl_img = Image.open(gen_config.ctrl_img).convert("RGB")
                                 # convert to 0 to 1 tensor
@@ -530,7 +534,7 @@ class BaseModel:
                                     .to(self.device_torch, dtype=self.torch_dtype)
                                 )
                                 ctrl_img_list.append(ctrl_img)
-                            
+
                             if gen_config.ctrl_img_1 is not None:
                                 ctrl_img_1 = Image.open(gen_config.ctrl_img_1).convert("RGB")
                                 # convert to 0 to 1 tensor
@@ -558,7 +562,7 @@ class BaseModel:
                                     .to(self.device_torch, dtype=self.torch_dtype)
                                 )
                                 ctrl_img_list.append(ctrl_img_3)
-                            
+
                             if self.has_multiple_control_images:
                                 ctrl_img = ctrl_img_list
                             else:
@@ -567,8 +571,8 @@ class BaseModel:
                         if isinstance(self.adapter, CustomAdapter):
                             self.adapter.is_unconditional_run = False
                         conditional_embeds = self.encode_prompt(
-                            gen_config.prompt, 
-                            gen_config.prompt_2, 
+                            gen_config.prompt,
+                            gen_config.prompt_2,
                             force_all=True,
                             control_images=ctrl_img
                         )
@@ -576,8 +580,8 @@ class BaseModel:
                         if isinstance(self.adapter, CustomAdapter):
                             self.adapter.is_unconditional_run = True
                         unconditional_embeds = self.encode_prompt(
-                            gen_config.negative_prompt, 
-                            gen_config.negative_prompt_2, 
+                            gen_config.negative_prompt,
+                            gen_config.negative_prompt_2,
                             force_all=True,
                             control_images=ctrl_img
                         )
@@ -738,7 +742,7 @@ class BaseModel:
         )
         noise = apply_noise_offset(noise, noise_offset)
         return noise
-    
+
     def get_latent_noise_from_latents(
         self,
         latents: torch.Tensor,
@@ -910,11 +914,11 @@ class BaseModel:
                 pass
         if self.unet.dtype != self.torch_dtype:
             self.unet = self.unet.to(dtype=self.torch_dtype)
-            
+
         # check if get_noise prediction has guidance_embedding_scale
         # if it does not, we dont pass it
         signatures =  inspect.signature(self.get_noise_prediction).parameters
-        
+
         if 'guidance_embedding_scale' in signatures:
             kwargs['guidance_embedding_scale'] = guidance_embedding_scale
         if 'bypass_guidance_embedding' in signatures:
@@ -1125,7 +1129,7 @@ class BaseModel:
         latents = latents.to(device, dtype=dtype)
 
         return latents
-    
+
     def encode_audio(self, audio_data_list):
         # audio_date_list is a list of {"waveform": waveform[C, L], "sample_rate": int(sample_rate)}
         raise NotImplementedError("Audio encoding not implemented for this model.")
@@ -1327,7 +1331,7 @@ class BaseModel:
             for param in named_params.values():
                 if param.requires_grad:
                     params.append(param)
-           
+
             param_data = {"params": params, "lr": unet_lr}
             trainable_parameters.append(param_data)
             print_acc(f"Found {len(params)} trainable parameter in unet")
@@ -1571,23 +1575,23 @@ class BaseModel:
                 encoder.to(*args, **kwargs)
         else:
             self.text_encoder.to(*args, **kwargs)
-    
+
     def convert_lora_weights_before_save(self, state_dict):
         # can be overridden in child classes to convert weights before saving
         return state_dict
-    
+
     def convert_lora_weights_before_load(self, state_dict):
         # can be overridden in child classes to convert weights before loading
         return state_dict
-    
+
     def condition_noisy_latents(self, latents: torch.Tensor, batch:'DataLoaderBatchDTO'):
         # can be overridden in child classes to condition latents before noise prediction
         return latents
-    
+
     def get_transformer_block_names(self) -> Optional[List[str]]:
         # override in child classes to get transformer block names for lora targeting
         return None
-    
+
     def get_base_model_version(self) -> str:
         # override in child classes to get the base model version
         return self.arch if self.arch is not None else 'unknown'
