@@ -35,6 +35,7 @@ def test_ideogram_api_captioner_ui_option_combines_api_and_ideogram_defaults():
     assert "'config.process[0].caption.api_key': ['', undefined]" in source
     assert "'config.process[0].caption.api_protocol': ['openai', undefined]" in source
     assert "'config.process[0].caption.max_new_tokens': [4096, undefined]" in source
+    assert "'config.process[0].caption.api_concurrency': [8, undefined]" in source
     assert "'caption.api_base_url'" in source
     assert "'caption.api_key'" in source
     assert "'caption.api_protocol'" in source

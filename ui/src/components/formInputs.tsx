@@ -322,6 +322,7 @@ export const SelectInput = (props: SelectInputProps) => {
 export interface CreatableSelectInputProps extends InputProps {
   value: string;
   disabled?: boolean;
+  forceCustomInput?: boolean;
   onChange: (value: string) => void;
   options: GroupedSelectOption[] | SelectOption[];
 }
@@ -329,7 +330,7 @@ export interface CreatableSelectInputProps extends InputProps {
 const CUSTOM_SELECT_VALUE = '__custom__';
 
 export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
-  const { label, value, onChange, options, docKey = null } = props;
+  const { label, value, onChange, options, docKey = null, forceCustomInput = false } = props;
   let { doc } = props;
   if (!doc && docKey) {
     doc = getDoc(docKey);
@@ -345,11 +346,11 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
     }
   }
 
-  const [isCustom, setIsCustom] = React.useState(!isInOptions && !!value);
+  const [isCustom, setIsCustom] = React.useState(forceCustomInput || (!isInOptions && !!value));
 
   React.useEffect(() => {
-    setIsCustom(!isInOptions && !!value);
-  }, [isInOptions, value]);
+    setIsCustom(forceCustomInput || (!isInOptions && !!value));
+  }, [forceCustomInput, isInOptions, value]);
 
   // Build select options with "Custom" at the top
   const customOption: SelectOption = { value: CUSTOM_SELECT_VALUE, label: 'Custom' };
@@ -386,51 +387,63 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
           )}
         </label>
       )}
-      <div className="flex gap-2">
-        <div className={isCustom ? 'w-1/3' : 'w-full'}>
-          <Select
-            value={selectedOption}
-            options={selectOptions}
-            isDisabled={props.disabled}
-            className="aitk-react-select-container"
-            classNamePrefix="aitk-react-select"
-            menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
-            menuPosition="fixed"
-            styles={sharedSelectStyles}
-            formatOptionLabel={(option: unknown) => {
-              const opt = option as SelectOption;
-              return opt.value === CUSTOM_SELECT_VALUE ? (
-                <span className="opacity-50 italic">~ Custom ~</span>
-              ) : (
-                opt.label
-              );
-            }}
-            onChange={selected => {
-              if (selected) {
-                const val = (selected as { value: string }).value;
-                if (val === CUSTOM_SELECT_VALUE) {
-                  setIsCustom(true);
-                  onChange('');
-                } else {
-                  setIsCustom(false);
-                  onChange(val);
+      {forceCustomInput ? (
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className={inputClasses}
+          placeholder={props.placeholder ?? 'Enter custom value'}
+          disabled={props.disabled}
+          autoFocus
+        />
+      ) : (
+        <div className="flex gap-2">
+          <div className={isCustom ? 'w-1/3' : 'w-full'}>
+            <Select
+              value={selectedOption}
+              options={selectOptions}
+              isDisabled={props.disabled}
+              className="aitk-react-select-container"
+              classNamePrefix="aitk-react-select"
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+              menuPosition="fixed"
+              styles={sharedSelectStyles}
+              formatOptionLabel={(option: unknown) => {
+                const opt = option as SelectOption;
+                return opt.value === CUSTOM_SELECT_VALUE ? (
+                  <span className="opacity-50 italic">~ Custom ~</span>
+                ) : (
+                  opt.label
+                );
+              }}
+              onChange={selected => {
+                if (selected) {
+                  const val = (selected as { value: string }).value;
+                  if (val === CUSTOM_SELECT_VALUE) {
+                    setIsCustom(true);
+                    onChange('');
+                  } else {
+                    setIsCustom(false);
+                    onChange(val);
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
+          </div>
+          {isCustom && (
+            <input
+              type="text"
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              className={`${inputClasses} w-2/3`}
+              placeholder={props.placeholder ?? 'Enter custom value'}
+              disabled={props.disabled}
+              autoFocus
+            />
+          )}
         </div>
-        {isCustom && (
-          <input
-            type="text"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            className={`${inputClasses} w-2/3`}
-            placeholder={props.placeholder ?? 'Enter custom value'}
-            disabled={props.disabled}
-            autoFocus
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 };

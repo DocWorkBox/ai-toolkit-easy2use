@@ -36,6 +36,61 @@ type Props = {
   showGPUSelect: boolean;
 };
 
+const DEFAULT_API_CONCURRENCY = 8;
+const API_CAPTIONER_STORAGE_KEY = 'AITK_CAPTION_API_SETTINGS';
+
+type StoredCaptionApiSettings = {
+  model_name_or_path?: string;
+  api_base_url?: string;
+  api_key?: string;
+  api_protocol?: 'openai' | 'anthropic';
+  api_concurrency?: number;
+};
+
+const captionApiStoragePaths: Record<keyof StoredCaptionApiSettings, string> = {
+  model_name_or_path: 'config.process[0].caption.model_name_or_path',
+  api_base_url: 'config.process[0].caption.api_base_url',
+  api_key: 'config.process[0].caption.api_key',
+  api_protocol: 'config.process[0].caption.api_protocol',
+  api_concurrency: 'config.process[0].caption.api_concurrency',
+};
+
+const readStoredCaptionApiSettings = (): StoredCaptionApiSettings => {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(API_CAPTIONER_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredCaptionApiSettings = (settings: StoredCaptionApiSettings) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(API_CAPTIONER_STORAGE_KEY, JSON.stringify(settings));
+};
+
+const restoreStoredCaptionApiSettings = (setJobConfig: (value: any, key?: string) => void) => {
+  const stored = readStoredCaptionApiSettings();
+
+  (Object.keys(captionApiStoragePaths) as (keyof StoredCaptionApiSettings)[]).forEach(key => {
+    if (Object.prototype.hasOwnProperty.call(stored, key)) {
+      setJobConfig(stored[key], captionApiStoragePaths[key]);
+    }
+  });
+};
+
 const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, setGpuIDs, gpuList, showGPUSelect }) => {
   const selectedCaptionOption = captionerTypes.find(option => option.name === jobConfig.config.process[0].type);
   const additionalSections = selectedCaptionOption?.additionalSections || [];
@@ -44,6 +99,14 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
   const isRemoteApiCaptioner = additionalSections.includes('caption.api_base_url');
   const promptTemplateValue = jobConfig.config.process[0].caption.prompt_template || defaultCaptionPromptTemplate;
   const targetLanguageValue = jobConfig.config.process[0].caption.target_lang || defaultCaptionTargetLanguage;
+  const handleCaptionerChange = (value: string) => {
+    handleCaptionerTypeChange(jobConfig.config.process[0].type, value, jobConfig, setJobConfig);
+
+    const nextOption = captionerTypes.find(option => option.name === value);
+    if (nextOption?.additionalSections?.includes('caption.api_base_url')) {
+      restoreStoredCaptionApiSettings(setJobConfig);
+    }
+  };
 
   useEffect(() => {
     if (!additionalSections.includes('caption.caption_prompt')) {
@@ -92,9 +155,31 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
     }
 
     if (!jobConfig.config.process[0].caption.api_concurrency) {
-      setJobConfig(20, 'config.process[0].caption.api_concurrency');
+      setJobConfig(DEFAULT_API_CONCURRENCY, 'config.process[0].caption.api_concurrency');
     }
   }, [additionalSections, jobConfig.config.process[0].caption.api_concurrency, setJobConfig]);
+
+  useEffect(() => {
+    if (!isRemoteApiCaptioner) {
+      return;
+    }
+
+    const captionConfig = jobConfig.config.process[0].caption;
+    writeStoredCaptionApiSettings({
+      model_name_or_path: captionConfig.model_name_or_path || '',
+      api_base_url: captionConfig.api_base_url || '',
+      api_key: captionConfig.api_key || '',
+      api_protocol: captionConfig.api_protocol || 'openai',
+      api_concurrency: captionConfig.api_concurrency || DEFAULT_API_CONCURRENCY,
+    });
+  }, [
+    isRemoteApiCaptioner,
+    jobConfig.config.process[0].caption.api_base_url,
+    jobConfig.config.process[0].caption.api_concurrency,
+    jobConfig.config.process[0].caption.api_key,
+    jobConfig.config.process[0].caption.api_protocol,
+    jobConfig.config.process[0].caption.model_name_or_path,
+  ]);
 
   const applyPromptPreset = (nextTemplate: string, nextTargetLanguage: string) => {
     setJobConfig(nextTemplate, 'config.process[0].caption.prompt_template');
@@ -149,9 +234,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           <SelectInput
             label="打标器类型"
             value={jobConfig.config.process[0].type}
-            onChange={value => {
-              handleCaptionerTypeChange(jobConfig.config.process[0].type, value, jobConfig, setJobConfig);
-            }}
+            onChange={handleCaptionerChange}
             options={groupedCaptionerTypes}
           />
         </div>
@@ -169,8 +252,9 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       <div className="mt-4">
         <CreatableSelectInput
           label={isRemoteApiCaptioner ? '模型名称' : '模型名称或路径'}
-          value={jobConfig.config.process[0].caption.model_name_or_path}
+          value={jobConfig.config.process[0].caption.model_name_or_path || ''}
           docKey="config.process[0].caption.model_name_or_path"
+          forceCustomInput={isRemoteApiCaptioner}
           onChange={(value: string | null) => {
             if (value?.trim() === '') {
               value = null;
@@ -344,14 +428,15 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
             <div className="mt-4">
               <NumberInput
                 label="并发数"
-                value={jobConfig.config.process[0].caption.api_concurrency || 20}
+                value={jobConfig.config.process[0].caption.api_concurrency || DEFAULT_API_CONCURRENCY}
                 onChange={value => {
-                  const safeValue = value === null ? 20 : Math.max(1, Math.min(100, Math.floor(value)));
+                  const safeValue =
+                    value === null ? DEFAULT_API_CONCURRENCY : Math.max(1, Math.min(100, Math.floor(value)));
                   setJobConfig(safeValue, 'config.process[0].caption.api_concurrency');
                 }}
                 min={1}
                 max={100}
-                placeholder="默认 20"
+                placeholder="默认 8"
               />
             </div>
           )}

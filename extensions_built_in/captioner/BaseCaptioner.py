@@ -46,7 +46,7 @@ class CaptionConfig:
         self.api_base_url = kwargs.get("api_base_url", None)
         self.api_key = kwargs.get("api_key", None)
         self.api_protocol = kwargs.get("api_protocol", "openai")
-        self.api_concurrency = max(1, int(kwargs.get("api_concurrency", 20) or 20))
+        self.api_concurrency = max(1, int(kwargs.get("api_concurrency", 8) or 8))
 
 
 class BaseCaptioner(BaseExtensionProcess):
