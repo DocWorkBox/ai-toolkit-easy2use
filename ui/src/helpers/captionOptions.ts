@@ -141,7 +141,7 @@ export const captionerTypes: CaptionOption[] = [
         // The deconstruction JSON is long; the Python captioner also enforces this floor.
         minNewTokens: 3072,
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/datasets/ComfyUI/models/prompt_generator/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -150,7 +150,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: '/datasets/ComfyUI/models/prompt_generator/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [
