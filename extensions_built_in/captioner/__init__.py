@@ -48,9 +48,22 @@ class Ideogram4CaptionerExtension(Extension):
         return Ideogram4Captioner
 
 
+class Ideogram4APICaptionerExtension(Extension):
+    uid = "Ideogram4APICaptioner"
+    name = "Ideogram4 API Captioner"
+
+    @classmethod
+    def get_process(cls):
+        # import your process class here so it is only loaded when needed and return it
+        from .Ideogram4APICaptioner import Ideogram4APICaptioner
+
+        return Ideogram4APICaptioner
+
+
 AI_TOOLKIT_EXTENSIONS = [
     AceStepCaptionerExtension,
     Qwen3VLCaptionerExtension,
     RemoteAPICaptionerExtension,
     Ideogram4CaptionerExtension,
+    Ideogram4APICaptionerExtension,
 ]

@@ -159,6 +159,37 @@ export const captionerTypes: CaptionOption[] = [
             'caption.max_new_tokens',
         ],
     },
+    {
+        name: 'Ideogram4APICaptioner',
+        label: 'Ideogram 4 Captioner API',
+        group: 'image',
+        hasMultiLinePrompts: true,
+        minNewTokens: 3072,
+        defaults: {
+            'config.process[0].caption.model_name_or_path': ['', defaultNameOrPath],
+            'config.process[0].caption.api_base_url': ['', undefined],
+            'config.process[0].caption.api_key': ['', undefined],
+            'config.process[0].caption.api_protocol': ['openai', undefined],
+            'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
+            'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
+            'config.process[0].caption.max_res': [512, undefined],
+            'config.process[0].caption.max_new_tokens': [4096, undefined],
+            'config.process[0].caption.api_concurrency': [20, undefined],
+            'config.process[0].caption.quantize': [false, true],
+            'config.process[0].caption.low_vram': [false, true],
+        },
+        additionalSections: [
+            'caption.api_base_url',
+            'caption.api_key',
+            'caption.api_protocol',
+            'caption.api_concurrency',
+            'caption.caption_prompt',
+            'caption.max_res',
+            'caption.max_new_tokens',
+        ],
+        supportsQuantization: false,
+        supportsLowVram: false,
+    },
 
 ].sort((a, b) => {
     // Sort by label, case-insensitive

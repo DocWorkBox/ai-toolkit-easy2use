@@ -45,14 +45,18 @@ class RemoteAPICaptioner(BaseCaptioner):
             "Authorization": f"Bearer {self.caption_config.api_key}",
         }
 
+    def build_prompt_for_file(self, file_path: str) -> str:
+        return self.caption_config.caption_prompt
+
     def get_caption_for_file(self, file_path: str) -> str:
         img = self.load_pil_image(file_path, max_res=self.caption_config.max_res)
         image_base64 = encode_image_to_jpeg_base64(img)
+        prompt = self.build_prompt_for_file(file_path)
         protocol = self.caption_config.api_protocol
         if protocol == "anthropic":
             payload = build_anthropic_payload(
                 model_name=self.caption_config.model_name_or_path,
-                prompt=self.caption_config.caption_prompt,
+                prompt=prompt,
                 image_base64=image_base64,
                 media_type="image/jpeg",
                 max_new_tokens=self.caption_config.max_new_tokens,
@@ -60,7 +64,7 @@ class RemoteAPICaptioner(BaseCaptioner):
         else:
             payload = build_openai_payload(
                 model_name=self.caption_config.model_name_or_path,
-                prompt=self.caption_config.caption_prompt,
+                prompt=prompt,
                 image_data_url=f"data:image/jpeg;base64,{image_base64}",
                 max_new_tokens=self.caption_config.max_new_tokens,
             )

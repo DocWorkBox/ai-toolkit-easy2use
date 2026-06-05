@@ -41,7 +41,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
   const additionalSections = selectedCaptionOption?.additionalSections || [];
   const [apiTestStatus, setApiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [apiTestMessage, setApiTestMessage] = useState('');
-  const isRemoteApiCaptioner = jobConfig.config.process[0].type === 'RemoteAPICaptioner';
+  const isRemoteApiCaptioner = additionalSections.includes('caption.api_base_url');
   const promptTemplateValue = jobConfig.config.process[0].caption.prompt_template || defaultCaptionPromptTemplate;
   const targetLanguageValue = jobConfig.config.process[0].caption.target_lang || defaultCaptionTargetLanguage;
 
