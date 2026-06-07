@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
-import { Cog, SquareDashed, Pencil } from 'lucide-react';
+import { Cog, SquareDashed } from 'lucide-react';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import classNames from 'classnames';
 import { openConfirm } from './ConfirmModal';
@@ -10,7 +10,9 @@ import { apiClient } from '@/utils/api';
 import { isVideo, isAudio } from '@/utils/basic';
 import AudioPlayer from './AudioPlayer';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import BoundingBoxOverlay, { BoundingBoxEditor, parseBoundingBoxes, extractBoxes } from './BoundingBoxOverlay';
+import { BoundingBoxEditor, parseBoundingBoxes, extractBoxes } from './BoundingBoxOverlay';
+import IdeogramCaptionSidebar, { isIdeogramCaption } from './IdeogramCaptionSidebar';
+import datasetTemplates from '@/helpers/datasetTemplates';
 
 function safeParse(text: string): any {
   try {
@@ -26,16 +28,23 @@ interface Props {
   onChange: (nextPath: string | null) => void; // parent setter
   refreshImages?: () => void;
   onCaptionSaved?: (imgPath: string, caption: string) => void;
+  captionExt?: string;
 }
 
-export default function DatasetImageViewer({ imgPath, imageList, onChange, refreshImages, onCaptionSaved }: Props) {
+export default function DatasetImageViewer({
+  imgPath,
+  imageList,
+  onChange,
+  refreshImages,
+  onCaptionSaved,
+  captionExt = 'txt',
+}: Props) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(Boolean(imgPath));
   const [caption, setCaption] = useState<string>('');
   const [savedCaption, setSavedCaption] = useState<string>('');
   const [isCaptionLoaded, setIsCaptionLoaded] = useState<boolean>(false);
   const [showBoxes, setShowBoxes] = useState<boolean>(false);
-  const [isEditingBoxes, setIsEditingBoxes] = useState<boolean>(false);
   const [selectedBoxIndex, setSelectedBoxIndex] = useState<number | null>(null);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const captionRef = useRef<string>('');
@@ -43,14 +52,20 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
   const currentImgPathRef = useRef<string | null>(null);
   const captionAbortRef = useRef<AbortController | null>(null);
 
+  const isIdeogram = useMemo(() => isIdeogramCaption(caption), [caption]);
+
   useEffect(() => setMounted(true), []);
 
-  // Leave box-edit mode whenever the image changes, to avoid accidental edits.
+  // Clear box selection / draw mode whenever the image changes.
   useEffect(() => {
-    setIsEditingBoxes(false);
     setSelectedBoxIndex(null);
     setIsDrawing(false);
   }, [imgPath]);
+
+  // Default to showing the editable boxes when an Ideogram caption is present.
+  useEffect(() => {
+    setShowBoxes(isIdeogram);
+  }, [isIdeogram, imgPath]);
 
   // open/close based on external value
   useEffect(() => {
@@ -92,7 +107,7 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
       const trimmed = value.trim();
       if (trimmed === prevSaved.trim()) return;
       apiClient
-        .post('/api/img/caption', { imgPath: path, caption: trimmed })
+        .post('/api/img/caption', { imgPath: path, caption: trimmed, ext: captionExt })
         .then(() => {
           if (currentImgPathRef.current === path) {
             setSavedCaption(trimmed);
@@ -103,7 +118,7 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
           console.error('Error saving caption:', error);
         });
     },
-    [onCaptionSaved],
+    [onCaptionSaved, captionExt],
   );
 
   // Stable handle to the latest saveCaptionForPath so the fetch effect doesn't
@@ -145,7 +160,11 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
       // transformResponse identity: keep the caption as a raw string. Axios's
       // default parses any JSON-looking body into an object (our bbox captions
       // are JSON), which would render as "[object Object]".
-      .post('/api/caption/get', { imgPath }, { signal: controller.signal, transformResponse: [d => d] })
+      .post(
+        '/api/caption/get',
+        { imgPath, ext: captionExt },
+        { signal: controller.signal, transformResponse: [d => d] },
+      )
       .then(res => res.data)
       .then(data => {
         if (controller.signal.aborted) return;
@@ -163,7 +182,7 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
     return () => {
       controller.abort();
     };
-  }, [imgPath]);
+  }, [imgPath, captionExt]);
 
   // Save any pending caption when the viewer fully unmounts
   useEffect(() => {
@@ -271,31 +290,6 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
     [editCaption],
   );
 
-  const handleFieldChange = useCallback(
-    (field: 'desc' | 'text', value: string) => {
-      editCaption(els => {
-        if (selectedBoxIndex != null && els[selectedBoxIndex]) els[selectedBoxIndex][field] = value;
-      });
-    },
-    [editCaption, selectedBoxIndex],
-  );
-
-  const handleTypeChange = useCallback(
-    (type: 'obj' | 'text') => {
-      editCaption(els => {
-        const el = selectedBoxIndex != null ? els[selectedBoxIndex] : null;
-        if (!el) return;
-        el.type = type;
-        if (type === 'text') {
-          if (el.text == null) el.text = '';
-        } else {
-          delete el.text;
-        }
-      });
-    },
-    [editCaption, selectedBoxIndex],
-  );
-
   // keyboard events while open — skip nav while caption textarea is focused
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -321,8 +315,8 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
           break;
         case 'Delete':
         case 'Backspace':
-          // While editing boxes, Delete removes the selected box (never the image).
-          if (isEditingBoxes) {
+          // With boxes shown, Delete removes the selected box (never the image).
+          if (showBoxes) {
             if (selectedBoxIndex != null) handleDeleteBox(selectedBoxIndex);
           } else {
             handleDelete();
@@ -334,7 +328,7 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onCancel, handlePrev, handleNext, handleDelete, isEditingBoxes, selectedBoxIndex, handleDeleteBox]);
+  }, [isOpen, onCancel, handlePrev, handleNext, handleDelete, showBoxes, selectedBoxIndex, handleDeleteBox]);
 
   // Touch swipe navigation
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -392,12 +386,8 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
   const boundingBoxes = useMemo(() => parseBoundingBoxes(caption), [caption]);
   const canShowBoxes = Boolean(boundingBoxes && imgPath && !isAudio(imgPath) && !isVideo(imgPath));
 
-  // Boxes and the selected element are derived from the (locally edited) caption.
+  // Boxes are derived from the (locally edited) caption for the image overlay.
   const editBoxes = useMemo(() => extractBoxes(safeParse(caption)), [caption]);
-  const selectedElement = useMemo(() => {
-    if (selectedBoxIndex == null) return null;
-    return safeParse(caption)?.compositional_deconstruction?.elements?.[selectedBoxIndex] ?? null;
-  }, [caption, selectedBoxIndex]);
 
   if (!mounted) return null;
 
@@ -413,18 +403,19 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
             transition
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
-            className="relative transform rounded-none sm:rounded-lg bg-gray-800 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in w-full sm:w-auto sm:max-w-[95%] sm:max-h-[95vh] data-closed:sm:translate-y-0 data-closed:sm:scale-95 flex flex-col overflow-hidden touch-pan-y"
+            className="relative transform rounded-none sm:rounded-lg bg-gray-800 text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in w-full sm:w-auto sm:max-w-[95vw] sm:max-h-[95vh] data-closed:sm:translate-y-0 data-closed:sm:scale-95 flex flex-col sm:flex-row overflow-hidden touch-pan-y"
           >
-            <div className="overflow-hidden flex items-center justify-center">
+            {/* Image / media area */}
+            <div className="relative flex-1 min-w-0 flex items-center justify-center bg-gray-900 overflow-hidden">
               {imgPath &&
                 (isAudio(imgPath) ? (
-                  <div className="w-[500px] h-[500px] max-w-full sm:max-w-[95vw] max-h-[70vh]">
+                  <div className="w-[500px] h-[500px] max-w-full max-h-[50vh] sm:max-h-[90vh]">
                     <AudioPlayer src={`/api/img/${encodeURIComponent(imgPath)}`} title={filename} autoPlay />
                   </div>
                 ) : isVideo(imgPath) ? (
                   <video
                     src={`/api/img/${encodeURIComponent(imgPath)}`}
-                    className="w-auto h-auto max-w-full sm:max-w-[95vw] max-h-[70vh] object-contain"
+                    className="w-auto h-auto max-w-full max-h-[50vh] sm:max-h-[90vh] object-contain"
                     preload="none"
                     playsInline
                     loop
@@ -437,9 +428,9 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
                     initialScale={1}
                     minScale={1}
                     maxScale={6}
-                    doubleClick={{ mode: 'toggle', step: 2, disabled: isEditingBoxes }}
-                    wheel={{ step: 0.2, disabled: isEditingBoxes }}
-                    panning={{ disabled: isEditingBoxes, allowRightClickPan: false }}
+                    doubleClick={{ mode: 'toggle', step: 2, disabled: showBoxes }}
+                    wheel={{ step: 0.2 }}
+                    panning={{ disabled: showBoxes, allowRightClickPan: false }}
                     onTransform={(_ref, state) => {
                       zoomedRef.current = state.scale > 1.01;
                     }}
@@ -450,9 +441,9 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
                           src={`/api/img/${encodeURIComponent(imgPath)}`}
                           alt="Dataset Image"
                           draggable={false}
-                          className="w-auto h-auto max-w-full sm:max-w-[95vw] max-h-[70vh] object-contain select-none !pointer-events-auto"
+                          className="w-auto h-auto max-w-full max-h-[50vh] sm:max-h-[90vh] object-contain select-none !pointer-events-auto"
                         />
-                        {isEditingBoxes ? (
+                        {showBoxes && (
                           <BoundingBoxEditor
                             boxes={editBoxes}
                             selectedIndex={selectedBoxIndex}
@@ -461,16 +452,68 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
                             onChangeBox={handleBoxChange}
                             onCreateBox={handleCreateBox}
                           />
-                        ) : (
-                          showBoxes && boundingBoxes && <BoundingBoxOverlay boxes={boundingBoxes} />
                         )}
                       </div>
                     </TransformComponent>
                   </TransformWrapper>
                 ))}
+
+              {/* Controls over the image */}
+              <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
+                {canShowBoxes && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !showBoxes;
+                      setShowBoxes(next);
+                      if (!next) {
+                        setSelectedBoxIndex(null);
+                        setIsDrawing(false);
+                      }
+                    }}
+                    title={showBoxes ? 'Hide bounding boxes' : 'Show & edit bounding boxes'}
+                    className={classNames('bg-gray-900 rounded-full p-1 leading-[0px] hover:opacity-100', {
+                      'opacity-100 text-blue-400': showBoxes,
+                      'opacity-50': !showBoxes,
+                    })}
+                  >
+                    <SquareDashed />
+                  </button>
+                )}
+                <div className="bg-gray-900 rounded-full p-1 leading-[0px] opacity-50 hover:opacity-100">
+                  <Menu>
+                    <MenuButton>
+                      <Cog />
+                    </MenuButton>
+                    <MenuItems
+                      anchor="bottom end"
+                      className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-1 z-50"
+                    >
+                      {imgPath && isAudio(imgPath) && (
+                        <MenuItem>
+                          <a
+                            className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded block"
+                            href={`/api/img/${encodeURIComponent(imgPath)}`}
+                            download={filename}
+                          >
+                            Download
+                          </a>
+                        </MenuItem>
+                      )}
+                      <MenuItem>
+                        <div className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded" onClick={handleDelete}>
+                          Delete Image
+                        </div>
+                      </MenuItem>
+                    </MenuItems>
+                  </Menu>
+                </div>
+              </div>
             </div>
-            <div className="bg-gray-950 text-sm flex flex-col px-4 py-2 gap-2">
-              <div className="flex items-center justify-between gap-4">
+
+            {/* Right sidebar: file info + caption + box editor */}
+            <div className="bg-gray-950 w-full sm:w-96 shrink-0 flex flex-col gap-2 p-3 overflow-y-auto text-sm">
+              <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-gray-400 truncate min-w-0">
                   <span className="text-gray-500 mr-1">File:</span>
                   <span className="text-gray-300">{filename}</span>
@@ -479,180 +522,55 @@ export default function DatasetImageViewer({ imgPath, imageList, onChange, refre
                   {currentIndex >= 0 ? `${currentIndex + 1} / ${imageList.length}` : ''}
                 </div>
               </div>
-              <div
-                className={classNames('rounded border-2 bg-gray-900 transition-colors', {
-                  'border-blue-500': !isCaptionCurrent,
-                  'border-gray-700': isCaptionCurrent,
-                })}
-              >
-                <textarea
-                  className="w-full bg-transparent text-gray-100 text-sm p-2 resize-none outline-none focus:ring-0 focus:outline-none"
-                  placeholder={isCaptionLoaded ? 'Add a caption...' : 'Loading caption...'}
-                  value={caption}
-                  rows={3}
-                  onChange={e => setCaption(e.target.value)}
-                  onKeyDown={handleCaptionKeyDown}
-                  onBlur={saveCaption}
-                  disabled={!isCaptionLoaded}
+              {isCaptionLoaded && caption.trim() === '' && (
+                <select
+                  className="w-full bg-gray-900 border border-gray-700 text-gray-100 text-sm rounded p-2 outline-none focus:ring-0 focus:outline-none"
+                  value=""
+                  onChange={e => {
+                    const template = datasetTemplates[e.target.value];
+                    if (template) setCaption(template.trim());
+                  }}
+                >
+                  <option value="">Templates...</option>
+                  {Object.keys(datasetTemplates).map(key => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {isIdeogram ? (
+                <IdeogramCaptionSidebar
+                  caption={caption}
+                  onChange={setCaption}
+                  selectedIndex={selectedBoxIndex}
+                  onSelectIndex={i => {
+                    setSelectedBoxIndex(i);
+                    if (i != null) setShowBoxes(true);
+                  }}
+                  isDrawing={isDrawing}
+                  onToggleDrawing={() => setIsDrawing(d => !d)}
+                  onSave={saveCaption}
+                  isDirty={!isCaptionCurrent}
                 />
-              </div>
-              {isEditingBoxes && (
-                <div className="rounded border border-gray-700 bg-gray-900 p-2 flex flex-col gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsDrawing(d => !d)}
-                      className={classNames('px-2 py-1 rounded border', {
-                        'bg-blue-600 border-blue-500 text-white': isDrawing,
-                        'border-gray-600 text-gray-300 hover:bg-gray-800': !isDrawing,
-                      })}
-                    >
-                      {isDrawing ? 'Cancel' : '+ Add Box'}
-                    </button>
-                    <span className="text-gray-500">
-                      {isDrawing
-                        ? 'Drag on the image to draw a new box'
-                        : 'Click a box to select; drag to move, handles to resize'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={saveCaption}
-                      disabled={isCaptionCurrent}
-                      className={classNames('ml-auto px-3 py-1 rounded border', {
-                        'bg-green-600 border-green-500 text-white hover:bg-green-500': !isCaptionCurrent,
-                        'border-gray-700 text-gray-500 cursor-default': isCaptionCurrent,
-                      })}
-                    >
-                      {isCaptionCurrent ? 'Saved' : 'Save'}
-                    </button>
-                  </div>
-                  {selectedElement && (
-                    <div className="flex flex-col gap-2 border-t border-gray-700 pt-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Type:</span>
-                        <button
-                          type="button"
-                          onClick={() => handleTypeChange('obj')}
-                          className={classNames('px-2 py-0.5 rounded border', {
-                            'bg-cyan-600 border-cyan-500 text-white': selectedElement.type !== 'text',
-                            'border-gray-600 text-gray-300 hover:bg-gray-800': selectedElement.type === 'text',
-                          })}
-                        >
-                          Object
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTypeChange('text')}
-                          className={classNames('px-2 py-0.5 rounded border', {
-                            'bg-amber-600 border-amber-500 text-white': selectedElement.type === 'text',
-                            'border-gray-600 text-gray-300 hover:bg-gray-800': selectedElement.type !== 'text',
-                          })}
-                        >
-                          Text
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteBox(selectedBoxIndex!)}
-                          className="ml-auto px-2 py-0.5 rounded border border-red-700 text-red-400 hover:bg-red-900/40"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                      {selectedElement.type === 'text' && (
-                        <label className="flex flex-col gap-1">
-                          <span className="text-gray-400">Text (shown in image)</span>
-                          <textarea
-                            className="w-full bg-gray-950 text-gray-100 rounded border border-gray-700 p-1 resize-none outline-none focus:border-blue-500"
-                            rows={2}
-                            value={selectedElement.text ?? ''}
-                            onChange={e => handleFieldChange('text', e.target.value)}
-                          />
-                        </label>
-                      )}
-                      <label className="flex flex-col gap-1">
-                        <span className="text-gray-400">Description</span>
-                        <textarea
-                          className="w-full bg-gray-950 text-gray-100 rounded border border-gray-700 p-1 resize-none outline-none focus:border-blue-500"
-                          rows={2}
-                          value={selectedElement.desc ?? ''}
-                          onChange={e => handleFieldChange('desc', e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  )}
+              ) : (
+                <div
+                  className={classNames('flex-1 min-h-[8rem] rounded border-2 bg-gray-900 transition-colors', {
+                    'border-blue-500': !isCaptionCurrent,
+                    'border-gray-700': isCaptionCurrent,
+                  })}
+                >
+                  <textarea
+                    className="w-full h-full bg-transparent text-gray-100 text-sm p-2 resize-none outline-none focus:ring-0 focus:outline-none"
+                    placeholder={isCaptionLoaded ? 'Add a caption...' : 'Loading caption...'}
+                    value={caption}
+                    onChange={e => setCaption(e.target.value)}
+                    onKeyDown={handleCaptionKeyDown}
+                    onBlur={saveCaption}
+                    disabled={!isCaptionLoaded}
+                  />
                 </div>
               )}
-            </div>
-            <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
-              {canShowBoxes && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !showBoxes;
-                    setShowBoxes(next);
-                    if (!next) {
-                      setIsEditingBoxes(false);
-                      setSelectedBoxIndex(null);
-                      setIsDrawing(false);
-                    }
-                  }}
-                  title={showBoxes ? 'Hide bounding boxes' : 'Show bounding boxes'}
-                  className={classNames('bg-gray-900 rounded-full p-1 leading-[0px] hover:opacity-100', {
-                    'opacity-100 text-blue-400': showBoxes,
-                    'opacity-50': !showBoxes,
-                  })}
-                >
-                  <SquareDashed />
-                </button>
-              )}
-              {((canShowBoxes && showBoxes) || isEditingBoxes) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !isEditingBoxes;
-                    setIsEditingBoxes(next);
-                    if (!next) {
-                      setSelectedBoxIndex(null);
-                      setIsDrawing(false);
-                    }
-                  }}
-                  title={isEditingBoxes ? 'Done editing boxes' : 'Edit bounding boxes'}
-                  className={classNames('bg-gray-900 rounded-full p-1 leading-[0px] hover:opacity-100', {
-                    'opacity-100 text-blue-400': isEditingBoxes,
-                    'opacity-50': !isEditingBoxes,
-                  })}
-                >
-                  <Pencil />
-                </button>
-              )}
-              <div className="bg-gray-900 rounded-full p-1 leading-[0px] opacity-50 hover:opacity-100">
-                <Menu>
-                  <MenuButton>
-                    <Cog />
-                  </MenuButton>
-                  <MenuItems
-                    anchor="bottom end"
-                    className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-1 z-50"
-                  >
-                    {imgPath && isAudio(imgPath) && (
-                      <MenuItem>
-                        <a
-                          className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded block"
-                          href={`/api/img/${encodeURIComponent(imgPath)}`}
-                          download={filename}
-                        >
-                          Download
-                        </a>
-                      </MenuItem>
-                    )}
-                    <MenuItem>
-                      <div className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded" onClick={handleDelete}>
-                        Delete Image
-                      </div>
-                    </MenuItem>
-                  </MenuItems>
-                </Menu>
-              </div>
             </div>
           </DialogPanel>
         </div>

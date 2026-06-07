@@ -280,6 +280,7 @@ export interface CaptionProcessConfig {
     max_new_tokens?: number;
     fixed_caption?: string;
     api_concurrency?: number;
+    caption_extension?: string;
   }
 }
 
