@@ -26,6 +26,7 @@ export interface CaptionOption {
     hasMultiLinePrompts?: boolean;
     supportsQuantization?: boolean;
     supportsLowVram?: boolean;
+    minNewTokens?: number;
     defaults?: { [key: string]: any };
     additionalSections?: AdditionalSections[];
     name_or_path_options?: SelectOption[];
@@ -40,6 +41,11 @@ const extensionsImage = ['jpg', 'jpeg', 'png', 'bmp', 'webp'];
 const defaultExtensions = [...extensionsImage];
 
 const defaultImageCaptionPrompt = buildCaptionPrompt(defaultCaptionPromptTemplate, defaultCaptionTargetLanguage);
+
+// Editable ADDITIONAL INSTRUCTIONS block injected into the Ideogram system prompt.
+// Users can tweak this for dataset-specific guidance without altering the fixed
+// output contract, element/background rules, or bbox format.
+const defaultIdeogramCaptionPrompt = "Describe only what is actually visible in the image — never invent, add, or infer content that is not present. Identify the medium (photograph, illustration, 3D render, or graphic design) and name any recognizable people, brands, characters, or landmarks. Be decisive and specific: commit to one concrete value per attribute (one color, one material, one pose) and avoid hedging. Transcribe every piece of legible text verbatim.";
 
 export const captionerTypes: CaptionOption[] = [
     {
@@ -109,7 +115,7 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.caption_prompt': [defaultImageCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
             'config.process[0].caption.max_new_tokens': [128, undefined],
-            'config.process[0].caption.api_concurrency': [20, undefined],
+            'config.process[0].caption.api_concurrency': [8, undefined],
             'config.process[0].caption.quantize': [false, true],
             'config.process[0].caption.low_vram': [false, true],
         },
@@ -120,6 +126,63 @@ export const captionerTypes: CaptionOption[] = [
             'caption.api_concurrency',
             'caption.prompt_template',
             'caption.target_lang',
+            'caption.caption_prompt',
+            'caption.max_res',
+            'caption.max_new_tokens',
+        ],
+        supportsQuantization: false,
+        supportsLowVram: false,
+    },
+    {
+        name: 'Ideogram4Captioner',
+        label: 'Ideogram 4 Captioner',
+        group: 'image',
+        hasMultiLinePrompts: true,
+        // The deconstruction JSON is long; the Python captioner also enforces this floor.
+        minNewTokens: 3072,
+        defaults: {
+            'config.process[0].caption.model_name_or_path': ['Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
+            'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
+            'config.process[0].caption.max_res': [512, undefined],
+            'config.process[0].caption.max_new_tokens': [4096, undefined],
+        },
+        name_or_path_options: [
+            { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
+            { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
+            { value: 'Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
+        ],
+        additionalSections: [
+            'caption.caption_prompt',
+            'caption.max_res',
+            'caption.max_new_tokens',
+        ],
+    },
+    {
+        name: 'Ideogram4APICaptioner',
+        label: 'Ideogram 4 Captioner API',
+        group: 'image',
+        hasMultiLinePrompts: true,
+        minNewTokens: 3072,
+        defaults: {
+            'config.process[0].caption.model_name_or_path': ['', defaultNameOrPath],
+            'config.process[0].caption.api_base_url': ['', undefined],
+            'config.process[0].caption.api_key': ['', undefined],
+            'config.process[0].caption.api_protocol': ['openai', undefined],
+            'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
+            'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
+            'config.process[0].caption.max_res': [512, undefined],
+            'config.process[0].caption.max_new_tokens': [4096, undefined],
+            'config.process[0].caption.api_concurrency': [8, undefined],
+            'config.process[0].caption.quantize': [false, true],
+            'config.process[0].caption.low_vram': [false, true],
+        },
+        additionalSections: [
+            'caption.api_base_url',
+            'caption.api_key',
+            'caption.api_protocol',
+            'caption.api_concurrency',
             'caption.caption_prompt',
             'caption.max_res',
             'caption.max_new_tokens',
@@ -170,6 +233,10 @@ export const maxNewTokensOptions: SelectOption[] = [
     { value: '256', label: '256' },
     { value: '512', label: '512' },
     { value: '1024', label: '1024' },
+    { value: '2048', label: '2048' },
+    { value: '3072', label: '3072' },
+    { value: '4096', label: '4096' },
+    { value: '8192', label: '8192' },
 ];
 
 export const defaultQtype = 'float8';

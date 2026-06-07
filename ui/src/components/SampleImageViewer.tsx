@@ -3,13 +3,15 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogBackdrop, DialogPanel } from '@headlessui/react';
 import { SampleConfig, SampleItem } from '@/types';
-import { Cog } from 'lucide-react';
+import { Cog, SquareDashed } from 'lucide-react';
+import classNames from 'classnames';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { openConfirm } from './ConfirmModal';
 import { apiClient } from '@/utils/api';
 import { isVideo, isAudio } from '@/utils/basic';
 import AudioPlayer from './AudioPlayer';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import BoundingBoxOverlay, { parseBoundingBoxes } from './BoundingBoxOverlay';
 
 interface Props {
   imgPath: string | null; // current image path
@@ -31,6 +33,7 @@ export default function SampleImageViewer({
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(Boolean(imgPath));
   const [showingControlIdx, setShowingControlIdx] = useState<number | null>(null);
+  const [showBoxes, setShowBoxes] = useState<boolean>(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -125,6 +128,30 @@ export default function SampleImageViewer({
     setImageAtIndex(nextIdx);
   }, [sampleImages, currentIndex, imgInfo.promptIdx, setImageAtIndex]);
 
+  const handleDelete = useCallback(() => {
+    if (!imgPath) return;
+    openConfirm({
+      title: '删除采样',
+      message: `确定要删除这张采样图吗？此操作无法撤销。`,
+      type: 'warning',
+      confirmText: '删除',
+      onConfirm: () => {
+        apiClient
+          .post('/api/img/delete', { imgPath: imgPath })
+          .then(() => {
+            console.log('Image deleted:', imgPath);
+            onChange(null);
+            if (refreshSampleImages) {
+              refreshSampleImages();
+            }
+          })
+          .catch(error => {
+            console.error('Error deleting image:', error);
+          });
+      },
+    });
+  }, [imgPath, onChange, refreshSampleImages]);
+
   const sampleItem = useMemo<SampleItem | null>(() => {
     if (!sampleConfig) return null;
     if (imgInfo.promptIdx < 0) return null;
@@ -172,6 +199,20 @@ export default function SampleImageViewer({
     return imgPath;
   }, [showingControlIdx, controlImages, imgPath]);
 
+  // The sample's prompt is what generated it; if it's an Ideogram bbox-JSON we can
+  // overlay the boxes on the generated image. Only on the main image (not controls).
+  const boundingBoxes = useMemo(
+    () => (sampleItem?.prompt ? parseBoundingBoxes(sampleItem.prompt) : null),
+    [sampleItem],
+  );
+  const canShowBoxes = Boolean(
+    boundingBoxes &&
+      showingControlIdx === null &&
+      displayedImgPath &&
+      !isAudio(displayedImgPath) &&
+      !isVideo(displayedImgPath),
+  );
+
   // keyboard events while open
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -192,13 +233,17 @@ export default function SampleImageViewer({
         case 'ArrowRight':
           handleArrowRight();
           break;
+        case 'Delete':
+        case 'Backspace':
+          handleDelete();
+          break;
         default:
           break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onCancel, handleArrowUp, handleArrowDown, handleArrowLeft, handleArrowRight]);
+  }, [isOpen, onCancel, handleArrowUp, handleArrowDown, handleArrowLeft, handleArrowRight, handleDelete]);
 
   // Touch swipe navigation
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -292,18 +337,21 @@ export default function SampleImageViewer({
                     maxScale={6}
                     doubleClick={{ mode: 'toggle', step: 2 }}
                     wheel={{ step: 0.2 }}
-                    panning={{ disabled: false }}
+                    panning={{ disabled: false, allowRightClickPan: false }}
                     onTransform={(_ref, state) => {
                       zoomedRef.current = state.scale > 1.01;
                     }}
                   >
-                    <TransformComponent wrapperClass="!w-full !h-auto" contentClass="!w-full !h-auto">
-                      <img
-                        src={`/api/img/${encodeURIComponent(displayedImgPath)}`}
-                        alt="Sample Image"
-                        draggable={false}
-                        className="w-auto h-auto max-w-full sm:max-w-[95vw] max-h-[82vh] object-contain select-none"
-                      />
+                    <TransformComponent>
+                      <div className="relative">
+                        <img
+                          src={`/api/img/${encodeURIComponent(displayedImgPath)}`}
+                          alt="Sample Image"
+                          draggable={false}
+                          className="w-auto h-auto max-w-full sm:max-w-[95vw] max-h-[82vh] object-contain select-none !pointer-events-auto"
+                        />
+                        {showBoxes && canShowBoxes && boundingBoxes && <BoundingBoxOverlay boxes={boundingBoxes} />}
+                      </div>
                     </TransformComponent>
                   </TransformWrapper>
                 ))}
@@ -314,9 +362,8 @@ export default function SampleImageViewer({
                 {sampleItem?.prompt && (
                   <div className="absolute inset-0 grid place-items-center overflow-auto mr-4">
                     <div className="w-full">
-                      {/* 提示词标签与内容设置高对比度颜色，提升可读性 */}
                       <span className="text-gray-300 mr-1">提示词:</span>
-                      <span className="text-gray-100 whitespace-pre-wrap break-words">{sampleItem.prompt}</span>
+                      <span className="whitespace-pre-wrap break-words">{sampleItem.prompt}</span>
                     </div>
                   </div>
                 )}
@@ -348,70 +395,59 @@ export default function SampleImageViewer({
               )}
 
               <div className="text-xs">
-                {/* 右侧统计信息同样提升对比度 */}
                 <div>
-                  <span className="text-gray-300">Step:</span> <span className="text-gray-100">{imgInfo.step.toLocaleString()}</span>
+                  <span className="text-gray-400">Step:</span> {imgInfo.step.toLocaleString()}
                 </div>
                 <div>
-                  <span className="text-gray-300">Sample #:</span> <span className="text-gray-100">{imgInfo.promptIdx + 1}</span>
+                  <span className="text-gray-400">Sample #:</span> {imgInfo.promptIdx + 1}
                 </div>
                 <div>
-                  <span className="text-gray-300">Seed:</span> <span className="text-gray-100">{seed}</span>
+                  <span className="text-gray-400">Seed:</span> {seed}
                 </div>
               </div>
             </div>
-            <div className="absolute top-2 right-2 bg-gray-900 rounded-full p-1 leading-[0px] opacity-50 hover:opacity-100 z-20">
-              <Menu>
-                <MenuButton>
-                  <Cog />
-                </MenuButton>
-                <MenuItems
-                  anchor="bottom end"
-                  className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-1 z-50"
+            <div className="absolute top-2 right-2 flex items-center gap-2 z-20">
+              {canShowBoxes && (
+                <button
+                  type="button"
+                  onClick={() => setShowBoxes(v => !v)}
+                  title={showBoxes ? '隐藏边界框' : '显示边界框'}
+                  className={classNames('bg-gray-900 rounded-full p-1 leading-[0px] hover:opacity-100', {
+                    'opacity-100 text-blue-400': showBoxes,
+                    'opacity-50': !showBoxes,
+                  })}
                 >
-                  {imgPath && isAudio(imgPath) && (
+                  <SquareDashed />
+                </button>
+              )}
+              <div className="bg-gray-900 rounded-full p-1 leading-[0px] opacity-50 hover:opacity-100">
+                <Menu>
+                  <MenuButton>
+                    <Cog />
+                  </MenuButton>
+                  <MenuItems
+                    anchor="bottom end"
+                    className="bg-gray-900 border border-gray-700 rounded shadow-lg w-48 px-2 py-2 mt-1 z-50"
+                  >
+                    {imgPath && isAudio(imgPath) && (
+                      <MenuItem>
+                        <a
+                          className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded block"
+                          href={`/api/img/${encodeURIComponent(imgPath)}`}
+                          download={imgPath.replace(/^.*[\\/]/, '')}
+                        >
+                          下载
+                        </a>
+                      </MenuItem>
+                    )}
                     <MenuItem>
-                      <a
-                        className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded block"
-                        href={`/api/img/${encodeURIComponent(imgPath)}`}
-                        download={imgPath.replace(/^.*[\\/]/, '')}
-                      >
-                        下载音频
-                      </a>
+                      <div className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded" onClick={handleDelete}>
+                        删除采样
+                      </div>
                     </MenuItem>
-                  )}
-                  <MenuItem>
-                    <div
-                      className="cursor-pointer px-4 py-1 hover:bg-gray-800 rounded text-red-500 hover:text-red-400 font-medium"
-                      onClick={() => {
-                        let message = `确定要删除这张采样图吗？此操作无法撤销。`;
-                        openConfirm({
-                          title: '删除图片',
-                          message: message,
-                          type: 'warning',
-                          confirmText: '删除',
-                          onConfirm: () => {
-                            apiClient
-                              .post('/api/img/delete', { imgPath: imgPath })
-                              .then(() => {
-                                console.log('Image deleted:', imgPath);
-                                onChange(null);
-                                if (refreshSampleImages) {
-                                  refreshSampleImages();
-                                }
-                              })
-                              .catch(error => {
-                                console.error('Error deleting image:', error);
-                              });
-                          },
-                        });
-                      }}
-                    >
-                      删除图片 (Delete)
-                    </div>
-                  </MenuItem>
-                </MenuItems>
-              </Menu>
+                  </MenuItems>
+                </Menu>
+              </div>
             </div>
           </DialogPanel>
         </div>

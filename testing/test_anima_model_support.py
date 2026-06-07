@@ -21,6 +21,7 @@ def test_anima_ui_defaults_match_reference_training_config():
     assert "name: 'anima'" in options
     assert "label: 'Anima'" in options
     assert "circlestone-labs/Anima-Base-v1.0-Diffusers" in options
+    assert "/datasets/studio/huggingface/models/Anima-Base-v1.0-Diffusers" not in options
     assert "circlestone-labs/Anima'" not in options
     assert "anima-base-v1.0.safetensors" not in options
     assert "qwen_image_vae.safetensors" not in options
