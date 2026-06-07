@@ -114,12 +114,12 @@ class BlankNetwork:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.is_active = False
-    
+
     def train(self):
         pass
 
 
-UNET_IN_CHANNELS = 4  # Stable Diffusion の in_channels は 4 で固定。XLも同じ。
+UNET_IN_CHANNELS = 4  # Stable Diffusion 銇?in_channels 銇?4 銇у浐瀹氥€俋L銈傚悓銇樸€?
 # VAE_SCALE_FACTOR = 8  # 2 ** (len(vae.config.block_out_channels) - 1) = 8
 
 
@@ -204,15 +204,15 @@ class StableDiffusion:
         self._status_update_hooks = []
         # todo update this based on the model
         self.is_transformer = False
-        
+
         self.sample_prompts_cache = None
-        
+
         self.is_multistage = False
         # a list of multistage boundaries starting with train step 1000 to first idx
         self.multistage_boundaries: List[float] = [0.0]
         # a list of trainable multistage boundaries
         self.trainable_multistage_boundaries: List[int] = [0]
-        
+
         # set true for models that encode control image into text embeddings
         self.encode_control_in_text_embeddings = False
         # control images will come in as a list for encoding some things if true
@@ -221,68 +221,72 @@ class StableDiffusion:
         self.use_raw_control_images = False
         # defines if the model supports model paths. Only some will
         self.supports_model_paths = False
-          
+
         # use new lokr format (default false for old models for backwards compatibility)
         self.use_old_lokr_format = True
-        
+
         # when padding to make batch size work, which side padding to use, right or left
         # some llms need left side padding, others need right side
         self.te_padding_side = "right"
-        
+
         # can be used on models to invalidate cache if things change.
         self.latent_space_version = None
-        
+
     # properties for old arch for backwards compatibility
     @property
     def is_xl(self):
         return self.arch == 'sdxl'
-    
+
     @property
     def is_v2(self):
         return self.arch == 'sd2'
-    
+
     @property
     def is_ssd(self):
         return self.arch == 'ssd'
-    
+
     @property
     def is_v3(self):
         return self.arch == 'sd3'
-    
+
     @property
     def is_vega(self):
         return self.arch == 'vega'
-    
+
     @property
     def is_pixart(self):
         return self.arch == 'pixart'
-    
+
     @property
     def is_auraflow(self):
         return self.arch == 'auraflow'
-    
+
     @property
     def is_flux(self):
         return self.arch == 'flux'
-    
+
     @property
     def is_lumina2(self):
         return self.arch == 'lumina2'
-    
+
+    @property
+    def text_embedding_space_version(self):
+        return self.arch
+
     @property
     def unet_unwrapped(self):
         return unwrap_model(self.unet)
-    
+
     def get_bucket_divisibility(self):
         if self.vae is None:
             return 16
         divisibility = 2 ** (len(self.vae.config['block_out_channels']) - 1)
-        
+
         # flux packs this again,
         if self.is_flux or self.is_v3:
             divisibility = divisibility * 2
         return divisibility * 2 # todo remove this
-        
+
 
     def load_model(self):
         if self.is_loaded:
@@ -363,7 +367,7 @@ class StableDiffusion:
                 pipln = self.custom_pipeline
             else:
                 pipln = StableDiffusion3Pipeline
-            
+
             print_acc("Loading SD3 model")
             # assume it is the large model
             base_model_path = "stabilityai/stable-diffusion-3.5-large"
@@ -382,7 +386,7 @@ class StableDiffusion:
             else:
                 # is remote use whatever path we were given
                 base_model_path = model_path
-            
+
             transformer = SD3Transformer2DModel.from_pretrained(
                 transformer_path,
                 subfolder=subfolder,
@@ -392,10 +396,10 @@ class StableDiffusion:
                 # for low v ram, we leave it on the cpu. Quantizes slower, but allows training on primary gpu
                 transformer.to(self.quantize_device, dtype=dtype)
             flush()
-            
+
             if self.model_config.lora_path is not None:
                 raise ValueError("LoRA is not supported for SD3 models currently")
-            
+
             if self.model_config.quantize:
                 quantization_type = get_qtype(self.model_config.qtype)
                 print_acc("Quantizing transformer")
@@ -404,20 +408,20 @@ class StableDiffusion:
                 transformer.to(self.device_torch)
             else:
                 transformer.to(self.device_torch, dtype=dtype)
-                
+
             scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(base_model_path, subfolder="scheduler")
             print_acc("Loading vae")
             vae = AutoencoderKL.from_pretrained(base_model_path, subfolder="vae", torch_dtype=dtype)
             flush()
-            
+
             print_acc("Loading t5")
             tokenizer_3 = T5TokenizerFast.from_pretrained(base_model_path, subfolder="tokenizer_3", torch_dtype=dtype)
             text_encoder_3 = T5EncoderModel.from_pretrained(
-                base_model_path, 
-                subfolder="text_encoder_3", 
+                base_model_path,
+                subfolder="text_encoder_3",
                 torch_dtype=dtype
             )
-            
+
             text_encoder_3.to(self.device_torch, dtype=dtype)
             flush()
 
@@ -426,7 +430,7 @@ class StableDiffusion:
                 quantize(text_encoder_3, weights=get_qtype(self.model_config.qtype))
                 freeze(text_encoder_3)
                 flush()
-                
+
 
             # see if path exists
             if not os.path.exists(model_path) or os.path.isdir(model_path):
@@ -648,10 +652,10 @@ class StableDiffusion:
             # hack in model gpu splitter
             if self.model_config.split_model_over_gpus:
                 add_model_gpu_splitter_to_flux(
-                    transformer, 
+                    transformer,
                     other_module_param_count_scale=self.model_config.split_model_other_module_param_count_scale
                 )
-            
+
             if not self.low_vram:
                 # for low v ram, we leave it on the cpu. Quantizes slower, but allows training on primary gpu
                 transformer.to(self.quantize_device, dtype=dtype)
@@ -660,13 +664,13 @@ class StableDiffusion:
             if self.model_config.assistant_lora_path is not None or self.model_config.inference_lora_path is not None:
                 if self.model_config.inference_lora_path is not None and self.model_config.assistant_lora_path is not None:
                     raise ValueError("Cannot load both assistant lora and inference lora at the same time")
-                
+
                 if self.model_config.lora_path:
                     raise ValueError("Cannot load both assistant lora and lora at the same time")
 
                 if not self.is_flux:
                     raise ValueError("Assistant/ inference lora is only supported for flux models currently")
-                
+
                 load_lora_path = self.model_config.inference_lora_path
                 if load_lora_path is None:
                     load_lora_path = self.model_config.assistant_lora_path
@@ -683,7 +687,7 @@ class StableDiffusion:
                     )
                     # replace the path
                     load_lora_path = new_lora_path
-                    
+
                     if self.model_config.inference_lora_path is not None:
                         self.model_config.inference_lora_path = new_lora_path
                     if self.model_config.assistant_lora_path is not None:
@@ -764,7 +768,7 @@ class StableDiffusion:
                     # unfortunately, not an easier way with peft
                     pipe.unload_lora_weights()
             flush()
-            
+
             if self.model_config.quantize:
                 # patch the state dict method
                 patch_dequantization_on_save(transformer)
@@ -785,7 +789,7 @@ class StableDiffusion:
             else:
                 vae = AutoencoderKL.from_pretrained(base_model_path, subfolder="vae", torch_dtype=dtype)
             flush()
-            
+
             self.print_and_status_update("Loading T5")
             tokenizer_2 = T5TokenizerFast.from_pretrained(base_model_path, subfolder="tokenizer_2", torch_dtype=dtype)
             text_encoder_2 = T5EncoderModel.from_pretrained(base_model_path, subfolder="text_encoder_2",
@@ -799,7 +803,7 @@ class StableDiffusion:
                 quantize(text_encoder_2, weights=get_qtype(self.model_config.qtype))
                 freeze(text_encoder_2)
                 flush()
-                
+
             self.print_and_status_update("Loading CLIP")
             text_encoder = CLIPTextModel.from_pretrained(base_model_path, subfolder="text_encoder", torch_dtype=dtype)
             tokenizer = CLIPTokenizer.from_pretrained(base_model_path, subfolder="tokenizer", torch_dtype=dtype)
@@ -807,7 +811,7 @@ class StableDiffusion:
 
             self.print_and_status_update("Making pipe")
             Pipe = FluxPipeline
-            
+
             pipe: Pipe = Pipe(
                 scheduler=scheduler,
                 text_encoder=text_encoder,
@@ -857,10 +861,10 @@ class StableDiffusion:
                 subfolder=subfolder,
                 torch_dtype=dtype,
             )
-            
+
             if self.model_config.split_model_over_gpus:
                 raise ValueError("Splitting model over gpus is not supported for Lumina2 models")
-            
+
             transformer.to(self.quantize_device, dtype=dtype)
             flush()
 
@@ -869,9 +873,9 @@ class StableDiffusion:
 
             if self.model_config.lora_path is not None:
                 raise ValueError("Loading LoRA is not supported for Lumina2 models currently")
-            
+
             flush()
-            
+
             if self.model_config.quantize:
                 # patch the state dict method
                 patch_dequantization_on_save(transformer)
@@ -889,7 +893,7 @@ class StableDiffusion:
             self.print_and_status_update("Loading vae")
             vae = AutoencoderKL.from_pretrained(base_model_path, subfolder="vae", torch_dtype=dtype)
             flush()
-            
+
             if self.model_config.te_name_or_path is not None:
                 self.print_and_status_update("Loading TE")
                 tokenizer = AutoTokenizer.from_pretrained(self.model_config.te_name_or_path, torch_dtype=dtype)
@@ -1040,7 +1044,7 @@ class StableDiffusion:
                 # invert and disable during training
                 self.assistant_lora.multiplier = -1.0
                 self.assistant_lora.is_active = False
-                
+
         if self.model_config.inference_lora_path is not None:
             print_acc("Loading inference lora")
             self.assistant_lora: 'LoRASpecialNetwork' = load_assistant_lora_from_path(
@@ -1105,23 +1109,23 @@ class StableDiffusion:
             self.refiner_unet = refiner.unet
             del refiner
             flush()
-            
+
     def _after_sample_image(self, img_num, total_imgs):
         # process all hooks
         for hook in self._after_sample_img_hooks:
             hook(img_num, total_imgs)
-    
+
     def add_after_sample_image_hook(self, func):
         self._after_sample_img_hooks.append(func)
-        
+
     def _status_update(self, status: str):
         for hook in self._status_update_hooks:
             hook(status)
-    
+
     def print_and_status_update(self, status: str):
         print_acc(status)
         self._status_update(status)
-        
+
     def add_status_update_hook(self, func):
         self._status_update_hooks.append(func)
 
@@ -1144,7 +1148,7 @@ class StableDiffusion:
                 self.assistant_lora.force_to(self.device_torch, self.torch_dtype)
             else:
                 self.assistant_lora.is_active = False
-                
+
         if self.model_config.inference_lora_path is not None:
             print_acc("Loading inference lora")
             self.assistant_lora.is_active = True
@@ -1157,7 +1161,7 @@ class StableDiffusion:
             # the network to drastically speed up inference
             unique_network_weights = set([x.network_multiplier for x in image_configs])
             if len(unique_network_weights) == 1 and network.can_merge_in:
-                # make sure it is on device before merging. 
+                # make sure it is on device before merging.
                 self.unet.to(self.device_torch)
                 can_merge_in = True
                 merge_multiplier = unique_network_weights.pop()
@@ -1267,7 +1271,7 @@ class StableDiffusion:
                             Pipe = FluxAdvancedControlPipeline
                             extra_args['do_inpainting'] = self.adapter.config.has_inpainting_input
                             extra_args['num_controls'] = self.adapter.config.num_control_images
-                    
+
                     pipeline = Pipe(
                         vae=self.vae,
                         transformer=unwrap_model(self.unet),
@@ -1278,7 +1282,7 @@ class StableDiffusion:
                         scheduler=noise_scheduler,
                         **extra_args
                     )
-                    
+
                 pipeline.watermark = None
             elif self.is_lumina2:
                 pipeline = Lumina2Pipeline(
@@ -1421,7 +1425,7 @@ class StableDiffusion:
                         network.multiplier = gen_config.network_multiplier
                     torch.manual_seed(gen_config.seed)
                     torch.cuda.manual_seed(gen_config.seed)
-                    
+
                     generator = torch.manual_seed(gen_config.seed)
 
                     if self.adapter is not None and isinstance(self.adapter, ClipVisionAdapter) \
@@ -1454,7 +1458,7 @@ class StableDiffusion:
                     if self.sample_prompts_cache is not None:
                         conditional_embeds = self.sample_prompts_cache[i]['conditional'].to(self.device_torch, dtype=self.torch_dtype)
                         unconditional_embeds = self.sample_prompts_cache[i]['unconditional'].to(self.device_torch, dtype=self.torch_dtype)
-                    else: 
+                    else:
                         # encode the prompt ourselves so we can do fun stuff with embeddings
                         if isinstance(self.adapter, CustomAdapter):
                             self.adapter.is_unconditional_run = False
@@ -1473,7 +1477,7 @@ class StableDiffusion:
                         conditional_embeds,
                         unconditional_embeds,
                     )
-                    
+
                     if self.decorator is not None:
                         # apply the decorator to the embeddings
                         conditional_embeds.text_embeds = self.decorator(conditional_embeds.text_embeds)
@@ -1746,7 +1750,7 @@ class StableDiffusion:
                 self.assistant_lora.force_to('cpu', self.torch_dtype)
             else:
                 self.assistant_lora.is_active = True
-                
+
         if self.model_config.inference_lora_path is not None:
             print_acc("Unloading inference lora")
             self.assistant_lora.is_active = False
@@ -1791,7 +1795,7 @@ class StableDiffusion:
         )
         noise = apply_noise_offset(noise, noise_offset)
         return noise
-    
+
     def get_latent_noise_from_latents(
         self,
         latents: torch.Tensor,
@@ -2158,7 +2162,7 @@ class StableDiffusion:
                                 guidance = guidance.expand(latents.shape[0])
                         else:
                             guidance = None
-                    
+
                     if bypass_guidance_embedding:
                         bypass_flux_guidance(self.unet)
 
@@ -2197,7 +2201,7 @@ class StableDiffusion:
                         # c=latent_model_input.shape[1],
                         c=self.vae.config.latent_channels
                     )
-                    
+
                     if bypass_guidance_embedding:
                         restore_flux_guidance(self.unet)
                 elif self.is_lumina2:
@@ -2211,7 +2215,7 @@ class StableDiffusion:
                             encoder_hidden_states=text_embeddings.text_embeds.to(self.device_torch, self.torch_dtype),
                             **kwargs,
                         ).sample
-                    
+
                     # lumina2 does this before stepping. Should we do it here?
                     noise_pred = -noise_pred
                 elif self.is_v3:
@@ -2488,13 +2492,13 @@ class StableDiffusion:
                 max_length=256,
                 dropout_prob=dropout_prob
             )
-            
+
             # just mask the attention mask
             prompt_attention_mask = attention_mask.unsqueeze(-1).expand(embeds.shape)
             embeds = embeds * prompt_attention_mask.to(dtype=embeds.dtype, device=embeds.device)
             return PromptEmbeds(
                 embeds,
-                
+
                 # do we want attn mask here?
                 # attention_mask=attention_mask,
             )
@@ -2553,7 +2557,7 @@ class StableDiffusion:
         latents = latents.to(device, dtype=dtype)
 
         return latents
-    
+
     def encode_audio(self, audio_data_list):
         # audio_date_list is a list of {"waveform": waveform[C, L], "sample_rate": int(sample_rate)}
         raise NotImplementedError("Audio encoding not implemented for this model.")
@@ -2680,7 +2684,7 @@ class StableDiffusion:
             else:
                 for name, param in self.unet.named_parameters(recurse=True, prefix=f"{SD_PREFIX_UNET}"):
                     named_params[name] = param
-            
+
             if self.model_config.ignore_if_contains is not None:
                 # remove params that contain the ignore_if_contains from named params
                 for key in list(named_params.keys()):
@@ -2793,7 +2797,7 @@ class StableDiffusion:
                     save_directory=os.path.join(output_file, 'transformer'),
                     safe_serialization=True,
                 )
-                
+
             else:
 
                 self.pipeline.save_pretrained(
@@ -3114,23 +3118,23 @@ class StableDiffusion:
                 encoder.to(*args, **kwargs)
         else:
             self.text_encoder.to(*args, **kwargs)
-            
+
     def convert_lora_weights_before_save(self, state_dict):
         # can be overridden in child classes to convert weights before saving
         return state_dict
-    
+
     def convert_lora_weights_before_load(self, state_dict):
         # can be overridden in child classes to convert weights before loading
         return state_dict
-    
+
     def condition_noisy_latents(self, latents: torch.Tensor, batch:'DataLoaderBatchDTO'):
         # can be overridden in child classes to condition latents before noise prediction
         return latents
-    
+
     def get_transformer_block_names(self) -> Optional[List[str]]:
         # override in child classes to get transformer block names for lora targeting
         return None
-    
+
     def get_base_model_version(self) -> str:
         if self.is_pixart:
             return 'pixart'

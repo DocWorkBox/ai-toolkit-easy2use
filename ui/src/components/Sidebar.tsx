@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, BrainCircuit, Images, Plus, X, Heart } from 'lucide-react';
-import { FaYoutube } from 'react-icons/fa6';
+import { Home, Settings, BrainCircuit, Images, Plus, X } from 'lucide-react';
+import { FaDiscord, FaYoutube } from 'react-icons/fa6';
 import { SiBilibili } from 'react-icons/si';
 import { createGlobalState } from 'react-global-hooks';
 import ThemeToggle from './ThemeToggle';
 import ThemeLogo from './ThemeLogo';
+import ActiveJobWidget from './ActiveJobWidget';
+import OstrisCloudBalance from './OstrisCloudBalance';
 
 export const mobileSidebarState = createGlobalState<boolean>(false);
 
@@ -16,12 +18,18 @@ const Sidebar = () => {
   const [isMobileOpen, setIsMobileOpen] = mobileSidebarState.use();
   const pathname = usePathname();
 
+  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileOpen(false);
-  }, [pathname, setIsMobileOpen]);
+  }, [pathname]);
 
+  // Lock body scroll when mobile menu open
   useEffect(() => {
-    document.body.style.overflow = isMobileOpen ? 'hidden' : '';
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
     return () => {
       document.body.style.overflow = '';
     };
@@ -39,46 +47,13 @@ const Sidebar = () => {
     'flex flex-col items-center justify-center p-1 hover:bg-gray-800 rounded-lg transition-colors';
   const socialIconClass = 'w-5 h-5 text-gray-400 hover:text-white';
 
-  const AvatarOrHeart = () => {
-    const [useHeartIcon, setUseHeartIcon] = useState(false);
-    const [srcIndex, setSrcIndex] = useState(0);
-    const candidates = [
-      '/doc_workbox_avatar.jpg',
-      '/doc_workbox_avatar.png',
-      '/doc_workbox_avatar.jpeg',
-      '/doc_workbox_avatar.webp',
-      '/doc_workbox_avatar.svg',
-      '/doc_workbox_avatar.avif',
-    ];
-
-    if (useHeartIcon) {
-      return <Heart className="w-6 h-6 text-pink-400" aria-label="Doc_workBox 爱心" />;
-    }
-
-    return (
-      <img
-        src={candidates[srcIndex]}
-        alt="Doc_workBox 头像"
-        className="w-6 h-6 rounded object-cover"
-        onError={() => {
-          const next = srcIndex + 1;
-          if (next < candidates.length) {
-            setSrcIndex(next);
-          } else {
-            setUseHeartIcon(true);
-          }
-        }}
-      />
-    );
-  };
-
   const sidebarContent = (
     <>
       <div className="px-4 py-3 flex items-center justify-between">
-        <h1 className="text-l flex items-center gap-2">
+        <h1 className="text-l">
           <ThemeLogo />
           <span className="font-bold uppercase">OSTRIS</span>
-          <span className="uppercase text-gray-300">AI-TOOLKIT-E2U</span>
+          <span className="ml-2 uppercase text-gray-300">AI-TOOLKIT-E2U</span>
         </h1>
         <button
           onClick={() => setIsMobileOpen(false)}
@@ -88,6 +63,7 @@ const Sidebar = () => {
           <X className="w-5 h-5" />
         </button>
       </div>
+      <OstrisCloudBalance />
       <nav className="flex-1">
         <ul className="px-2 py-4 space-y-2">
           {navigation.map(item => (
@@ -103,15 +79,35 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
-      <div className="flex items-center space-x-2 px-4 py-3">
-        <div className="min-w-[26px] min-h-[26px]">
-          <AvatarOrHeart />
-        </div>
-        <div className="text-gray-500 text-sm mb-2 flex-1 pt-2 pl-0">由Doc_workBox汉化</div>
-      </div>
+      <ActiveJobWidget />
+      <a
+        href="https://ostris.com/support"
+        target="_blank"
+        rel="noreferrer"
+        className="group flex items-center space-x-2 px-4 py-3 text-gray-400 hover:text-gray-200 transition-colors"
+      >
+        <svg
+          height="20"
+          width="20"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          style={{ overflow: 'visible' }}
+        >
+          <path
+            className="animate-heartbeat"
+            d="m7 3c-1.5355 0-3.0784 0.5-4.25 1.7-2.3431 2.4-2.2788 6.1 0 8.5l9.25 9.8 9.25-9.8c2.279-2.4 2.343-6.1 0-8.5-2.343-2.3-6.157-2.3-8.5 0l-0.75 0.8-0.75-0.8c-1.172-1.2-2.7145-1.7-4.25-1.7z"
+            fill="#c0392b"
+          />
+        </svg>
+        <span className="uppercase text-sm font-medium tracking-wide">支持 AI-Toolkit</span>
+      </a>
 
+      {/* Social links grid */}
       <div className="px-1 py-1 border-t border-gray-800">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
+          <a href="https://discord.gg/VXmU2f5WEU" target="_blank" rel="noreferrer" className={socialsBoxClass}>
+            <FaDiscord className={socialIconClass} />
+          </a>
           <a href="https://www.youtube.com/@Doc_workBox" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <FaYoutube className={socialIconClass} />
           </a>
@@ -121,12 +117,18 @@ const Sidebar = () => {
           <ThemeToggle />
         </div>
       </div>
+      <div className="text-center text-[10px] text-gray-400 py-1 bg-gray-800">
+        Doc_workBox 汉化版 v{process.env.NEXT_PUBLIC_APP_VERSION}
+      </div>
     </>
   );
 
   return (
     <>
+      {/* Desktop sidebar - always visible on md+ */}
       <div className="hidden md:flex flex-col w-59 bg-gray-900 text-gray-100">{sidebarContent}</div>
+
+      {/* Mobile overlay sidebar */}
       <div
         className={`md:hidden fixed inset-0 bg-black/60 z-40 transition-opacity duration-300 ease-in-out ${
           isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
