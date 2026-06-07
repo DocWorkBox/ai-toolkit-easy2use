@@ -191,22 +191,22 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
     const captionConfig = jobConfig.config.process[0].caption;
     if (!captionConfig.model_name_or_path?.trim()) {
       setApiTestStatus('error');
-      setApiTestMessage('请先填写模型名称。');
+      setApiTestMessage('Please enter model name.');
       return;
     }
     if (!captionConfig.api_base_url?.trim()) {
       setApiTestStatus('error');
-      setApiTestMessage('请先填写 Base URL。');
+      setApiTestMessage('Please enter Base URL.');
       return;
     }
     if (!captionConfig.api_key?.trim()) {
       setApiTestStatus('error');
-      setApiTestMessage('请先填写 API Key。');
+      setApiTestMessage('Please enter API Key.');
       return;
     }
 
     setApiTestStatus('testing');
-    setApiTestMessage('正在测试 API 连通性...');
+    setApiTestMessage('Testing API connection...');
 
     try {
       const response = await apiClient.post('/api/caption/test-api', {
@@ -215,13 +215,13 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
         api_key: captionConfig.api_key,
         api_protocol: captionConfig.api_protocol || 'openai',
       });
-      const preview = response.data?.preview ? `，返回：${response.data.preview}` : '';
+      const preview = response.data?.preview ? `, preview: ${response.data.preview}` : '';
       setApiTestStatus('success');
-      setApiTestMessage(`${response.data?.message || 'API 连通性测试通过'}${preview}`);
+      setApiTestMessage(`${response.data?.message || 'API connection test passed'}${preview}`);
     } catch (error: any) {
-      const details = error?.response?.data?.details || error?.response?.data?.error || error?.message || '未知错误';
+      const details = error?.response?.data?.details || error?.response?.data?.error || error?.message || 'Unknown error';
       setApiTestStatus('error');
-      setApiTestMessage(`测试失败：${details}`);
+      setApiTestMessage(`Test failed: ${details}`);
     }
   };
   const minNewTokens = selectedCaptionOption?.minNewTokens ?? 0;
@@ -232,7 +232,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div>
           <SelectInput
-            label="打标器类型"
+            label="Captioner Type"
             value={jobConfig.config.process[0].type}
             onChange={handleCaptionerChange}
             options={groupedCaptionerTypes}
@@ -241,7 +241,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
         {showGPUSelect && (
           <div>
             <SelectInput
-              label="GPU 编号"
+              label="GPU ID"
               value={`${gpuIDs}`}
               onChange={value => setGpuIDs(value)}
               options={gpuList.map((gpu: any) => ({ value: `${gpu.index}`, label: `GPU #${gpu.index}` }))}
@@ -251,7 +251,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       </div>
       <div className="mt-4">
         <CreatableSelectInput
-          label={isRemoteApiCaptioner ? '模型名称' : '模型名称或路径'}
+          label={isRemoteApiCaptioner ? 'Model Name' : 'Model Name or Path'}
           value={jobConfig.config.process[0].caption.model_name_or_path || ''}
           docKey="config.process[0].caption.model_name_or_path"
           forceCustomInput={isRemoteApiCaptioner}
@@ -274,8 +274,8 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
             onChange={value => setJobConfig(value, 'config.process[0].caption.api_base_url')}
             placeholder={
               (jobConfig.config.process[0].caption.api_protocol || 'openai') === 'anthropic'
-                ? '例如：https://api.anthropic.com/v1'
-                : '例如：https://api.openai.com/v1'
+                ? '婵炴挻鑹鹃鍛淬€呰閺佸秴顫㈤埡鐨宲s://api.anthropic.com/v1'
+                : '婵炴挻鑹鹃鍛淬€呰閺佸秴顫㈤埡鐨宲s://api.openai.com/v1'
             }
             required
           />
@@ -288,14 +288,14 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
             type="password"
             value={jobConfig.config.process[0].caption.api_key || ''}
             onChange={value => setJobConfig(value, 'config.process[0].caption.api_key')}
-            placeholder="输入用于打标的 API Key"
+            placeholder="闁哄鐗婇幐鎼佸矗閸℃稒鍋ㄩ柕濞垮€楅懝楣冩煙閸偅灏伴柣鏍电秮閹?API Key"
             required
           />
         </div>
       )}
       {additionalSections.includes('caption.api_protocol') && (
         <div className="mt-4">
-          <label className="block text-xs mb-1 mt-2 text-gray-300">协议标准</label>
+          <label className="block text-xs mb-1 mt-2 text-gray-300">闂佸憡顨呯换妤咁敊閸涙潙鍐€闁搞儜鍐╃彲</label>
           <div className="flex items-center gap-3">
             <span
               className={`text-sm ${
@@ -347,7 +347,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       {additionalSections.includes('caption.model_name_or_path2') && (
         <div className="mt-4">
           <CreatableSelectInput
-            label="模型名称或路径 2"
+            label="濠碘槅鍨埀顒€纾埀顒傚厴瀹曘儱顓奸崶鍡欏仱楠炲寮介鍌滃敶閻?2"
             value={jobConfig.config.process[0].caption.model_name_or_path2 || ''}
             onChange={(value: string | null) => {
               if (value?.trim() === '') {
@@ -363,7 +363,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       {additionalSections.includes('caption.fixed_caption') && (
         <div className="mt-4">
           <TextInput
-            label="固定打标文本"
+            label="Fixed Caption"
             value={jobConfig.config.process[0].caption.fixed_caption || ''}
             onChange={value => {
               if (value?.trim() === '') {
@@ -372,7 +372,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               }
               setJobConfig(value, 'config.process[0].caption.fixed_caption');
             }}
-            placeholder="如果所有音频都使用同一段文本，可在这里填写"
+            placeholder="Optional fixed caption text"
           />
         </div>
       )}
@@ -380,7 +380,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
         <div>
           {selectedCaptionOption?.supportsQuantization !== false && (
             <SelectInput
-              label="量化"
+              label="Quantize"
               value={jobConfig.config.process[0].caption.quantize ? jobConfig.config.process[0].caption.qtype : ''}
               onChange={value => {
                 if (value === '') {
@@ -394,10 +394,24 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               options={quantizationOptions}
             />
           )}
+          <div className={selectedCaptionOption?.supportsQuantization !== false ? 'mt-4' : ''}>
+            <CreatableSelectInput
+              label="Caption Extension"
+              value={jobConfig.config.process[0].caption.caption_extension || 'txt'}
+              onChange={value => {
+                setJobConfig(value, 'config.process[0].caption.caption_extension');
+              }}
+              options={[
+                { value: 'txt', label: 'txt' },
+                { value: 'json', label: 'json' },
+                { value: 'caption', label: 'caption' },
+              ]}
+            />
+          </div>
           {additionalSections.includes('caption.max_res') && (
             <div className={selectedCaptionOption?.supportsQuantization !== false ? 'mt-4' : ''}>
               <SelectInput
-                label="最大分辨率"
+                label="Max Resolution"
                 value={`${jobConfig.config.process[0].caption.max_res || ''}`}
                 onChange={value => {
                   const intVal = parseInt(value);
@@ -412,7 +426,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           {additionalSections.includes('caption.max_new_tokens') && (
             <div className="mt-4">
               <SelectInput
-                label="最大新 Token 数"
+                label="Max New Tokens"
                 value={`${jobConfig.config.process[0].caption.max_new_tokens || ''}`}
                 onChange={value => {
                   const intVal = parseInt(value);
@@ -427,7 +441,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           {additionalSections.includes('caption.api_concurrency') && (
             <div className="mt-4">
               <NumberInput
-                label="并发数"
+                label="Concurrency"
                 value={jobConfig.config.process[0].caption.api_concurrency || DEFAULT_API_CONCURRENCY}
                 onChange={value => {
                   const safeValue =
@@ -436,14 +450,14 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
                 }}
                 min={1}
                 max={100}
-                placeholder="默认 8"
+                placeholder="婵帗绋掗…鍫ヮ敇?8"
               />
             </div>
           )}
           {additionalSections.includes('caption.prompt_template') && (
             <div className="mt-4">
               <SelectInput
-                label="打标模式"
+                label="Caption Mode"
                 value={promptTemplateValue}
                 onChange={value => applyPromptPreset(value, targetLanguageValue)}
                 options={captionPromptTemplateOptions}
@@ -453,7 +467,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           {additionalSections.includes('caption.target_lang') && (
             <div className="mt-4">
               <SelectInput
-                label="打标语言"
+                label="Caption Language"
                 value={targetLanguageValue}
                 onChange={value => applyPromptPreset(promptTemplateValue, value)}
                 options={captionTargetLanguageOptions}
@@ -462,7 +476,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           )}
         </div>
         <div>
-          <FormGroup label="选项">
+          <FormGroup label="Options">
             {isRemoteApiCaptioner && (
               <div className="mb-4">
                 <button
@@ -475,7 +489,7 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
                       : 'bg-sky-600 text-white hover:bg-sky-700'
                   }`}
                 >
-                  {apiTestStatus === 'testing' ? '测试中...' : '测试 API'}
+                  {apiTestStatus === 'testing' ? '濠电偞娼欓鍫ユ儊椤栨稓鈻?..' : '濠电偞娼欓鍫ユ儊?API'}
                 </button>
                 {apiTestStatus !== 'idle' && (
                   <p
@@ -494,13 +508,13 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
             )}
             {selectedCaptionOption?.supportsLowVram !== false && (
               <Checkbox
-                label="低显存"
+                label="Low VRAM"
                 checked={jobConfig.config.process[0].caption.low_vram}
                 onChange={value => setJobConfig(value, 'config.process[0].caption.low_vram')}
               />
             )}
             <Checkbox
-              label="重新打标"
+              label="Recaption"
               checked={jobConfig.config.process[0].caption.recaption}
               onChange={value => setJobConfig(value, 'config.process[0].caption.recaption')}
             />
@@ -510,12 +524,12 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       {additionalSections.includes('caption.caption_prompt') && (
         <div className="mt-4">
           <TextAreaInput
-            label="打标提示词"
+            label="Caption Prompt"
             value={jobConfig.config.process[0].caption.caption_prompt || ''}
             onChange={value => {
               setJobConfig(value, 'config.process[0].caption.caption_prompt');
             }}
-            placeholder="输入打标提示词"
+            placeholder="Enter caption prompt"
           />
         </div>
       )}
