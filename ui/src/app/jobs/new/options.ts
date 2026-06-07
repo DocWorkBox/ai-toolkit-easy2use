@@ -1078,7 +1078,7 @@ export const modelArchs: ModelArch[] = [
     label: 'Ideogram4',
     group: 'experimental',
     defaults: {
-      'config.process[0].model.name_or_path': ['ideogram-ai/ideogram-4-fp8', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/ideogram-4-fp8', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
