@@ -1359,7 +1359,7 @@ export default function SimpleJob({
                   className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md inline-flex items-center gap-2"
                 >
                   <Wand2 className="w-4 h-4" />
-                  Upsample Prompts
+                  扩写提示词
                 </button>
               )}
             </div>
@@ -1459,7 +1459,7 @@ export default function SimpleJob({
                                     sample.width || sampleCfg.width,
                                     sample.height || sampleCfg.height,
                                   ),
-                                  title: `Prompt #${i + 1}`,
+                                  title: `提示词 #${i + 1}`,
                                   onApply: newPrompt =>
                                     setJobConfig(newPrompt, `config.process[0].sample.samples[${i}].prompt`),
                                 });
@@ -1467,7 +1467,7 @@ export default function SimpleJob({
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-600 text-gray-300 hover:bg-gray-800 transition-colors"
                             >
                               <SquareDashed className="w-3.5 h-3.5" />
-                              Edit caption &amp; boxes
+                              编辑 caption 和框选区域
                             </button>
                           </div>
                         )}
