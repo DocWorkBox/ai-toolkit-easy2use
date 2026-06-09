@@ -1,7 +1,7 @@
 """Upsample a short user idea into a full Ideogram4 structured-JSON caption.
 
-Runs the Ideogram4 generation ("magic prompt") system prompt through
-Qwen/Qwen3-VL-8B-Instruct as a text-only request and returns the resulting JSON.
+Runs the Ideogram4 generation ("magic prompt") system prompt through the default
+Qwen3-VL model as a text-only request and returns the resulting JSON.
 Nothing is written to disk -- the upsampled JSON object is printed to stdout
 (progress/logs go to stderr so stdout stays clean for the caller to parse).
 """
@@ -301,7 +301,10 @@ def main() -> int:
         default="auto",
         help="Default aspect ratio as 'W:H', or 'auto'. Per-item values override it.",
     )
-    parser.add_argument("--model_name_or_path", default="Qwen/Qwen3-VL-8B-Instruct")
+    parser.add_argument(
+        "--model_name_or_path",
+        default="/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct",
+    )
     parser.add_argument("--max_new_tokens", type=int, default=3072)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bf16", choices=list(DTYPE_MAP.keys()))
