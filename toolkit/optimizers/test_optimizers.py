@@ -9,6 +9,7 @@ Compares speed (ms/step) and peak VRAM across:
   - Automagic v1
   - Automagic v2 (fused-backward)
   - Automagic v3 (fused-backward and traditional/unfused)
+  - Singularity (compact cosine state, fused-backward and traditional/unfused)
   - Prodigy
 """
 import contextlib
@@ -176,6 +177,7 @@ def main():
     from toolkit.optimizers.automagic import Automagic
     from toolkit.optimizers.automagic2 import Automagic2
     from toolkit.optimizers.automagic3 import Automagic3
+    from toolkit.optimizers.singularity import Singularity
     from toolkit.optimizers.adafactor import Adafactor
     from prodigyopt import Prodigy
     import bitsandbytes as bnb
@@ -188,6 +190,8 @@ def main():
         ("Automagic v2", lambda p: Automagic2(p, lr=1e-4)),
         ("Automagic v3 fused", lambda p: Automagic3(p, lr=1e-4, fused=True)),
         ("Automagic v3 unfused", lambda p: Automagic3(p, lr=1e-4, fused=False)),
+        ("Singularity fused", lambda p: Singularity(p, lr=1e-4, fused=True)),
+        ("Singularity unfused", lambda p: Singularity(p, lr=1e-4, fused=False)),
         ("Prodigy", lambda p: Prodigy(p, lr=1.0, eps=1e-6)),
     ]
 
