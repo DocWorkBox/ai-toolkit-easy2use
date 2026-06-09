@@ -2055,10 +2055,6 @@ class SDTrainer(BaseSDTrainProcess):
                         )
 
                     if self.train_config.diff_output_preservation or self.train_config.blank_prompt_preservation:
-                        # send the loss backwards otherwise checkpointing will fail
-                        self.accelerator.backward(loss)
-                        normal_loss = loss.detach() # dont send backward again
-
                         with torch.no_grad():
                             if self.train_config.diff_output_preservation:
                                 preservation_embeds = self.diff_output_preservation_embeds.expand_to_batch(noisy_latents.shape[0])
@@ -2079,12 +2075,9 @@ class SDTrainer(BaseSDTrainProcess):
                         )
                         multiplier = self.train_config.diff_output_preservation_multiplier if self.train_config.diff_output_preservation else self.train_config.blank_prompt_preservation_multiplier
                         preservation_loss = torch.nn.functional.mse_loss(preservation_pred, prior_pred) * multiplier
-                        self.accelerator.backward(preservation_loss)
-
-                        loss = normal_loss + preservation_loss
-                        loss = loss.clone().detach()
-                        # require grad again so the backward wont fail
-                        loss.requires_grad_(True)
+                        self.additional_logs['loss/normal'] = loss.item()
+                        self.additional_logs['loss/preservation'] = preservation_loss.item()
+                        loss = loss + preservation_loss
 
                 # check if nan
                 if torch.isnan(loss):
