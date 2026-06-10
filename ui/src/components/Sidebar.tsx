@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Settings, BrainCircuit, Images, Plus, X } from 'lucide-react';
-import { FaDiscord, FaYoutube } from 'react-icons/fa6';
+import { FaYoutube } from 'react-icons/fa6';
 import { SiBilibili } from 'react-icons/si';
 import { createGlobalState } from 'react-global-hooks';
 import ThemeToggle from './ThemeToggle';
@@ -104,10 +104,7 @@ const Sidebar = () => {
 
       {/* Social links grid */}
       <div className="px-1 py-1 border-t border-gray-800">
-        <div className="grid grid-cols-4 gap-3">
-          <a href="https://discord.gg/VXmU2f5WEU" target="_blank" rel="noreferrer" className={socialsBoxClass}>
-            <FaDiscord className={socialIconClass} />
-          </a>
+        <div className="grid grid-cols-3 gap-3">
           <a href="https://www.youtube.com/@Doc_workBox" target="_blank" rel="noreferrer" className={socialsBoxClass}>
             <FaYoutube className={socialIconClass} />
           </a>
