@@ -12,7 +12,7 @@ from .src.model import Klein9BParams, Klein4BParams
 class Flux2KleinModel(Flux2Model):
     flux2_klein_te_path: str = None
     flux2_te_type: str = "qwen"  # "mistral" or "qwen"
-    flux2_vae_path: str = "/datasets/studio/huggingface/models/flux2_vae/ae.safetensors"
+    flux2_vae_path: str = "ai-toolkit/flux2_vae"
     flux2_is_guidance_distilled: bool = False
 
     def __init__(
