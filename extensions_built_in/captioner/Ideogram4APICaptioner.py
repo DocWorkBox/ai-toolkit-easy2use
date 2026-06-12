@@ -10,6 +10,8 @@ from .prompts.ideogram4_caption_prompt import ideogram4_caption_prompt
 class Ideogram4APICaptioner(RemoteAPICaptioner):
     compute_aspect_ratio = Ideogram4Captioner.compute_aspect_ratio
     _extract_json = Ideogram4Captioner._extract_json
+    _convert_bbox = Ideogram4Captioner._convert_bbox
+    _sanitize_palette = Ideogram4Captioner._sanitize_palette
     _normalize_caption = Ideogram4Captioner._normalize_caption
 
     def __init__(self, process_id: int, job, config, **kwargs):
@@ -47,5 +49,5 @@ class Ideogram4APICaptioner(RemoteAPICaptioner):
             )
             return output_text
 
-        data = self._normalize_caption(data, self._aspect_ratio_for_file(file_path))
+        data = self._normalize_caption(data)
         return json.dumps(data, ensure_ascii=False, indent=2)
