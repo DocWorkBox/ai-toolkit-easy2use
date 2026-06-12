@@ -131,7 +131,7 @@ class Ideogram4Captioner(Qwen3VLCaptioner):
                 break
         return out or None
 
-    def _normalize_caption(self, data: dict, aspect_ratio: Optional[str] = None) -> dict:
+    def _normalize_caption(self, data: dict) -> dict:
         """Validate/cleanup the parsed caption before storage: drop input-only
         aspect_ratio, reorder bboxes to [y1,x1,y2,x2], and cap color palettes
         (16 per image, 5 per element) since the model often exceeds them."""
