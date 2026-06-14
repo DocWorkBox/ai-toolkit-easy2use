@@ -268,7 +268,7 @@ export const modelArchs: ModelArch[] = [
     additionalSections: ['datasets.num_frames', 'model.low_vram', 'model.multistage', 'model.layer_offloading'],
     accuracyRecoveryAdapters: {
       // '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/wan22_14b_t2i_torchao_uint3.safetensors',
-      '4 bit with ARA': 'uint4|/datasets/studio/huggingface/models/accuracy_recovery_adapters/wan22_14b_t2i_torchao_uint4.safetensors',
+      '4 bit with ARA': 'uint4|ostris/accuracy_recovery_adapters/wan22_14b_t2i_torchao_uint4.safetensors',
     },
   },
   {
@@ -304,7 +304,7 @@ export const modelArchs: ModelArch[] = [
       'model.layer_offloading',
     ],
     accuracyRecoveryAdapters: {
-      '4 bit with ARA': 'uint4|/datasets/studio/huggingface/models/accuracy_recovery_adapters/wan22_14b_i2v_torchao_uint4.safetensors',
+      '4 bit with ARA': 'uint4|ostris/accuracy_recovery_adapters/wan22_14b_i2v_torchao_uint4.safetensors',
     },
   },
   {
@@ -362,7 +362,7 @@ export const modelArchs: ModelArch[] = [
     disableSections: ['network.conv'],
     additionalSections: ['model.low_vram', 'model.layer_offloading'],
     accuracyRecoveryAdapters: {
-      '3 bit with ARA': 'uint3|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_torchao_uint3.safetensors',
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_torchao_uint3.safetensors',
     },
   },
   {
@@ -442,8 +442,8 @@ export const modelArchs: ModelArch[] = [
     additionalSections: ['model.low_vram', 'model.layer_offloading'],
     // Training an ARA now, the other one will not work
     accuracyRecoveryAdapters: {
-      '3 bit with ARA': 'uint3|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_2512_torchao_uint3.safetensors',
-      '4 bit with ARA': 'uint4|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_2512_torchao_uint4.safetensors',
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_2512_torchao_uint3.safetensors',
+      '4 bit with ARA': 'uint4|ostris/accuracy_recovery_adapters/qwen_image_2512_torchao_uint4.safetensors',
     },
   },
   {
@@ -464,7 +464,7 @@ export const modelArchs: ModelArch[] = [
     disableSections: ['network.conv'],
     additionalSections: ['datasets.control_path', 'sample.ctrl_img', 'model.low_vram', 'model.layer_offloading'],
     accuracyRecoveryAdapters: {
-      '3 bit with ARA': 'uint3|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_edit_torchao_uint3.safetensors',
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_edit_torchao_uint3.safetensors',
     },
   },
   {
@@ -498,7 +498,7 @@ export const modelArchs: ModelArch[] = [
       'model.qie.match_target_res',
     ],
     accuracyRecoveryAdapters: {
-      '3 bit with ARA': 'uint3|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_edit_2509_torchao_uint3.safetensors',
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_edit_2509_torchao_uint3.safetensors',
     },
   },
   {
@@ -532,7 +532,7 @@ export const modelArchs: ModelArch[] = [
       'model.qie.match_target_res',
     ],
     accuracyRecoveryAdapters: {
-      '3 bit with ARA': 'uint3|/datasets/studio/huggingface/models/accuracy_recovery_adapters/qwen_image_edit_2511_torchao_uint3.safetensors',
+      '3 bit with ARA': 'uint3|ostris/accuracy_recovery_adapters/qwen_image_edit_2511_torchao_uint3.safetensors',
     },
   },
   {
@@ -1007,7 +1007,7 @@ export const modelArchs: ModelArch[] = [
     label: 'Nucleus-Image',
     group: 'image',
     defaults: {
-      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Nucleus-Image', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['NucleusAI/Nucleus-Image', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
