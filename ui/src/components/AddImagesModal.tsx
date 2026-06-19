@@ -212,6 +212,7 @@ export default function AddImagesModal() {
       'video/*': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.m4v', '.flv'],
       'audio/*': ['.mp3', '.wav', '.flac', '.ogg'],
       'text/*': ['.txt'],
+      'application/json': ['.json'],
     }),
     [],
   );
@@ -270,7 +271,7 @@ export default function AddImagesModal() {
                     {!isUploading ? (
                       <>
                         <p className="text-sm text-gray-200 text-center">拖拽文件到此处，或点击选择文件</p>
-                        <p className="text-xs text-gray-400 mt-1">支持图片、视频、音频和 .txt</p>
+                        <p className="text-xs text-gray-400 mt-1">支持图片、视频、音频、.txt 和 .json</p>
                       </>
                     ) : (
                       <p className="text-sm text-gray-200 text-center">继续拖拽文件可追加到上传队列</p>
