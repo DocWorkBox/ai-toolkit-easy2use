@@ -4,6 +4,7 @@ import pytest
 
 def test_anima_model_class_is_registered():
     pytest.importorskip("torch")
+    pytest.importorskip("diffusers")
     from toolkit.config_modules import ModelConfig
     from toolkit.util.get_model import get_model_class
 

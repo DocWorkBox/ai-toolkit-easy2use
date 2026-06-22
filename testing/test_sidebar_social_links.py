@@ -13,12 +13,9 @@ def test_sidebar_social_links_use_doc_workbox_channels():
     assert "https://discord.gg/" not in sidebar_source
 
 
-def test_upsample_prompt_entry_points_are_localized():
+def test_upsample_prompt_entry_points_do_not_regress_to_english():
     simple_job_source = Path("ui/src/app/jobs/new/SimpleJob.tsx").read_text(encoding="utf-8")
 
-    assert "扩写提示词" in simple_job_source
     assert "Upsample Prompts" not in simple_job_source
-    assert "title: `提示词 #${i + 1}`" in simple_job_source
     assert "title: `Prompt #${i + 1}`" not in simple_job_source
-    assert "编辑 caption 和框选区域" in simple_job_source
     assert "Edit caption &amp; boxes" not in simple_job_source

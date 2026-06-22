@@ -9,7 +9,7 @@ import {
   jobTypeOptions,
   SampleTags,
 } from './options';
-import { defaultDatasetConfig } from './jobConfig';
+import { defaultCompileOptions, defaultDatasetConfig } from './jobConfig';
 import { GroupedSelectOption, JobConfig, SelectOption } from '@/types';
 import { objectCopy, tagsToObj, objToTags } from '@/utils/basic';
 import {
@@ -308,6 +308,20 @@ export default function SimpleJob({
                 placeholder=""
               />
             )}
+            {modelArch?.additionalSections?.includes('model.unconditional_lora_path') && (
+              <TextInput
+                label="Unconditional Adapter Path"
+                value={jobConfig.config.process[0].model.unconditional_lora_path ?? ''}
+                docKey="config.process[0].model.unconditional_lora_path"
+                onChange={(value: string | undefined) => {
+                  if (value?.trim() === '') {
+                    value = undefined;
+                  }
+                  setJobConfig(value, 'config.process[0].model.unconditional_lora_path');
+                }}
+                placeholder=""
+              />
+            )}
             {modelArch?.additionalSections?.includes('model.low_vram') && (
               <FormGroup label="选项">
                 <Checkbox
@@ -372,7 +386,7 @@ export default function SimpleJob({
             )}
           </Card>
           {disableSections.includes('model.quantize') ? null : (
-            <Card title="量化">
+            <Card title="量化 / 编译">
               <SelectInput
                 label="Transformer"
                 value={jobConfig.config.process[0].model.quantize ? jobConfig.config.process[0].model.qtype : ''}
@@ -403,6 +417,25 @@ export default function SimpleJob({
                   options={quantizationOptions}
                 />
               )}
+              <FormGroup label="编译选项">
+                <></>
+              </FormGroup>
+              <Checkbox
+                label="编译模型"
+                checked={jobConfig.config.process[0].model.compile || false}
+                onChange={value => {
+                  setJobConfig(value, 'config.process[0].model.compile');
+                  if (value) {
+                    for (const key in defaultCompileOptions) {
+                      setJobConfig((defaultCompileOptions as any)[key], `config.process[0].model.${key}`);
+                    }
+                  } else {
+                    for (const key in defaultCompileOptions) {
+                      setJobConfig(undefined, `config.process[0].model.${key}`);
+                    }
+                  }
+                }}
+              />
             </Card>
           )}
           {modelArch?.additionalSections?.includes('model.multistage') && (
@@ -598,7 +631,9 @@ export default function SimpleJob({
                     { value: 'adamw8bit', label: 'AdamW8Bit' },
                     { value: 'automagic', label: 'Automagic' },
                     { value: 'automagic2', label: 'Automagic v2' },
+                    { value: 'automagic3', label: 'Automagic v3' },
                     { value: 'singularity', label: 'Singularity' },
+                    { value: 'singularity_group', label: 'Singularity (group LR)' },
                     { value: 'prodigyopt', label: 'Prodigy' },
                     { value: 'prodigy8bit', label: 'Prodigy8Bit' },
                   ]}

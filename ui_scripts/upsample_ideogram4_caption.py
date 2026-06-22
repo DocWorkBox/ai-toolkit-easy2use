@@ -1,7 +1,7 @@
 """Upsample a short user idea into a full Ideogram4 structured-JSON caption.
 
-Runs the Ideogram4 generation ("magic prompt") system prompt through
-Qwen/Qwen3-VL-8B-Instruct as a text-only request and returns the resulting JSON.
+Runs the Ideogram4 generation ("magic prompt") system prompt through the default
+Qwen3-VL model as a text-only request and returns the resulting JSON.
 Nothing is written to disk -- the upsampled JSON object is printed to stdout
 (progress/logs go to stderr so stdout stays clean for the caller to parse).
 """
@@ -20,6 +20,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Make the repo importable (e.g. `toolkit.util.quantize`) regardless of cwd.
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
+
+from toolkit.ideogram_caption import normalize_caption_dict
 
 # The generation prompt lives here. It's a `name = """<content>"""` file, but the
 # content intentionally contains literal `\uNNNN` and `\n` sequences that are not
@@ -127,62 +129,22 @@ def sanitize_bbox(bbox):
     return [y1, x1, y2, x2]
 
 
-HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
-
-
-def sanitize_palette(palette, max_len):
-    """Keep unique, valid hex colors in order, capped to max_len. Returns the
-    cleaned list, or None if nothing valid remains (drop the key)."""
-    if not isinstance(palette, (list, tuple)):
-        return None
-    seen = set()
-    out = []
-    for c in palette:
-        if not isinstance(c, str):
-            continue
-        c = c.strip()
-        if not HEX_COLOR_RE.match(c):
-            continue
-        key = c.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(c)
-        if len(out) >= max_len:
-            break
-    return out or None
-
-
 def sanitize_caption(data: dict) -> dict:
-    """Light cleanup: drop any aspect_ratio key (input-only context, not output),
-    clean each bbox, and cap color palettes (16 per image, 5 per element)."""
-    data.pop("aspect_ratio", None)
-    style = data.get("style_description")
-    if isinstance(style, dict) and "color_palette" in style:
-        pal = sanitize_palette(style["color_palette"], 16)
-        if pal is None:
-            style.pop("color_palette", None)
-        else:
-            style["color_palette"] = pal
+    """Clamp each bbox to valid 0-1000 [y1,x1,y2,x2], then hand off to the shared
+    normalizer for the rest: drop aspect_ratio, enforce the photo/art_style branch
+    and key order, canonicalize medium, and cap/uppercase color palettes (16 per
+    image, 5 per element)."""
     decon = data.get("compositional_deconstruction", {})
-    elements = decon.get("elements", [])
+    elements = decon.get("elements", []) if isinstance(decon, dict) else []
     if isinstance(elements, list):
         for el in elements:
-            if not isinstance(el, dict):
-                continue
-            if "bbox" in el:
+            if isinstance(el, dict) and "bbox" in el:
                 cleaned = sanitize_bbox(el["bbox"])
                 if cleaned is None:
                     el.pop("bbox", None)
                 else:
                     el["bbox"] = cleaned
-            if "color_palette" in el:
-                pal = sanitize_palette(el["color_palette"], 5)
-                if pal is None:
-                    el.pop("color_palette", None)
-                else:
-                    el["color_palette"] = pal
-    return data
+    return normalize_caption_dict(data)
 
 
 def upsample_one(
@@ -301,7 +263,10 @@ def main() -> int:
         default="auto",
         help="Default aspect ratio as 'W:H', or 'auto'. Per-item values override it.",
     )
-    parser.add_argument("--model_name_or_path", default="Qwen/Qwen3-VL-8B-Instruct")
+    parser.add_argument(
+        "--model_name_or_path",
+        default="Qwen/Qwen3-VL-8B-Instruct",
+    )
     parser.add_argument("--max_new_tokens", type=int, default=3072)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bf16", choices=list(DTYPE_MAP.keys()))

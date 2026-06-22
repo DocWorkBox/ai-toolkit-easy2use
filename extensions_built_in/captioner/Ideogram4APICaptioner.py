@@ -5,13 +5,13 @@ from PIL import Image
 from .Ideogram4Captioner import Ideogram4Captioner, MIN_NEW_TOKENS
 from .RemoteAPICaptioner import RemoteAPICaptioner
 from .prompts.ideogram4_caption_prompt import ideogram4_caption_prompt
+from toolkit.ideogram_caption import swap_bbox_xy_in_text
 
 
 class Ideogram4APICaptioner(RemoteAPICaptioner):
     compute_aspect_ratio = Ideogram4Captioner.compute_aspect_ratio
     _extract_json = Ideogram4Captioner._extract_json
     _convert_bbox = Ideogram4Captioner._convert_bbox
-    _sanitize_palette = Ideogram4Captioner._sanitize_palette
     _normalize_caption = Ideogram4Captioner._normalize_caption
 
     def __init__(self, process_id: int, job, config, **kwargs):
@@ -45,9 +45,9 @@ class Ideogram4APICaptioner(RemoteAPICaptioner):
         if data is None:
             print(
                 f"[Ideogram4APICaptioner] Could not parse JSON for {file_path}; "
-                f"saving raw output."
+                f"saving raw output with regex-adapted bboxes."
             )
-            return output_text
+            return swap_bbox_xy_in_text(output_text)
 
         data = self._normalize_caption(data)
         return json.dumps(data, ensure_ascii=False, indent=2)

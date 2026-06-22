@@ -86,6 +86,36 @@ def test_singularity_is_registered_and_updates_params():
     assert "pol_hist" not in initialized_state
 
 
+def test_singularity_group_lr_experiment_uses_one_lr_per_tensor():
+    model = _tiny_model()
+    optimizer = get_optimizer(
+        model.parameters(),
+        optimizer_type="singularity_group",
+        learning_rate=1e-4,
+        optimizer_params={"fused": False},
+    )
+
+    _train_one_step(model, optimizer)
+
+    matrix_state = next(
+        optimizer.state[p]
+        for p in model.parameters()
+        if p.dim() >= 2 and "lr" in optimizer.state[p]
+    )
+    assert matrix_state["lr"].ndim == 0
+    assert optimizer.get_learning_rates()
+
+
+def test_singularity_default_keeps_per_row_learning_rates():
+    param = torch.nn.Parameter(torch.ones(3, 4))
+    optimizer = Singularity([param], fused=False)
+
+    param.sum().backward()
+    optimizer.step()
+
+    assert optimizer.state[param]["lr"].shape == (3,)
+
+
 def test_singularity_keeps_compact_low_precision_state_across_roundtrip():
     model = _tiny_model()
     optimizer = get_optimizer(
