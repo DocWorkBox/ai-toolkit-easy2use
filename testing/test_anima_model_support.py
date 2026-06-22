@@ -4,6 +4,7 @@ import pytest
 
 def test_anima_model_class_is_registered():
     pytest.importorskip("torch")
+    pytest.importorskip("diffusers")
     from toolkit.config_modules import ModelConfig
     from toolkit.util.get_model import get_model_class
 
@@ -61,8 +62,7 @@ def test_anima_uses_official_diffusers_components_directly():
     assert "modular_pipe.update_components(**{component_name: loaded_component})" in source
     assert "local_files_only" in source
     assert '"pretrained_model_name_or_path": model_path' in source
-    assert "AnimaModularPipeline" not in source
-    assert "diffusers_module.AnimaModularPipeline" not in source
+    assert "diffusers_module.AnimaModularPipeline = ModularPipeline" in source
     assert "load_components" in source
     assert "text_conditioner" in source
     assert "diffusers_pipe.transformer" in source
