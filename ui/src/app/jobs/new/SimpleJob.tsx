@@ -417,11 +417,11 @@ export default function SimpleJob({
                   options={quantizationOptions}
                 />
               )}
-              <FormGroup label="Compile Options">
+              <FormGroup label="编译选项">
                 <></>
               </FormGroup>
               <Checkbox
-                label="Compile Model"
+                label="编译模型"
                 checked={jobConfig.config.process[0].model.compile || false}
                 onChange={value => {
                   setJobConfig(value, 'config.process[0].model.compile');
