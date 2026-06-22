@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use, useMemo, useCallback } from 'react';
+import { useEffect, useState, use, useMemo, useCallback, useRef } from 'react';
 import { LuImageOff, LuLoader, LuBan } from 'react-icons/lu';
 import { FaChevronLeft } from 'react-icons/fa';
 import { VirtuosoGrid } from 'react-virtuoso';
@@ -28,6 +28,7 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
   const [captionRefreshKeys, setCaptionRefreshKeys] = useState<Record<string, number>>({});
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
   const [captionBarHeight, setCaptionBarHeight] = useState(0);
+  const wasAutoCaptioningRef = useRef(false);
   const scrollParentCallback = useCallback((el: HTMLDivElement | null) => setScrollParent(el), []);
 
   const refreshImageList = (dbName: string) => {
@@ -54,6 +55,23 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
       refreshImageList(datasetName);
     }
   }, [datasetName]);
+
+  const handleAutoCaptioningChange = useCallback(
+    (isActive: boolean) => {
+      setIsAutoCaptioning(isActive);
+      if (wasAutoCaptioningRef.current && !isActive) {
+        setCaptionRefreshKeys(prev => {
+          const next = { ...prev };
+          for (const img of imgList) {
+            next[img.img_path] = (next[img.img_path] || 0) + 1;
+          }
+          return next;
+        });
+      }
+      wasAutoCaptioningRef.current = isActive;
+    },
+    [imgList],
+  );
 
   const PageInfoContent = useMemo(() => {
     let icon = null;
@@ -135,7 +153,7 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
           </div>
           <AutoCaptionButton
             datasetPath={`${pathJoin(settings.DATASETS_FOLDER, datasetName)}`}
-            setIsAutoCaptioning={setIsAutoCaptioning}
+            setIsAutoCaptioning={handleAutoCaptioningChange}
             captionExt={captionExt}
           />
           <Button
