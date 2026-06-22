@@ -357,7 +357,6 @@ class AnimaModel(BaseModel):
 
         self.print_and_status_update("Loading Anima modular Diffusers pipeline fallback")
         try:
-            import diffusers as diffusers_module
             from diffusers import ModularPipeline
         except ImportError as e:
             raise RuntimeError(
@@ -365,8 +364,6 @@ class AnimaModel(BaseModel):
                 "Install the diffusers Anima PR pinned in requirements_base.txt."
             ) from e
 
-        if not hasattr(diffusers_module, "AnimaModularPipeline"):
-            diffusers_module.AnimaModularPipeline = ModularPipeline
         modular_pipe = ModularPipeline.from_pretrained(model_path, token=HF_TOKEN)
         local_files_only = os.path.isdir(model_path)
         for component_name in ANIMA_COMPONENT_LOAD_ORDER:
