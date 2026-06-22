@@ -23,6 +23,8 @@ def test_ideogram_api_captioner_builds_json_prompt_and_normalizes_response():
     assert "compute_aspect_ratio" in api_source
     assert "_extract_json" in api_source
     assert "_normalize_caption" in api_source
+    assert "_sanitize_palette" not in api_source
+    assert "swap_bbox_xy_in_text(output_text)" in api_source
     assert "json.dumps(data, ensure_ascii=False, indent=2)" in api_source
 
 
