@@ -8,4 +8,12 @@ def test_aigate_ideogram4_uses_local_model_paths():
     )
 
     assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/ideogram-4-fp8', defaultNameOrPath]" in options_source
+    assert "'/datasets/studio/huggingface/models/ideogram_4_unconditional_lora/ideogram_4_unconditional_lora_r16.safetensors'" in options_source
     assert 'QWEN3_VL_PATH = "/datasets/ComfyUI/models/prompt_generator/Qwen3-VL-8B-Instruct"' in ideogram_source
+
+
+def test_aigate_boogu_uses_local_model_paths():
+    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+
+    assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Boogu-Image-0.1-Base', defaultNameOrPath]" in options_source
+    assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Boogu-Image-0.1-Edit', defaultNameOrPath]" in options_source

@@ -1097,7 +1097,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].model.low_vram': [true, false],
       'config.process[0].sample': [defaultIdeogramSamplesConfig, defaultSampleConfig],
       'config.process[0].model.unconditional_lora_path': [
-        'ostris/ideogram_4_unconditional_lora/ideogram_4_unconditional_lora_r16.safetensors',
+        '/datasets/studio/huggingface/models/ideogram_4_unconditional_lora/ideogram_4_unconditional_lora_r16.safetensors',
         undefined,
       ],
     },
@@ -1138,7 +1138,7 @@ export const modelArchs: ModelArch[] = [
     label: 'Boogu Image',
     group: 'image',
     defaults: {
-      'config.process[0].model.name_or_path': ['Boogu/Boogu-Image-0.1-Base', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Boogu-Image-0.1-Base', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
@@ -1159,7 +1159,7 @@ export const modelArchs: ModelArch[] = [
     label: 'Boogu Image Edit',
     group: 'instruction',
     defaults: {
-      'config.process[0].model.name_or_path': ['Boogu/Boogu-Image-0.1-Edit', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Boogu-Image-0.1-Edit', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
