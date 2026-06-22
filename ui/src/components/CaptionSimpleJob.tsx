@@ -518,6 +518,11 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               checked={jobConfig.config.process[0].caption.recaption}
               onChange={value => setJobConfig(value, 'config.process[0].caption.recaption')}
             />
+            <Checkbox
+              label="编译模型"
+              checked={jobConfig.config.process[0].caption.compile || false}
+              onChange={value => setJobConfig(value, 'config.process[0].caption.compile')}
+            />
           </FormGroup>
         </div>
       </div>

@@ -109,6 +109,10 @@ def get_optimizer(
     elif lower_type == 'singularity':
         from toolkit.optimizers.singularity import Singularity
         optimizer = Singularity(params, lr=float(learning_rate), **optimizer_params)
+    elif lower_type == 'singularity_group':
+        from toolkit.optimizers.singularity import Singularity
+        optimizer_params.setdefault("lr_granularity", "group")
+        optimizer = Singularity(params, lr=float(learning_rate), **optimizer_params)
     else:
         raise ValueError(f'Unknown optimizer type {optimizer_type}')
     return optimizer

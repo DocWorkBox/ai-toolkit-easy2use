@@ -6,10 +6,12 @@ class Singularity(torch.optim.Optimizer):
     """
     Experimental memory-lean optimizer for diffusion LoRA training.
 
-    Singularity combines Adafactor-style factored second moments with per-row
-    learning rates. It stores one previous preconditioned update instead of
-    Automagic's polarity history list, then uses row-wise cosine agreement to
-    nudge learning rates geometrically.
+    Singularity combines Adafactor-style factored second moments with adaptive
+    learning rates. The default keeps one learning rate per row. The
+    experimental group mode keeps one shared learning rate per parameter tensor.
+    It stores one previous preconditioned update instead of Automagic's
+    polarity history list, then uses cosine agreement to nudge learning rates
+    geometrically.
     """
 
     _DTYPES = {
@@ -37,6 +39,7 @@ class Singularity(torch.optim.Optimizer):
         state_dtype: str = "auto",
         fused: bool = False,
         stochastic_accumulation: bool = True,
+        lr_granularity: str = "row",
     ):
         if lr <= 0.0:
             raise ValueError(f"Invalid learning rate: {lr}")
@@ -50,6 +53,9 @@ class Singularity(torch.optim.Optimizer):
             raise ValueError(f"Invalid target_update_ratio: {target_update_ratio}")
         if not -1.0 <= cosine_floor < 1.0:
             raise ValueError(f"Invalid cosine_floor: {cosine_floor}")
+        lr_granularity = str(lr_granularity).lower()
+        if lr_granularity not in ("row", "group"):
+            raise ValueError(f"Invalid lr_granularity: {lr_granularity}")
 
         defaults = dict(
             lr=float(min(max(lr, min_lr), max_lr)),
@@ -64,6 +70,7 @@ class Singularity(torch.optim.Optimizer):
             cosine_floor=float(cosine_floor),
             state_dtype=state_dtype,
             stochastic_accumulation=bool(stochastic_accumulation),
+            lr_granularity=lr_granularity,
         )
         super().__init__(params, defaults)
 
@@ -159,7 +166,10 @@ class Singularity(torch.optim.Optimizer):
     def _init_state(self, p: torch.Tensor, group: dict) -> None:
         state = self.state[p]
         state_dtype = self._state_dtype_for(p, group)
-        lr_shape = (p.shape[0],) if p.dim() >= 2 else p.shape
+        if group["lr_granularity"] == "group":
+            lr_shape = ()
+        else:
+            lr_shape = (p.shape[0],) if p.dim() >= 2 else p.shape
         state["step"] = 0
         state["lr"] = torch.full(
             lr_shape, float(group["lr"]), dtype=torch.float32, device=p.device
@@ -178,6 +188,8 @@ class Singularity(torch.optim.Optimizer):
             )
 
     def _row_view(self, lr_t: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
+        if lr_t.ndim == 0:
+            return lr_t
         if p.dim() >= 2:
             return lr_t.view(lr_t.shape[0], *([1] * (p.dim() - 1)))
         return lr_t
@@ -239,6 +251,12 @@ class Singularity(torch.optim.Optimizer):
                 cosine = dot.div_(cur.mul_(prev).add_(eps)).clamp_(-1.0, 1.0)
             floor = group["cosine_floor"]
             direction = cosine.sub_(floor).div_(1.0 - floor).clamp_(-1.0, 1.0)
+            if group["lr_granularity"] == "group":
+                if reduce_dims is None:
+                    weights = update.abs().add(eps)
+                else:
+                    weights = update.abs().mean(dim=reduce_dims).add(eps)
+                direction = direction.mul(weights).sum().div_(weights.sum())
             lr_t.mul_(torch.exp(direction.mul_(group["lr_bump_rate"]))).clamp_(
                 min=group["min_lr"], max=group["max_lr"]
             )

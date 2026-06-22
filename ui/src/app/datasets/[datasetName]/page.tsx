@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use, useMemo, useCallback } from 'react';
+import { useEffect, useState, use, useMemo, useCallback, useRef } from 'react';
 import { LuImageOff, LuLoader, LuBan } from 'react-icons/lu';
 import { FaChevronLeft } from 'react-icons/fa';
 import { VirtuosoGrid } from 'react-virtuoso';
@@ -13,6 +13,7 @@ import { apiClient } from '@/utils/api';
 import useSettings from '@/hooks/useSettings';
 import { pathJoin } from '@/utils/basic';
 import AutoCaptionButton from '@/components/AutoCaptionButton';
+import CaptionMonitor from '@/components/CaptionMonitor';
 import { CreatableSelectInput } from '@/components/formInputs';
 
 export default function DatasetPage({ params }: { params: { datasetName: string } }) {
@@ -26,6 +27,8 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
   const [captionExt, setCaptionExt] = useState<string>('txt');
   const [captionRefreshKeys, setCaptionRefreshKeys] = useState<Record<string, number>>({});
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
+  const [captionBarHeight, setCaptionBarHeight] = useState(0);
+  const wasAutoCaptioningRef = useRef(false);
   const scrollParentCallback = useCallback((el: HTMLDivElement | null) => setScrollParent(el), []);
 
   const refreshImageList = (dbName: string) => {
@@ -52,6 +55,23 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
       refreshImageList(datasetName);
     }
   }, [datasetName]);
+
+  const handleAutoCaptioningChange = useCallback(
+    (isActive: boolean) => {
+      setIsAutoCaptioning(isActive);
+      if (wasAutoCaptioningRef.current && !isActive) {
+        setCaptionRefreshKeys(prev => {
+          const next = { ...prev };
+          for (const img of imgList) {
+            next[img.img_path] = (next[img.img_path] || 0) + 1;
+          }
+          return next;
+        });
+      }
+      wasAutoCaptioningRef.current = isActive;
+    },
+    [imgList],
+  );
 
   const PageInfoContent = useMemo(() => {
     let icon = null;
@@ -133,7 +153,7 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
           </div>
           <AutoCaptionButton
             datasetPath={`${pathJoin(settings.DATASETS_FOLDER, datasetName)}`}
-            setIsAutoCaptioning={setIsAutoCaptioning}
+            setIsAutoCaptioning={handleAutoCaptioningChange}
             captionExt={captionExt}
           />
           <Button
@@ -171,8 +191,17 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
             computeItemKey={index => imgList[index]?.img_path ?? index}
           />
         )}
+        {/* Spacer so the last cards stay accessible above the floating caption bar.
+            Always keeps a baseline gap, plus the bar height when it is showing. */}
+        <div style={{ height: `${captionBarHeight + 24}px` }} className="transition-[height] duration-300" />
       </MainContent>
       <AddImagesModal />
+      {isSettingsLoaded && (
+        <CaptionMonitor
+          datasetPath={`${pathJoin(settings.DATASETS_FOLDER, datasetName)}`}
+          onHeightChange={setCaptionBarHeight}
+        />
+      )}
       <DatasetImageViewer
         imgPath={selectedImgPath}
         imageList={imgPaths}

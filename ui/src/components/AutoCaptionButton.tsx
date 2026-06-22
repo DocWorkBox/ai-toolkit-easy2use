@@ -13,13 +13,15 @@ type AutoCaptionButtonProps = {
 
 export default function AutoCaptionButton({ datasetPath, setIsAutoCaptioning, captionExt }: AutoCaptionButtonProps) {
   const { job, status, refreshJob } = useJobByRef(datasetPath, 5000);
+  const isActive = !!(job && (job.status === 'running' || job.status === 'queued'));
+
   useEffect(() => {
     if (setIsAutoCaptioning) {
-      setIsAutoCaptioning(!!(job && job.status === 'running'));
+      setIsAutoCaptioning(isActive);
     }
-  }, [job, setIsAutoCaptioning]);
+  }, [isActive, setIsAutoCaptioning]);
 
-  if (job && (job.status === 'running' || job.status === 'queued')) {
+  if (isActive && job) {
     return (
       <Link
         href={`/jobs/${job.id}`}
