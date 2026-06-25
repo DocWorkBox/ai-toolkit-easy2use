@@ -826,6 +826,10 @@ class SDTrainer(BaseSDTrainProcess):
                 loss = torch.nn.functional.mse_loss(pred.float(), target.float(), reduction="none")
 
             loss = loss * local_loss_scale
+
+            # apply model specific loss scaling
+            loss = self.sd.scale_loss(loss)
+
             do_weighted_timesteps = False
             if self.sd.is_flow_matching:
                 if self.train_config.linear_timesteps or self.train_config.linear_timesteps2:
@@ -1380,7 +1384,7 @@ class SDTrainer(BaseSDTrainProcess):
                         clip_images = batch.clip_image_tensor.to(self.device_torch, dtype=dtype).detach()
 
             mask_multiplier = torch.ones((noisy_latents.shape[0], 1, 1, 1), device=self.device_torch, dtype=dtype)
-            if batch.mask_tensor is not None:
+            if batch.mask_tensor is not None and self.sd.do_masked_loss:
                 with self.timer('get_mask_multiplier'):
                     # upsampling no supported for bfloat16
                     mask_multiplier = batch.mask_tensor.to(self.device_torch, dtype=torch.float16).detach()

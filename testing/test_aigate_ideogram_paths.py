@@ -42,3 +42,15 @@ def test_compshare_boogu_keeps_repo_defaults():
         "'config.process[0].model.name_or_path': "
         "['Boogu/Boogu-Image-0.1-Edit', defaultNameOrPath]"
     ) in options_source
+
+
+def test_compshare_krea2_keeps_repo_defaults():
+    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    simple_job_source = Path("ui/src/app/jobs/new/SimpleJob.tsx").read_text(encoding="utf-8")
+
+    assert "'config.process[0].model.name_or_path': ['krea/Krea-2-Raw', defaultNameOrPath]" in options_source
+    assert "'config.process[0].model.name_or_path': ['krea/Krea-2-Turbo', defaultNameOrPath]" in options_source
+    assert "'ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'" in options_source
+    assert "Krea 2 Raw" in options_source
+    assert "Krea 2 Turbo" in options_source
+    assert "model.assistant_lora_path" in simple_job_source

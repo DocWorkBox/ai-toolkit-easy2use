@@ -16,6 +16,7 @@ from .anima import AnimaModel
 from .z_image.z_image_l2p_model import ZImageL2PModel
 from .ideogram4 import Ideogram4Model
 from .prx_pixel_t2i import PRXPixelT2IModel
+from .krea2 import Krea2Model
 from .boogu_image import BooguImageModel, BooguImageEditModel
 
 AI_TOOLKIT_MODELS = [
@@ -47,6 +48,7 @@ AI_TOOLKIT_MODELS = [
     ZImageL2PModel,
     Ideogram4Model,
     PRXPixelT2IModel,
+    Krea2Model,
     BooguImageModel,
     BooguImageEditModel,
 ]
