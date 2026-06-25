@@ -1135,7 +1135,7 @@ export const modelArchs: ModelArch[] = [
   },
   {
     name: 'krea2',
-    label: 'Krea 2 原始版',
+    label: 'Krea 2 Raw',
     group: 'image',
     defaults: {
       'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Raw', defaultNameOrPath],

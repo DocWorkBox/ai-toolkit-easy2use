@@ -26,5 +26,6 @@ def test_aigate_krea2_uses_local_model_paths():
     assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Raw', defaultNameOrPath]" in options_source
     assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Turbo', defaultNameOrPath]" in options_source
     assert "'/datasets/studio/huggingface/models/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'" in options_source
+    assert "Krea 2 Raw" in options_source
     assert "Krea 2 Turbo（训练适配器）" in options_source
     assert "训练适配器路径" in simple_job_source
