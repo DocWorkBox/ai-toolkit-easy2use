@@ -15,7 +15,7 @@
 
 ## 当前支持概览
 
-- 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image 等
+- 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image / Krea 2 等
 - 编辑：Qwen-Image-Edit / Qwen-Image-Edit-2509 / Qwen-Image-Edit-2511 / HiDream E1 / FireRed-Image-Edit-1.1 预设
 - 视频：Wan 2.x / LTX-2 / LTX-2.3 等
 - 音频：ACE-Step 1.5 / ACE-Step 1.5 XL

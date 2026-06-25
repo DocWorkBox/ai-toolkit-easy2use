@@ -697,7 +697,7 @@ export const modelArchs: ModelArch[] = [
   },
   {
     name: 'zimage:turbo',
-    label: 'Z-Image Turbo (w/ Training Adapter)',
+    label: 'Z-Image Turbo（训练适配器）',
     group: 'image',
     defaults: {
       // default updates when [selected, unselected] in the UI
@@ -1131,6 +1131,55 @@ export const modelArchs: ModelArch[] = [
     additionalSections: [
       'model.low_vram',
       'model.layer_offloading',
+    ],
+  },
+  {
+    name: 'krea2',
+    label: 'Krea 2 原始版',
+    group: 'image',
+    defaults: {
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Raw', defaultNameOrPath],
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize_te': [true, false],
+      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
+      'config.process[0].network.conv': [undefined, 16],
+      'config.process[0].network.conv_alpha': [undefined, 16],
+      'config.process[0].model.low_vram': [true, false],
+    },
+    disableSections: [
+      'network.conv',
+    ],
+    additionalSections: [
+      'model.low_vram',
+      'model.layer_offloading',
+    ],
+  },
+  {
+    name: 'krea2:turbo',
+    label: 'Krea 2 Turbo（训练适配器）',
+    group: 'image',
+    defaults: {
+      'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Turbo', defaultNameOrPath],
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize_te': [true, false],
+      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
+      'config.process[0].network.conv': [undefined, 16],
+      'config.process[0].network.conv_alpha': [undefined, 16],
+      'config.process[0].model.low_vram': [true, false],
+      'config.process[0].model.assistant_lora_path': [
+        '/datasets/studio/huggingface/models/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors',
+        undefined,
+      ],
+      'config.process[0].sample.guidance_scale': [1, 4],
+      'config.process[0].sample.sample_steps': [8, 25],
+    },
+    disableSections: [
+      'network.conv',
+    ],
+    additionalSections: [
+      'model.low_vram',
+      'model.layer_offloading',
+      'model.assistant_lora_path'
     ],
   },
   {
