@@ -86,8 +86,8 @@ scheduler_config = {
 }
 
 # Defaults; both overridable via model.model_kwargs.
-QWEN3_VL_PATH = "Qwen/Qwen3-VL-4B-Instruct"
-QWEN_IMAGE_VAE_PATH = "Qwen/Qwen-Image"
+QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"
+QWEN_IMAGE_VAE_PATH = "/model/ModelScope/Qwen/Qwen-Image-2512"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
