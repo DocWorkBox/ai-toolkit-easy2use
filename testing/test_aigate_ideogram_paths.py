@@ -22,6 +22,7 @@ def test_aigate_boogu_uses_local_model_paths():
 def test_aigate_krea2_uses_local_model_paths():
     options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
     simple_job_source = Path("ui/src/app/jobs/new/SimpleJob.tsx").read_text(encoding="utf-8")
+    krea2_source = Path("extensions_built_in/diffusion_models/krea2/krea2.py").read_text(encoding="utf-8")
 
     assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Raw', defaultNameOrPath]" in options_source
     assert "'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Krea-2-Turbo', defaultNameOrPath]" in options_source
@@ -34,6 +35,10 @@ def test_aigate_krea2_uses_local_model_paths():
     assert "'krea/Krea-2-Raw'" not in options_source
     assert "'krea/Krea-2-Turbo'" not in options_source
     assert "'ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'" not in options_source
+    assert 'QWEN3_VL_PATH = "/datasets/ComfyUI/models/LLM/Qwen-VL/Qwen3-VL-4B-Instruct"' in krea2_source
+    assert 'QWEN_IMAGE_VAE_PATH = "/datasets/ai-toolkit/models/Qwen-Image"' in krea2_source
+    assert 'QWEN3_VL_PATH = "Qwen/Qwen3-VL-4B-Instruct"' not in krea2_source
+    assert 'QWEN_IMAGE_VAE_PATH = "Qwen/Qwen-Image"' not in krea2_source
     assert "Krea 2 Raw" in options_source
     assert "Krea 2 Turbo（训练适配器）" in options_source
     assert "训练适配器路径" in simple_job_source
