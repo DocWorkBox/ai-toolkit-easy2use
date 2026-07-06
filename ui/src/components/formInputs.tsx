@@ -347,6 +347,7 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
   }
 
   const [isCustom, setIsCustom] = React.useState(forceCustomInput || (!isInOptions && !!value));
+  const customInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setIsCustom(forceCustomInput || (!isInOptions && !!value));
@@ -399,7 +400,7 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
         />
       ) : (
         <div className="flex gap-2">
-          <div className={isCustom ? 'w-1/3' : 'w-full'}>
+          <div className={isCustom ? 'w-20 shrink-0' : 'w-full'}>
             <Select
               value={selectedOption}
               options={selectOptions}
@@ -408,6 +409,7 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
               classNamePrefix="aitk-react-select"
               menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
               menuPosition="fixed"
+              menuPlacement="auto"
               styles={sharedSelectStyles}
               formatOptionLabel={(option: unknown) => {
                 const opt = option as SelectOption;
@@ -423,6 +425,7 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
                   if (val === CUSTOM_SELECT_VALUE) {
                     setIsCustom(true);
                     onChange('');
+                    requestAnimationFrame(() => customInputRef.current?.focus());
                   } else {
                     setIsCustom(false);
                     onChange(val);
@@ -433,13 +436,13 @@ export const CreatableSelectInput = (props: CreatableSelectInputProps) => {
           </div>
           {isCustom && (
             <input
+              ref={customInputRef}
               type="text"
               value={value}
               onChange={e => onChange(e.target.value)}
-              className={`${inputClasses} w-2/3`}
+              className={`${inputClasses} flex-1 min-w-0`}
               placeholder={props.placeholder ?? 'Enter custom value'}
               disabled={props.disabled}
-              autoFocus
             />
           )}
         </div>
