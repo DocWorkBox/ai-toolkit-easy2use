@@ -626,18 +626,26 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     )
         else:
             if self.network is not None and self.train_config.merge_network_on_save:
-                # merge the network weights into a full model and save that
-                if not self.network.can_merge_in:
+                # merge the network weights into a full model and save that.
+                # torchao quantized weights can be force merged here (dequantize -> merge -> re-quantize)
+                # even though can_merge_in is False (kept False so sampling never merges). quanto and
+                # layer_offloading still cannot merge.
+                from toolkit.util.quantize import get_torchao_config
+                can_force_quantized_merge = (
+                    self.model_config.quantize and not self.model_config.layer_offloading
+                    and get_torchao_config(self.model_config.qtype) is not None
+                )
+                if not self.network.can_merge_in and not can_force_quantized_merge:
                     raise ValueError("Network cannot merge in weights. Cannot save full model.")
-                
+
                 print_acc("Merging network weights into full model for saving...")
-                
+
                 self.network.merge_in(merge_weight=self.train_config.merge_network_on_save_strength)
                 # reset weights to zero
                 self.network.reset_weights()
                 self.network.is_merged_in = False
                 
-                print_acc("Done merging network weights.")
+                print_acc("Done merging network weights. Saving model...")
                 
             if self.save_config.save_format == "diffusers":
                 # saving as a folder path
@@ -795,7 +803,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
     def hook_after_sd_init_before_load(self):
         pass
 
-    def get_latest_save_path(self, name=None, post=''):
+    def get_latest_save_path(self, name=None, post='', include_pretrained_lora=True):
         if name == None:
             name = self.job.name
         # get latest saved step
@@ -828,7 +836,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 if len(paths) > 0:
                     latest_path = max(paths, key=os.path.getctime)
         
-        if latest_path is None and self.network_config is not None and self.network_config.pretrained_lora_path is not None:
+        if include_pretrained_lora and latest_path is None and self.network_config is not None and self.network_config.pretrained_lora_path is not None:
             # set pretrained lora path as load path if we do not have a checkpoint to resume from
             if os.path.exists(self.network_config.pretrained_lora_path):
                 latest_path = self.network_config.pretrained_lora_path
@@ -1575,7 +1583,9 @@ class BaseSDTrainProcess(BaseTrainProcess):
         if self.is_fine_tuning or self.train_config.merge_network_on_save:
             # get the latest checkpoint
             # check to see if we have a latest save
-            latest_save_path = self.get_latest_save_path()
+            # exclude pretrained_lora_path here so a pretrained lora is not loaded as full model
+            # weights. It is loaded as the initial lora later when building the network.
+            latest_save_path = self.get_latest_save_path(include_pretrained_lora=False)
 
             if latest_save_path is not None:
                 print_acc(f"#### IMPORTANT RESUMING FROM {latest_save_path} ####")
@@ -1810,7 +1820,9 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     self.train_config.train_unet
                 )
 
-                # we cannot merge in if quantized
+                # we cannot merge in if quantized or offloading. note: torchao quantized weights can
+                # still be force merged at save time for the merge-and-reset method (see save logic),
+                # but we keep can_merge_in False here so sampling never merges in/out.
                 if self.model_config.quantize or self.model_config.layer_offloading:
                     # todo find a way around this
                     self.network.can_merge_in = False
@@ -1863,6 +1875,15 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     print_acc(f"Loading from {latest_save_path}")
                     extra_weights = self.load_weights(latest_save_path)
                     self.network.multiplier = 1.0
+                elif self.train_config.merge_network_on_save and self.network_config.pretrained_lora_path is not None:
+                    # with merge_network_on_save, saved checkpoints are full models that get loaded as the
+                    # base model. Only load the pretrained lora as the initial lora when we are not resuming
+                    # from a saved checkpoint (otherwise it is already merged into the loaded model).
+                    resume_save_path = self.get_latest_save_path(include_pretrained_lora=False)
+                    if resume_save_path is None and os.path.exists(self.network_config.pretrained_lora_path):
+                        print_acc(f"Loading initial lora from pretrained lora path: {self.network_config.pretrained_lora_path}")
+                        extra_weights = self.load_weights(self.network_config.pretrained_lora_path)
+                        self.network.multiplier = 1.0
                 
                 if self.network_config.layer_offloading:
                     MemoryManager.attach(

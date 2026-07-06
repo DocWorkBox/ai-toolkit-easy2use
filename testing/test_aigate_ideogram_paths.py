@@ -54,8 +54,18 @@ def test_compshare_krea2_uses_local_model_paths():
     assert "'config.process[0].model.name_or_path': ['/model/ModelScope/krea/Krea-2-Raw', defaultNameOrPath]" in options_source
     assert "'config.process[0].model.name_or_path': ['/model/ModelScope/krea/Krea-2-Turbo', defaultNameOrPath]" in options_source
     assert "'/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'" in options_source
+    assert "name: 'krea2:o_edit'" in options_source
+    assert "name: 'krea2:o_edit_turbo'" in options_source
+    assert options_source.count("'/model/ModelScope/krea/Krea-2-Raw'") >= 2
+    assert options_source.count("'/model/ModelScope/krea/Krea-2-Turbo'") >= 2
+    assert options_source.count("'/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'") >= 2
+    assert "'/datasets/studio/huggingface/models/Krea-2-Raw'" not in options_source
+    assert "'/datasets/studio/huggingface/models/Krea-2-Turbo'" not in options_source
+    assert "'/datasets/studio/huggingface/models/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors'" not in options_source
     assert 'QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"' in krea2_source
     assert 'QWEN_IMAGE_VAE_PATH = "/model/ModelScope/Qwen/Qwen-Image-2512"' in krea2_source
+    assert 'QWEN3_VL_PATH = "/datasets/ComfyUI/models/LLM/Qwen-VL/Qwen3-VL-4B-Instruct"' not in krea2_source
+    assert 'QWEN_IMAGE_VAE_PATH = "/datasets/ai-toolkit/models/Qwen-Image"' not in krea2_source
     assert "Krea 2 Raw" in options_source
     assert "Krea 2 Turbo" in options_source
     assert "model.assistant_lora_path" in simple_job_source
