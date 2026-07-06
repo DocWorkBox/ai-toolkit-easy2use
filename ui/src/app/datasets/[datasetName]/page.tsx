@@ -30,20 +30,30 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
   const [captionBarHeight, setCaptionBarHeight] = useState(0);
   const wasAutoCaptioningRef = useRef(false);
   const scrollParentCallback = useCallback((el: HTMLDivElement | null) => setScrollParent(el), []);
+  const isRefreshingRef = useRef(false);
 
   const refreshImageList = (dbName: string) => {
+    // Only allow one listImages request in flight at a time.
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     setStatus('loading');
     apiClient
       .post('/api/datasets/listImages', { datasetName: dbName })
       .then((res: any) => {
         const data = res.data;
-        // Server already sorts; avoid the client-side sort that's expensive on large lists.
-        setImgList(data.images);
+        // Server sends a shared root (with trailing OS separator) + each file's sub-path to
+        // keep the payload small. Plain concat rebuilds the native absolute path on any OS.
+        // Server already sorts; avoid a client-side sort on large lists.
+        const root = data.root;
+        setImgList(data.images.map((subPath: string) => ({ img_path: root + subPath })));
         setStatus('success');
       })
       .catch(error => {
         console.error('Error fetching images:', error);
         setStatus('error');
+      })
+      .finally(() => {
+        isRefreshingRef.current = false;
       });
   };
   useOpenImagesModalOnDrag(datasetName, () => refreshImageList(datasetName));

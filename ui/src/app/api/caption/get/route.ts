@@ -46,18 +46,22 @@ export async function POST(request: NextRequest) {
       return new NextResponse('Access denied', { status: 403 });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(captionPath)) {
-      // send back blank string if caption file does not exist
-      return new NextResponse('');
+    // Read caption file. Older Windows-created captions may be encoded as GBK/GB18030.
+    let captionBuffer: Buffer;
+    try {
+      captionBuffer = await fs.promises.readFile(captionPath);
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        // send back blank string if caption file does not exist
+        return new NextResponse('');
+      }
+      throw err;
     }
 
-    // Read caption file. Older Windows-created captions may be encoded as GBK/GB18030.
-    const captionBuffer = fs.readFileSync(captionPath);
     let caption = '';
     try {
       caption = captionBuffer.toString('utf-8');
-      if (caption.includes('�')) {
+      if (caption.includes('\uFFFD')) {
         throw new Error('utf-8 decode produced replacement characters');
       }
     } catch {

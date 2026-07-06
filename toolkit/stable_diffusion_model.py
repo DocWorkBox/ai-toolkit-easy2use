@@ -3137,6 +3137,11 @@ class StableDiffusion:
     def get_transformer_block_names(self) -> Optional[List[str]]:
         # override in child classes to get transformer block names for lora targeting
         return None
+    def get_quantization_exclude_modules(self) -> Optional[List[str]]:
+        # override in child classes to keep sensitive modules in full precision when
+        # quantizing. Returns fnmatch patterns matched against the transformer's module
+        # names (e.g. "model.x_embedder*").
+        return None
 
     def get_base_model_version(self) -> str:
         if self.is_pixart:
