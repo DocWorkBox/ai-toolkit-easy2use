@@ -438,6 +438,15 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'model.model_kwargs.kv_cache': {
+    title: 'KV 缓存',
+    description: (
+      <>
+        为支持的模型开启控制图 KV 缓存。开启后训练出来的 LoRA 推理时也需要开启，关闭训练的 LoRA 推理时也应关闭。
+        这个选项不会改变训练速度；推理时控制图只需要处理一次，而不是每一步都重新处理，因此推理会明显加速。
+      </>
+    ),
+  },
 };
 
 export const getDoc = (key: string | null | undefined): ConfigDoc | null => {
