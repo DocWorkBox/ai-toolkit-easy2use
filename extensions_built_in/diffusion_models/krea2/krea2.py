@@ -504,7 +504,7 @@ class Krea2Model(BaseModel):
             ref_latents = [
                 self._encode_ref_latents(ctrl_tensors, target_pixels=target_pixels)
             ]
-        
+
         # CFG is 0 normalized for this model
         guidance = max(0.0, gen_config.guidance_scale - 1.0)
 
