@@ -810,6 +810,28 @@ class BaseSDTrainProcess(BaseTrainProcess):
     def hook_after_sd_init_before_load(self):
         pass
 
+    def _get_checkpoint_step(self, path):
+        match = re.search(
+            r"_(\d{9})(?:\.[^.]+)?$",
+            os.path.basename(path),
+        )
+        if match:
+            return int(match.group(1))
+
+        try:
+            if os.path.isdir(path):
+                meta_path = os.path.join(path, "aitk_meta.yaml")
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = yaml.safe_load(f)
+            elif path.endswith(".safetensors"):
+                meta = load_metadata_from_safetensors(path)
+            else:
+                return None
+
+            return int(meta["training_info"]["step"])
+        except (OSError, KeyError, TypeError, ValueError):
+            return None
+
     def get_latest_save_path(self, name=None, post='', include_pretrained_lora=True):
         if name == None:
             name = self.job.name
@@ -841,7 +863,20 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     paths = [p for p in paths if '_cn' not in p]
 
                 if len(paths) > 0:
-                    latest_path = max(paths, key=os.path.getctime)
+                    ranked_paths = [
+                        (self._get_checkpoint_step(path), os.path.getctime(path), path)
+                        for path in paths
+                    ]
+                    ranked_paths = [
+                        item for item in ranked_paths if item[0] is not None
+                    ]
+
+                    if ranked_paths:
+                        latest_path = max(
+                            ranked_paths, key=lambda item: (item[0], item[1])
+                        )[2]
+                    else:
+                        latest_path = max(paths, key=os.path.getctime)
         
         if include_pretrained_lora and latest_path is None and self.network_config is not None and self.network_config.pretrained_lora_path is not None:
             # set pretrained lora path as load path if we do not have a checkpoint to resume from
