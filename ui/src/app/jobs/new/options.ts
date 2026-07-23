@@ -380,57 +380,21 @@ export const modelArchs: ModelArch[] = [
     label: 'Anima',
     group: 'image',
     defaults: {
-      // Official Diffusers-format Anima bundle includes transformer, VAE, text encoders, and tokenizers.
+      // Keep AIgate's local model path while following the upstream Anima preset.
       'config.process[0].model.name_or_path': ['/datasets/studio/huggingface/models/Anima-Base-v1.0-Diffusers', defaultNameOrPath],
-      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.quantize': [false, false],
       'config.process[0].model.quantize_te': [false, false],
-      'config.process[0].model.low_vram': [true, false],
-      'config.process[0].model.qtype': ['qfloat8', 'qfloat8'],
+      'config.process[0].model.qtype': ['', 'qfloat8'],
+      'config.process[0].model.qtype_te': ['', 'qfloat8'],
       'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
       'config.process[0].train.noise_scheduler': ['flowmatch', 'flowmatch'],
-      'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
-      'config.process[0].train.lr': [2e-5, 1e-4],
-      'config.process[0].train.optimizer': ['adamw', 'adamw8bit'],
-      'config.process[0].train.optimizer_params.weight_decay': [0.01, 0.0001],
-      'config.process[0].network.linear': [32, defaultLinearRank],
-      'config.process[0].network.linear_alpha': [32, defaultLinearRank],
-      'config.process[0].sample.width': [1024, 1024],
-      'config.process[0].sample.height': [1024, 1024],
-      'config.process[0].sample.guidance_scale': [4.5, 4],
-      'config.process[0].sample.sample_steps': [35, 25],
+      'config.process[0].train.timestep_type': ['weighted', 'sigmoid'],
       'config.process[0].sample.neg': [
-        'worst quality, low quality, score_1, score_2, score_3, artist name',
+        'worst quality, low quality, score_1, score_2, score_3, blurry, jpeg artifacts, sepia, signature, artist name',
         '',
       ],
-      'config.process[0].sample.samples': [
-        [
-          {
-            prompt:
-              'masterpiece, best quality, score_7, safe, 1girl, solo, long hair, school uniform, cherry blossoms, soft sunlight, anime illustration',
-          },
-          {
-            prompt:
-              'masterpiece, best quality, score_7, safe, 1boy, solo, fantasy adventurer, cloak, sword, glowing forest, dynamic pose, anime key visual',
-          },
-          {
-            prompt:
-              'masterpiece, best quality, score_7, safe, 2girls, cafe, casual clothes, warm lighting, detailed background, slice of life, anime screencap',
-          },
-          {
-            prompt:
-              'masterpiece, best quality, score_7, safe, dragon girl, horns, wings, ornate dress, floating islands, clouds, vibrant colors, anime fantasy art',
-          },
-        ],
-        defaultSampleConfig.samples,
-      ],
-      'config.process[0].model.model_kwargs': [
-        {
-          llm_adapter_lr: 0,
-        },
-        {},
-      ],
     },
-    disableSections: ['network.conv', 'model.quantize_te', 'train.unload_text_encoder'],
+    disableSections: ['network.conv'],
     additionalSections: ['model.low_vram', 'model.layer_offloading'],
   },
   {
