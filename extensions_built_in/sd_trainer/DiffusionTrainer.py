@@ -203,6 +203,40 @@ class DiffusionTrainer(SDTrainer):
             if self.progress_bar is not None:
                 self.progress_bar.unpause()
 
+    def should_sample(self):
+        if not self.is_ui_trainer:
+            return False
+        def _check_sample():
+            with self._db_connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT sample_now FROM Job WHERE id = ?", (self.job_id,))
+                sample_now = cursor.fetchone()
+                return False if sample_now is None else sample_now[0] == 1
+
+        return self._retry_db_operation(_check_sample)
+
+    def maybe_sample(self):
+        if not self.is_ui_trainer:
+            return
+        if self.should_sample():
+            self.update_db_key("sample_now", 0)
+            if self.progress_bar is not None:
+                self.progress_bar.pause()
+            print_acc(f"\nSampling at step {self.step_num}")
+            # clear any grads
+            self.optimizer.zero_grad()
+            if self.train_config.free_u:
+                self.sd.pipeline.disable_freeu()
+            self.sample(self.step_num)
+            if self.train_config.unload_text_encoder:
+                # make sure the text encoder is unloaded
+                self.sd.text_encoder_to('cpu')
+            self.ensure_params_requires_grad()
+            flush()
+            if self.progress_bar is not None:
+                self.progress_bar.unpause()
+
     async def _update_key(self, key, value):
         if not self.accelerator.is_main_process:
             return
@@ -283,7 +317,17 @@ class DiffusionTrainer(SDTrainer):
         super(DiffusionTrainer, self).on_error(e)
         if self.is_ui_trainer:
             try:
-                if self.accelerator.is_main_process and not self.is_stopping:
+                if isinstance(e, KeyboardInterrupt):
+                    # SIGINT (UI stop button or ctrl+c) is a stop, not an error
+                    self.is_stopping = True
+                    progress_bar = getattr(self, "progress_bar", None)
+                    if progress_bar is not None:
+                        # silence the bar so tqdm doesn't repaint it at interpreter exit
+                        progress_bar.disable = True
+                        progress_bar.close()
+                    if self.accelerator.is_main_process:
+                        self.update_status("stopped", "Job stopped")
+                elif self.accelerator.is_main_process and not self.is_stopping:
                     self.update_status("error", str(e))
                 self.update_db_key("step", self.last_save_step)
                 asyncio.run(self.wait_for_all_async())
@@ -319,6 +363,7 @@ class DiffusionTrainer(SDTrainer):
             self.update_step()
             self.maybe_stop()
             self.maybe_save()
+            self.maybe_sample()
 
     def hook_before_model_load(self):
         super().hook_before_model_load()
