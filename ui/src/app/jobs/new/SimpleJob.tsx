@@ -199,6 +199,8 @@ export default function SimpleJob({
 
   const showGPUSelect = !isMac();
 
+  const validationConfig = jobConfig.config.process[0].train.validation_config;
+
   let numDatasetCols = 4;
   let numSampleTopCols = 4;
   let datasetStyleClass = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
@@ -894,7 +896,136 @@ export default function SimpleJob({
           </Card>
         </div>
         <div>
-<Card title="高级设置" collapsible>
+          <Card
+            title="验证"
+            toggled={!!validationConfig}
+            onToggle={value => {
+              if (value) {
+                setJobConfig(
+                  {
+                    validation_items: [{ image_path: '', prompt: '' }],
+                    resolution: 1024,
+                    validate_every_n_steps: 1,
+                    validation_sigmas: [0.5],
+                  },
+                  'config.process[0].train.validation_config',
+                );
+              } else {
+                setJobConfig(undefined, 'config.process[0].train.validation_config');
+              }
+            }}
+          >
+            {validationConfig && (
+              <>
+                <p className="text-sm text-gray-400 mb-4">
+                  验证会在一组固定图像上执行稳定的损失检查。每张图像只在启动时编码一次，并使用固定种子在所选
+                  Sigma 下进行预测，因此结果可在整个训练过程中重复比较。每次验证都会把平均损失记录为
+                  val/loss。验证图像需要符合训练概念，但
+                  <span className="font-bold text-gray-300">不要把验证图像放进训练数据集</span>
+                  。它们应包含要训练的概念，但不能是实际参与训练的图像。
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <NumberInput
+                    label="验证间隔"
+                    value={validationConfig.validate_every_n_steps}
+                    onChange={value =>
+                      setJobConfig(value, 'config.process[0].train.validation_config.validate_every_n_steps')
+                    }
+                    placeholder="例如 10"
+                    min={1}
+                    required
+                  />
+                  <NumberInput
+                    label="验证分辨率"
+                    value={validationConfig.resolution}
+                    onChange={value => setJobConfig(value, 'config.process[0].train.validation_config.resolution')}
+                    placeholder="例如 512"
+                    min={64}
+                    required
+                  />
+                  <SelectInput
+                    label="验证 Sigma"
+                    value={(validationConfig.validation_sigmas ?? [1.0, 0.75, 0.5, 0.25]).join(', ')}
+                    onChange={value =>
+                      setJobConfig(
+                        value.split(',').map((v: string) => parseFloat(v)),
+                        'config.process[0].train.validation_config.validation_sigmas',
+                      )
+                    }
+                    options={[
+                      { value: '0.5', label: '0.5' },
+                      { value: '1, 0.5', label: '1.0, 0.5' },
+                      { value: '1, 0.66, 0.33', label: '1.0, 0.66, 0.33' },
+                      { value: '1, 0.75, 0.5, 0.25', label: '1.0, 0.75, 0.5, 0.25' },
+                    ]}
+                  />
+                </div>
+                <div className="mt-4">
+                  <label className="block text-xs text-gray-300 mb-2">
+                    验证图像（{validationConfig.validation_items.length}）
+                  </label>
+                  {validationConfig.validation_items.map((item, i) => (
+                    <div key={i} className="rounded-lg pl-4 pr-1 py-3 mb-4 bg-gray-950">
+                      <div className="flex items-center space-x-4">
+                        <SampleControlImage
+                          instruction="添加图像"
+                          src={item.image_path === '' ? null : item.image_path}
+                          onNewImageSelected={imagePath => {
+                            setJobConfig(
+                              imagePath ?? '',
+                              `config.process[0].train.validation_config.validation_items[${i}].image_path`,
+                            );
+                          }}
+                        />
+                        <div className="flex-1">
+                          <TextInput
+                            label="提示词"
+                            value={item.prompt}
+                            onChange={value =>
+                              setJobConfig(
+                                value,
+                                `config.process[0].train.validation_config.validation_items[${i}].prompt`,
+                              )
+                            }
+                            placeholder="输入提示词"
+                          />
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setJobConfig(
+                                validationConfig.validation_items.filter((_, index) => index !== i),
+                                'config.process[0].train.validation_config.validation_items',
+                              )
+                            }
+                            className="rounded-full p-1 text-sm"
+                          >
+                            <X />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setJobConfig(
+                        [...validationConfig.validation_items, { image_path: '', prompt: '' }],
+                        'config.process[0].train.validation_config.validation_items',
+                      )
+                    }
+                    className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    添加验证图像
+                  </button>
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+        <div>
+          <Card title="高级设置" collapsible>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <Checkbox
@@ -1239,6 +1370,15 @@ export default function SimpleJob({
                   onChange={value => setJobConfig(value, 'config.process[0].sample.sample_every')}
                   placeholder="eg. 250"
                   min={1}
+                  required
+                />
+                <NumberInput
+                  label="采样起始步数"
+                  value={jobConfig.config.process[0].sample.sample_start_step ?? 0}
+                  onChange={value => setJobConfig(value, 'config.process[0].sample.sample_start_step')}
+                  placeholder="例如 0"
+                  className="pt-2"
+                  min={0}
                   required
                 />
                 <SelectInput

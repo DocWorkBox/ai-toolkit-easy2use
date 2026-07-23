@@ -63,7 +63,7 @@ export interface ModelArch {
 }
 
 const defaultNameOrPath = '';
-const defaultLinearRank = 32
+const defaultLinearRank = 32;
 
 export const modelArchs: ModelArch[] = [
   {
@@ -1330,7 +1330,17 @@ export const groupedModelOptions: GroupedSelectOption[] = modelArchs.reduce((acc
 
 export const quantizationOptions: SelectOption[] = [
   { value: '', label: '- NONE -' },
-  { value: 'qfloat8', label: 'float8 (default)' },
+  { value: 'qfloat8', label: 'qfloat8 (default)' },
+  { value: 'float8', label: 'float8' },
+  { value: 'convrot8', label: '8bit convrot' },
+  { value: 'convrot4', label: '4bit convrot (nvfp4)' },
+  { value: 'convrotint7', label: '7bit convrot' },
+  { value: 'convrotint6', label: '6bit convrot' },
+  { value: 'convrotint5', label: '5bit convrot' },
+  { value: 'convrotint4', label: '4bit convrot' },
+  { value: 'convrotint3', label: '3bit convrot' },
+  { value: 'convrotint2', label: '2bit convrot' },
+  { value: 'convrotbitnet', label: '1.58bit convrot (bitnet)' },
   { value: 'uint7', label: '7 bit' },
   { value: 'uint6', label: '6 bit' },
   { value: 'uint5', label: '5 bit' },
