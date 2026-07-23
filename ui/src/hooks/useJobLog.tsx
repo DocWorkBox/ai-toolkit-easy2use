@@ -2,20 +2,22 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { apiClient } from '@/utils/api';
+import { TerminalEmulator } from '@/utils/terminalEmulator';
+import usePollLoop from '@/hooks/usePollLoop';
 
 interface FileObject {
   path: string;
   size: number;
 }
 
-const clean = (text: string): string => {
-  // remove \x1B[A\x1B[A
-  text = text.replace(/\x1B\[A/g, '');
-  return text;
-};
-
 export default function useJobLog(jobID: string, reloadInterval: null | number = null) {
   const [log, setLog] = useState<string>('');
+  // Emulates a terminal over the raw log stream so carriage returns, cursor
+  // movement, and erase sequences collapse lines like a real terminal.
+  const terminalRef = useRef<TerminalEmulator | null>(null);
+  if (terminalRef.current === null) {
+    terminalRef.current = new TerminalEmulator();
+  }
   const didInitialLoadRef = useRef(false);
   // Byte offset into the log file that we've already consumed. Sent to the
   // server so it only returns newly appended content.
@@ -37,19 +39,18 @@ export default function useJobLog(jobID: string, reloadInterval: null | number =
     }
     setStatus(loadStatus);
     const offset = offsetRef.current;
-    apiClient
+    return apiClient
       .get(`/api/jobs/${jobID}/log`, offset !== null ? { params: { offset } } : undefined)
       .then(res => res.data)
       .then(data => {
         offsetRef.current = data.offset ?? null;
-        const cleanLog = clean(data.log ?? '');
+        const terminal = terminalRef.current!;
         if (data.reset) {
           // Log was reset/truncated (or initial load) — replace everything.
-          setLog(cleanLog);
-        } else if (cleanLog) {
-          // Incremental — append only the new content.
-          setLog(prev => prev + cleanLog);
+          terminal.reset();
         }
+        terminal.write(data.log ?? '');
+        setLog(terminal.toString());
         setStatus('success');
         didInitialLoadRef.current = true;
       })
@@ -62,24 +63,17 @@ export default function useJobLog(jobID: string, reloadInterval: null | number =
       });
   };
 
+  // New job — start fresh. Declared before the poll loop so the reset runs
+  // before the first fetch when jobID changes.
   useEffect(() => {
-    // New job — start fresh.
     offsetRef.current = null;
     didInitialLoadRef.current = false;
     inFlightRef.current = false;
+    terminalRef.current?.reset();
     setLog('');
-    refresh();
-
-    if (reloadInterval) {
-      const interval = setInterval(() => {
-        refresh();
-      }, reloadInterval);
-
-      return () => {
-        clearInterval(interval);
-      };
-    }
   }, [jobID]);
 
-  return { log, setLog, status, refresh };
+  usePollLoop(refresh, reloadInterval, [jobID]);
+
+  return { log, status, refresh };
 }
