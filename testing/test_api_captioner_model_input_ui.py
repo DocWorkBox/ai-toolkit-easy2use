@@ -21,3 +21,27 @@ def test_api_captioner_settings_are_persisted_and_default_to_conservative_concur
     assert "writeStoredCaptionApiSettings" in caption_source
     assert "'config.process[0].caption.api_concurrency': [8, undefined]" in options_source
     assert 'self.api_concurrency = max(1, int(kwargs.get("api_concurrency", 8) or 8))' in base_captioner_source
+
+
+def test_aigate_local_qwen_paths_do_not_leak_into_api_captioner():
+    options_source = Path("ui/src/helpers/captionOptions.ts").read_text(encoding="utf-8")
+    qwen_section = options_source.split("name: 'Qwen3VLCaptioner'", 1)[1].split(
+        "name: 'RemoteAPICaptioner'", 1
+    )[0]
+    api_section = options_source.split("name: 'RemoteAPICaptioner'", 1)[1].split(
+        "name: 'Ideogram4Captioner'", 1
+    )[0]
+    local_paths = [
+        "/datasets/studio/huggingface/models/Qwen3.6-27B",
+        "/datasets/studio/huggingface/models/Huihui-Qwen3.6-27B-abliterated",
+        "/datasets/studio/huggingface/models/Huihui-Qwen3-VL-8B-Instruct-abliterated",
+    ]
+
+    for path in local_paths:
+        assert path in qwen_section
+        assert path not in api_section
+
+    assert (
+        "'config.process[0].caption.model_name_or_path': ['', defaultNameOrPath]"
+        in api_section
+    )
