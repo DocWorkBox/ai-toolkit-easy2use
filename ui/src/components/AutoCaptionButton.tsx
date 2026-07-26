@@ -42,7 +42,10 @@ export default function AutoCaptionButton({ datasetPath, setIsAutoCaptioning, ca
           () => {
             refreshJob();
           },
-          { defaultCaptionExt: captionExt },
+          {
+            defaultCaptionExt: captionExt,
+            onJobStarted: () => setIsAutoCaptioning?.(true),
+          },
         )
       }
     >

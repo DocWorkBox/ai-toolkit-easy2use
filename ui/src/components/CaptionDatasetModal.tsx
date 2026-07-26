@@ -24,6 +24,7 @@ export interface CaptionDatasetModalState {
   cloneId?: string | null;
   defaultCaptionExt?: string;
   onClose?: () => void;
+  onJobStarted?: () => void;
 }
 
 export const captionDatasetModalState = createGlobalState<CaptionDatasetModalState | null>(null);
@@ -31,11 +32,17 @@ export const captionDatasetModalState = createGlobalState<CaptionDatasetModalSta
 export const openCaptionDatasetModal = (
   datasetPath: string,
   onClose?: () => void,
-  options?: { jobId?: string | null; cloneId?: string | null; defaultCaptionExt?: string },
+  options?: {
+    jobId?: string | null;
+    cloneId?: string | null;
+    defaultCaptionExt?: string;
+    onJobStarted?: () => void;
+  },
 ) => {
   captionDatasetModalState.set({
     datasetPath,
     onClose,
+    onJobStarted: options?.onJobStarted,
     jobId: options?.jobId ?? null,
     cloneId: options?.cloneId ?? null,
     defaultCaptionExt: options?.defaultCaptionExt,
@@ -144,6 +151,7 @@ export const CaptionDatasetModal: React.FC = () => {
         const jobId = res.data.id;
         await startJob(jobId);
         await startQueue(gpuIDs || '');
+        modalInfo.onJobStarted?.();
         isSavingRef.current = false;
         setIsSaving(false);
         handleClose();
