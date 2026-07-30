@@ -23,7 +23,8 @@ import {
   CreatableSelectInput,
 } from '@/components/formInputs';
 import Card from '@/components/Card';
-import { X, Copy, Wand2, SquareDashed } from 'lucide-react';
+import { X, Copy, Wand2, SquareDashed, Info } from 'lucide-react';
+import { openDoc } from '@/components/DocModal';
 import { openUpsamplePromptsModal, toAspectRatio } from '@/components/UpsamplePromptsModal';
 import { openPromptBoxEditor } from '@/components/PromptBoxEditorModal';
 import AddSingleImageModal, { openAddImageModal } from '@/components/AddSingleImageModal';
@@ -323,6 +324,58 @@ export default function SimpleJob({
                 }}
                 placeholder=""
               />
+            )}
+            {modelArch?.gateUrl && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const gateUrl = modelArch.gateUrl as string;
+                    openDoc({
+                      title: '受限模型',
+                      description: (
+                        <div className="space-y-3">
+                          <p>
+                            该模型在 Hugging Face 上受到访问限制。使用前，请先在模型页面接受使用条款：
+                          </p>
+                          <p>
+                            <a
+                              href={gateUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              {gateUrl}
+                            </a>
+                          </p>
+                          <p>
+                            你还需要创建一个 Hugging Face{' '}
+                            <a
+                              href="https://huggingface.co/settings/tokens"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 underline"
+                            >
+                              只读访问令牌
+                            </a>{' '}
+                            ，并在{' '}
+                            <a href="/settings" className="text-blue-400 hover:text-blue-300 underline">
+                              设置页面
+                            </a>
+                            中填写。
+                          </p>
+                        </div>
+                      ),
+                    });
+                  }}
+                  className="w-full flex items-center gap-2 rounded-md bg-blue-950/60 border border-blue-800 px-3 py-2 text-sm text-blue-200 hover:bg-blue-900/60 text-left"
+                >
+                  <Info className="w-4 h-4 shrink-0 text-blue-400" />
+                  <span>
+                    受限模型，<span className="underline">了解详情</span>
+                  </span>
+                </button>
+              </div>
             )}
             {modelArch?.additionalSections?.includes('model.low_vram') && (
               <FormGroup label="选项">

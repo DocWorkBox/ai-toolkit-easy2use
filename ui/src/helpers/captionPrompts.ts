@@ -101,13 +101,8 @@ export function buildCaptionPrompt(templateKey?: string, targetLanguage?: string
     suffix = '\n\n请直接输出中文描述，不要包含任何开场白（如“好的”、“这是一段描述”等）或结束语。';
   } else if (safeTargetLanguage.includes('双语')) {
     suffix =
-      '\n\n请提供中文和英文双语描述。\n' +
-      '要求格式严格如下：\n' +
-      '## Chinese Description\n' +
-      '[中文内容]\n\n' +
-      '## English Description\n' +
-      '[English Content]\n\n' +
-      '注意：不要包含任何开场白或多余的解释性文字，直接输出内容。';
+      '\n\n请提供中文和英文双语描述。先输出中文描述，再空一行输出英文描述。\n' +
+      '只输出两个纯文本段落，不要添加标题、标签、语言名称、Markdown 标记或其他注释，也不要包含开场白或结束语。';
   } else {
     suffix = "\n\nOutput the description directly without any conversational fillers (e.g., 'Here is a description').";
   }
