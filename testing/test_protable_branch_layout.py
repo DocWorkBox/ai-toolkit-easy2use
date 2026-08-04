@@ -1,0 +1,33 @@
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read(relative_path):
+    return (ROOT / relative_path).read_text(encoding="utf-8")
+
+
+def test_protable_branch_keeps_local_model_defaults():
+    krea = _read("extensions_built_in/diffusion_models/krea2/krea2.py")
+    options = _read("ui/src/app/jobs/new/options.tsx")
+    captioners = _read("ui/src/helpers/captionOptions.ts")
+    upsampler = _read("ui_scripts/upsample_ideogram4_caption.py")
+
+    assert 'QWEN3_VL_PATH = "./models/Qwen3-VL-4B-Instruct"' in krea
+    assert 'QWEN_IMAGE_VAE_PATH = "./models/Qwen-Image"' in krea
+    assert "'./models/Krea-2-Raw'" in options
+    assert "'./models/Krea-2-Turbo'" in options
+    assert "'./models/krea2_turbo_training_adapter/" in options
+    assert "'./models/Qwen3-VL-8B-Instruct'" in captioners
+    assert "'./models/Qwen3.6-27B'" in captioners
+    assert 'default="./models/Qwen3-VL-8B-Instruct"' in upsampler
+
+    assert "'Boogu/Boogu-Image-0.1-Base'" in options
+    assert "'Boogu/Boogu-Image-0.1-Edit'" in options
+
+
+def test_protable_branch_contains_portable_launch_assets():
+    assert (ROOT / "start.bat").is_file()
+    assert (ROOT / "scripts/portable/nvidia_smi.cmd").is_file()
+    assert (ROOT / "scripts/portable/run_portable_supervisor.ps1").is_file()

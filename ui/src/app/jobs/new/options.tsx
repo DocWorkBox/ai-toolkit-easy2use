@@ -1183,7 +1183,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     gateUrl: 'https://huggingface.co/krea/Krea-2-Raw',
     defaults: {
-      'config.process[0].model.name_or_path': ['krea/Krea-2-Raw', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['./models/Krea-2-Raw', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
@@ -1205,7 +1205,7 @@ export const modelArchs: ModelArch[] = [
     group: 'image',
     gateUrl: 'https://huggingface.co/krea/Krea-2-Turbo',
     defaults: {
-      'config.process[0].model.name_or_path': ['krea/Krea-2-Turbo', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['./models/Krea-2-Turbo', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
@@ -1213,7 +1213,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].network.conv_alpha': [undefined, 16],
       'config.process[0].model.low_vram': [true, false],
       'config.process[0].model.assistant_lora_path': [
-        'ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors',
+        './models/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors',
         undefined,
       ],
       'config.process[0].sample.guidance_scale': [1, 4],
@@ -1234,7 +1234,7 @@ export const modelArchs: ModelArch[] = [
     gateUrl: 'https://huggingface.co/krea/Krea-2-Raw',
     group: 'experimental',
     defaults: {
-      'config.process[0].model.name_or_path': ['krea/Krea-2-Raw', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['./models/Krea-2-Raw', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
@@ -1269,7 +1269,7 @@ export const modelArchs: ModelArch[] = [
     gateUrl: 'https://huggingface.co/krea/Krea-2-Turbo',
     group: 'experimental',
     defaults: {
-      'config.process[0].model.name_or_path': ['krea/Krea-2-Turbo', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['./models/Krea-2-Turbo', defaultNameOrPath],
       'config.process[0].model.quantize': [true, false],
       'config.process[0].model.quantize_te': [true, false],
       'config.process[0].train.timestep_type': ['linear', 'sigmoid'],
@@ -1277,7 +1277,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].network.conv_alpha': [undefined, 16],
       'config.process[0].model.low_vram': [true, false],
       'config.process[0].model.assistant_lora_path': [
-        'ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors',
+        './models/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors',
         undefined,
       ],
       'config.process[0].sample.guidance_scale': [1, 4],

@@ -76,7 +76,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Qwen3-VL',
         group: 'image',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['./models/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.prompt_template': [defaultCaptionPromptTemplate, undefined],
             'config.process[0].caption.target_lang': [defaultCaptionTargetLanguage, undefined],
@@ -88,11 +88,11 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
-            { value: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
+            { value: './models/Qwen3-VL-8B-Instruct', label: './models/Qwen3-VL-8B-Instruct' },
+            { value: './models/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: './models/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
-            { value: 'Qwen/Qwen3.6-27B', label: 'Qwen/Qwen3.6-27B' },
-            { value: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated', label: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated' },
+            { value: './models/Qwen3.6-27B', label: './models/Qwen3.6-27B' },
+            { value: './models/Huihui-Qwen3.6-27B-abliterated', label: './models/Huihui-Qwen3.6-27B-abliterated' },
         ],
         additionalSections: [
             'caption.prompt_template',
@@ -146,7 +146,7 @@ export const captionerTypes: CaptionOption[] = [
         // The deconstruction JSON is long; the Python captioner also enforces this floor.
         minNewTokens: 3072,
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['./models/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -155,7 +155,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: './models/Qwen3-VL-8B-Instruct', label: './models/Qwen3-VL-8B-Instruct' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [

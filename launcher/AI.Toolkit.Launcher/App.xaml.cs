@@ -1,4 +1,5 @@
 using System.Windows;
+using AiToolkit.Launcher.Core;
 
 namespace AiToolkit.Launcher;
 
@@ -25,7 +26,21 @@ public partial class App : Application
         base.OnStartup(e);
         try
         {
-            var backend = LauncherBackend.CreateDefault();
+            if (LauncherSelfUpdate.TryHandleHelperArguments(e.Args, out var exitCode))
+            {
+                Shutdown(exitCode);
+                return;
+            }
+
+            var root = RepositoryLocator.FindRoot(AppContext.BaseDirectory);
+            LauncherSelfUpdate.CleanupAppliedUpdate(root, e.Args);
+            if (LauncherSelfUpdate.TryStartPendingUpdate(root))
+            {
+                Shutdown();
+                return;
+            }
+
+            var backend = new LauncherBackend(root, PythonLocator.Resolve(root));
             var viewModel = new MainViewModel(backend);
             var window = new MainWindow(viewModel);
             MainWindow = window;

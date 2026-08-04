@@ -32,6 +32,7 @@ internal static class Program
             ("toolkit status parsing", TestToolkitStatusParsing),
             ("environment diagnosis cache", TestEnvironmentDiagnosisCache),
             ("launcher reuses environment diagnosis", TestLauncherReusesEnvironmentDiagnosis),
+            ("pending launcher update validation", TestPendingLauncherUpdateValidation),
             ("UI readiness probe", TestUiReadinessProbe),
             ("view model environment controls", TestViewModelEnvironmentControls),
             ("view model maintenance state", TestViewModelMaintenanceState),
@@ -402,6 +403,52 @@ internal static class Program
 
         await backend.DiagnoseEnvironmentAsync(events.Add, CancellationToken.None);
         Assert.Equal(2, File.ReadAllLines(markerPath).Length);
+    }
+
+    private static Task TestPendingLauncherUpdateValidation()
+    {
+        using var fixture = new TempDirectory();
+        var pending = LauncherSelfUpdate.PendingPath(fixture.Path);
+
+        Assert.Equal(
+            Path.Combine(
+                fixture.Path,
+                ".cache",
+                "portable-update",
+                "AI Toolkit Launcher.update.exe"
+            ),
+            pending
+        );
+        Assert.True(
+            !LauncherSelfUpdate.HasValidPendingUpdate(fixture.Path),
+            "an absent launcher update must be ignored"
+        );
+
+        Directory.CreateDirectory(Path.GetDirectoryName(pending)!);
+        File.WriteAllBytes(pending, "not an executable"u8.ToArray());
+        Assert.True(
+            !LauncherSelfUpdate.HasValidPendingUpdate(fixture.Path),
+            "a non-PE launcher update must be ignored"
+        );
+
+        File.WriteAllBytes(pending, new byte[] { (byte)'M', (byte)'Z', 0, 1 });
+        Assert.True(
+            LauncherSelfUpdate.HasValidPendingUpdate(fixture.Path),
+            "a staged PE launcher update was not detected"
+        );
+        File.WriteAllBytes(
+            Path.Combine(fixture.Path, "AI Toolkit Launcher.exe"),
+            new byte[] { (byte)'M', (byte)'Z', 0, 1 }
+        );
+        Assert.True(
+            !LauncherSelfUpdate.TryStartPendingUpdate(fixture.Path),
+            "a matching launcher update must not start a replacement process"
+        );
+        Assert.True(
+            !File.Exists(pending),
+            "a matching staged launcher update should be cleaned up"
+        );
+        return Task.CompletedTask;
     }
 
     private static async Task TestUiReadinessProbe()

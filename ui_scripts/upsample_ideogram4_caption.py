@@ -265,7 +265,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--model_name_or_path",
-        default="Qwen/Qwen3-VL-8B-Instruct",
+        default="./models/Qwen3-VL-8B-Instruct",
     )
     parser.add_argument("--max_new_tokens", type=int, default=3072)
     parser.add_argument("--device", default="cuda")

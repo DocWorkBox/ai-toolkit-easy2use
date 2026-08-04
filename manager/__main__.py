@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from manager import detect as detect_mod
-from manager import env, gitops, launch, spec as spec_mod, util
+from manager import env, gitops, launch, portable_update, spec as spec_mod, util
 from manager.util import die, info, ok, print_json, warn
 
 
@@ -75,14 +75,33 @@ def cmd_repair(args):
 def cmd_check(args):
     _, s = _resolve_spec(args)
     git_checkout = gitops.is_checkout()
-    fetched = gitops.fetch() if git_checkout else False
-    behind = gitops.behind_count() if git_checkout else None
+    if git_checkout:
+        fetched = gitops.fetch()
+        branch = gitops.current_branch()
+        commit = gitops.current_commit()
+        remote_commit = gitops.remote_commit()
+        behind = gitops.behind_count()
+        incoming = gitops.incoming_log()
+        dirty = gitops.is_dirty()
+    else:
+        portable = portable_update.remote_status()
+        fetched = portable["fetch_ok"]
+        branch = portable["branch"]
+        commit = portable["local_commit"]
+        remote_commit = portable["remote_commit"]
+        behind = portable["behind"]
+        incoming = (
+            ["Portable branch update %s" % remote_commit[:12]]
+            if behind and remote_commit
+            else []
+        )
+        dirty = False
     data = {
         "version": _toolkit_version(),
-        "branch": gitops.current_branch(),
-        "commit": gitops.current_commit(),
-        "remote_commit": gitops.remote_commit(),
-        "dirty": gitops.is_dirty(),
+        "branch": branch,
+        "commit": commit,
+        "remote_commit": remote_commit,
+        "dirty": dirty,
         "fetch_ok": fetched,
         "git_checkout": git_checkout,
         "behind": behind,
@@ -121,10 +140,17 @@ def cmd_update(args):
     aborts rather than overwriting local changes.
     """
     if not gitops.is_checkout():
-        warn(
-            "Portable archive detected — code updates are handled by the "
-            "portable package. Syncing this package's dependencies only."
-        )
+        try:
+            result = portable_update.update_from_remote(dry_run=args.dry_run)
+        except portable_update.PortableUpdateError as error:
+            if getattr(args, "auto", False):
+                warn("Could not update portable code — %s" % error)
+                result = {"changed": False}
+            else:
+                die(str(error))
+        if result["changed"] and not args.dry_run:
+            _reexec_sync(args)
+            return
         detection, s = _resolve_spec(args)
         env.sync(s, detection, dry_run=args.dry_run)
         return
@@ -165,16 +191,21 @@ def cmd_update(args):
             ok("Code updated to %s." % gitops.current_commit())
             # Re-exec so the freshly pulled manager code runs its own dependency
             # sync and migrations (the in-memory copy of this module is stale now).
-            cmd = [sys.executable, "-m", "manager"]
-            if util.json_stream_mode():
-                cmd.append("--json-stream")
-            cmd.append("sync")
-            if args.dry_run:
-                cmd.append("--dry-run")
-            sys.exit(subprocess.call(cmd, cwd=util.REPO_ROOT))
+            _reexec_sync(args)
+            return
     # nothing was pulled — safe to sync with the code already loaded
     detection, s = _resolve_spec(args)
     env.sync(s, detection, dry_run=args.dry_run)
+
+
+def _reexec_sync(args):
+    cmd = [sys.executable, "-m", "manager"]
+    if util.json_stream_mode():
+        cmd.append("--json-stream")
+    cmd.append("sync")
+    if args.dry_run:
+        cmd.append("--dry-run")
+    sys.exit(subprocess.call(cmd, cwd=util.REPO_ROOT))
 
 
 def cmd_launch(args):
