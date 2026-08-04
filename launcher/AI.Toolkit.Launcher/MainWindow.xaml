@@ -564,7 +564,7 @@
             Visibility="{Binding IsChecked, ElementName=ModelsNav, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="70" />
+                    <RowDefinition Height="88" />
                     <RowDefinition Height="42" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
@@ -579,13 +579,28 @@
                         <TextBlock FontSize="16" FontWeight="SemiBold" Text="本地模型检查" />
                         <TextBlock
                             MaxWidth="760"
-                            Margin="0,5,0,0"
+                            Margin="0,4,0,0"
                             FontFamily="Cascadia Mono, Consolas"
                             FontSize="10"
                             Foreground="{StaticResource MutedTextBrush}"
-                            Text="{Binding ModelsRoot}"
                             TextTrimming="CharacterEllipsis"
-                            ToolTip="{Binding ModelsRoot}" />
+                            ToolTip="{Binding ModelsRoot}">
+                            <Run FontFamily="Microsoft YaHei UI" Text="便携模型目录：" />
+                            <Run Text="{Binding ModelsRoot, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock
+                            x:Name="ConfiguredModelsRootText"
+                            MaxWidth="760"
+                            Margin="0,3,0,0"
+                            FontFamily="Cascadia Mono, Consolas"
+                            FontSize="10"
+                            Foreground="{StaticResource WarningBrush}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip="{Binding ConfiguredModelsRoot}">
+                            <Run FontFamily="Microsoft YaHei UI" Text="MiniMax 模型目录：" />
+                            <Run Text="{Binding ConfiguredModelsRoot, Mode=OneWay}" />
+                            <Run FontFamily="Microsoft YaHei UI" Text="  ·  可在设置中指向 ComfyUI 的 models 目录" />
+                        </TextBlock>
                     </StackPanel>
                     <Button
                         Grid.Column="1"
@@ -681,7 +696,7 @@
                                 <DataTemplate>
                                     <StackPanel>
                                         <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="{StaticResource MutedTextBrush}" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="{StaticResource MutedTextBrush}" Text="{Binding FamilyCategoryLabel}" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

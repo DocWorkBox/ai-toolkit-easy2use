@@ -28,6 +28,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private string _serviceStatus = "服务已停止";
     private string _statusText = "准备就绪";
     private string _modelsRoot;
+    private string _configuredModelsRoot;
     private string _modelSummaryText = "尚未扫描模型目录";
     private bool _isBusy;
     private bool _isUiRunning;
@@ -42,6 +43,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         _backend = backend;
         _managedRoot = backend.RepositoryRoot;
         _modelsRoot = Path.Combine(backend.RepositoryRoot, "models");
+        _configuredModelsRoot = _modelsRoot;
         _synchronizationContext = synchronizationContext
             ?? SynchronizationContext.Current
             ?? new SynchronizationContext();
@@ -140,6 +142,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         get => _modelsRoot;
         private set => SetField(ref _modelsRoot, value);
+    }
+
+    public string ConfiguredModelsRoot
+    {
+        get => _configuredModelsRoot;
+        private set => SetField(ref _configuredModelsRoot, value);
     }
 
     public string ModelSummaryText
@@ -282,6 +290,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             {
                 var report = await _backend.ScanModelsAsync(AppendEvent, cancellationToken);
                 ModelsRoot = report.ModelsRoot;
+                ConfiguredModelsRoot = string.IsNullOrWhiteSpace(report.ConfiguredModelsRoot)
+                    ? report.ModelsRoot
+                    : report.ConfiguredModelsRoot;
                 Models.Clear();
                 foreach (var model in report.Models)
                 {
@@ -293,7 +304,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 StatusText = "模型目录扫描完成";
                 AppendLog(
                     summary.Issues > 0 ? "warning" : "success",
-                    $"模型扫描：{ModelSummaryText}；目录：{report.ModelsRoot}"
+                    $"模型扫描：{ModelSummaryText}；便携目录：{report.ModelsRoot}；MODELS_PATH：{ConfiguredModelsRoot}"
                 );
             }
         );

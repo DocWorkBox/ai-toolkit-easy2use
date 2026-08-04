@@ -60,9 +60,14 @@ public sealed record ModelStatusItem(
     string AbsolutePath,
     string Detail,
     string DownloadUrl,
-    bool Special
+    bool Special,
+    string Family = ""
 )
 {
+    public string FamilyCategoryLabel => string.IsNullOrWhiteSpace(Family)
+        ? Category
+        : $"{Family} · {Category}";
+
     public string StatusLabel => Status switch
     {
         "ready" => "可用",
@@ -84,7 +89,8 @@ public sealed record ModelScanReport(
     string ModelsRoot,
     string CatalogPath,
     ModelScanSummary Summary,
-    IReadOnlyList<ModelStatusItem> Models
+    IReadOnlyList<ModelStatusItem> Models,
+    string ConfiguredModelsRoot = ""
 );
 
 public static class ToolkitStatusParser
@@ -179,7 +185,8 @@ public static class ToolkitStatusParser
                         String(model, "absolute_path"),
                         String(model, "detail"),
                         String(model, "download_url"),
-                        Boolean(model, "special")
+                        Boolean(model, "special"),
+                        String(model, "family")
                     )
                 );
             }
@@ -195,7 +202,8 @@ public static class ToolkitStatusParser
                 Integer(summary, "unrecognized"),
                 Integer(summary, "total")
             ),
-            models
+            models,
+            String(root, "configured_models_root", String(root, "models_root"))
         );
     }
 

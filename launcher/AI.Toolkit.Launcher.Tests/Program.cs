@@ -181,6 +181,7 @@ internal static class Program
         const string json = """
             {
               "models_root": "C:\\portable\\models",
+              "configured_models_root": "D:\\ComfyUI\\models",
               "catalog_path": "C:\\portable\\portable_models.json",
               "summary": {
                 "ready": 1,
@@ -204,6 +205,7 @@ internal static class Program
                 {
                   "id": "missing-model",
                   "name": "Missing Model",
+                  "family": "Family A",
                   "category": "模型组件",
                   "status": "missing",
                   "path": "./models/Missing-Model",
@@ -230,9 +232,11 @@ internal static class Program
         var report = ToolkitStatusParser.ParseModelScan(json);
 
         Assert.Equal(@"C:\portable\models", report.ModelsRoot);
+        Assert.Equal(@"D:\ComfyUI\models", report.ConfiguredModelsRoot);
         Assert.Equal(3, report.Summary.Total);
         Assert.Equal(3, report.Models.Count);
         Assert.Equal("缺失", report.Models[1].StatusLabel);
+        Assert.Equal("Family A · 模型组件", report.Models[1].FamilyCategoryLabel);
         Assert.True(report.Models[1].CanDownload, "missing model should expose its official source");
         Assert.True(report.Models[2].CanDownload, "incomplete model should expose its official source");
         Assert.True(!report.Models[0].CanDownload, "ready model should not show a download action");
@@ -724,7 +728,8 @@ internal static class Program
                 @"C:\portable\ai-toolkit\models",
                 @"C:\portable\ai-toolkit\portable_models.json",
                 new ModelScanSummary(0, 0, 1, 0, 1),
-                new[] { missing }
+                new[] { missing },
+                @"D:\ComfyUI\models"
             ),
         };
         var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
@@ -737,6 +742,10 @@ internal static class Program
             "model summary should expose the missing count"
         );
         Assert.Equal(backend.ModelReport.ModelsRoot, viewModel.ModelsRoot);
+        Assert.Equal(
+            backend.ModelReport.ConfiguredModelsRoot,
+            viewModel.ConfiguredModelsRoot
+        );
         Assert.True(
             viewModel.OpenModelDownloadCommand.CanExecute(missing),
             "missing model download button should be enabled"
@@ -839,6 +848,11 @@ internal static class Program
                 Assert.True(modelsNav is not null, "model management page must be reachable from the main navigation");
                 var restartNotice = window.FindName("RestartNotice") as System.Windows.Controls.Border;
                 Assert.True(restartNotice is not null, "the window must expose a persistent restart notice");
+                var configuredModelsRoot = window.FindName("ConfiguredModelsRootText") as System.Windows.Controls.TextBlock;
+                Assert.True(
+                    configuredModelsRoot is not null,
+                    "model management must expose the configured MODELS_PATH"
+                );
                 viewModel.Models.Add(
                     new ModelStatusItem(
                         "missing-model",

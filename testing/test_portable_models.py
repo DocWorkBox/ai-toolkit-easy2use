@@ -23,7 +23,10 @@ def test_catalog_uses_local_paths_and_official_download_links():
     assert len({item["id"] for item in catalog["models"]}) == len(catalog["models"])
 
     for item in catalog["models"]:
-        assert item["path"].startswith("./models/"), item
+        if item.get("root") == "configured_models":
+            assert not item["path"].startswith(("/", "./models/")), item
+        else:
+            assert item["path"].startswith("./models/"), item
         assert "\\" not in item["path"], item
         assert item["kind"] in {"directory", "file"}, item
         assert item["download_url"].startswith("https://huggingface.co/"), item
@@ -42,6 +45,35 @@ def test_catalog_defines_special_component_layouts():
     assert by_id["wan-umt5"]["path"] == "./models/umt5_xxl_encoder"
     assert by_id["wan-vae"]["path"] == "./models/wan2.1-vae"
     assert by_id["qwen-image"]["path"] == "./models/Qwen-Image"
+
+
+def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
+    by_id = {item["id"]: item for item in _catalog()["models"]}
+
+    assert by_id["flux2-dev"]["family"] == "FLUX.2"
+    assert by_id["flux2-mistral"]["family"] == "FLUX.2"
+    assert by_id["flux2-vae"]["family"] == "FLUX.2"
+    assert by_id["krea2-raw"]["family"] == "Krea 2"
+    assert by_id["qwen-image-vae"]["family"] == "Krea 2"
+    assert by_id["krea2-turbo-adapter"]["family"] == "Krea 2"
+
+    minimax_ids = {
+        "minimax-h3-fl2va",
+        "minimax-h3-text-encoder",
+        "minimax-h3-video-vae",
+        "minimax-h3-audio-vae",
+    }
+    minimax = [by_id[item_id] for item_id in minimax_ids]
+    assert {item["family"] for item in minimax} == {"MiniMax-H3"}
+    assert {item["root"] for item in minimax} == {"configured_models"}
+    assert {
+        item["path"] for item in minimax
+    } == {
+        "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+        "vae/minimax_h3_video_vae_fp16.safetensors",
+        "vae/minimax_h3_audio_vae_fp32.safetensors",
+    }
 
 
 def test_minimax_h3_is_the_only_remote_training_default():
@@ -190,6 +222,143 @@ def test_model_scanner_reports_ready_incomplete_misplaced_and_unknown(tmp_path):
         "unrecognized": 1,
         "total": 4,
     }
+
+
+def test_model_scanner_keeps_related_family_entries_together(tmp_path):
+    from manager.models import scan_models
+
+    catalog = {
+        "schema": 1,
+        "models": [
+            {
+                "id": "family-model",
+                "name": "Family model",
+                "family": "Family A",
+                "category": "训练模型",
+                "path": "./models/family-model.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/example/family-model",
+            },
+            {
+                "id": "other-model",
+                "name": "Other model",
+                "category": "训练模型",
+                "path": "./models/other-model.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/example/other-model",
+            },
+            {
+                "id": "family-component",
+                "name": "Family component",
+                "family": "Family A",
+                "category": "模型组件",
+                "path": "./models/family-component.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/example/family-component",
+            },
+            {
+                "id": "family-adapter",
+                "name": "Family adapter",
+                "family": "Family A",
+                "category": "训练适配器",
+                "path": "./models/family-adapter.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/example/family-adapter",
+            },
+            {
+                "id": "family-helper",
+                "name": "Family helper",
+                "family": "Family A",
+                "category": "辅助模型",
+                "path": "./models/family-helper.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/example/family-helper",
+            },
+        ],
+    }
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    models_root = tmp_path / "models"
+    models_root.mkdir()
+    for item in catalog["models"]:
+        (tmp_path / item["path"][2:]).write_bytes(b"weights")
+
+    report = scan_models(repo_root=tmp_path, catalog_path=catalog_path)
+
+    assert [item["id"] for item in report["models"]] == [
+        "family-model",
+        "family-component",
+        "family-adapter",
+        "family-helper",
+        "other-model",
+    ]
+
+
+def test_model_scanner_uses_configured_models_path_for_minimax(tmp_path):
+    import sqlite3
+
+    from manager.models import scan_models
+
+    configured_root = tmp_path / "ComfyUI" / "models"
+    configured_root.mkdir(parents=True)
+    database = sqlite3.connect(tmp_path / "aitk_db.db")
+    database.execute(
+        'CREATE TABLE "Settings" ("id" INTEGER PRIMARY KEY, "key" TEXT UNIQUE, "value" TEXT)'
+    )
+    database.execute(
+        'INSERT INTO "Settings" ("key", "value") VALUES (?, ?)',
+        ("MODELS_PATH", str(configured_root)),
+    )
+    database.commit()
+    database.close()
+
+    catalog = {
+        "schema": 1,
+        "models_root": "./models",
+        "models": [
+            {
+                "id": "minimax-h3-fl2va",
+                "name": "MiniMax-H3 FL2VA Transformer",
+                "family": "MiniMax-H3",
+                "category": "训练模型",
+                "root": "configured_models",
+                "path": "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/Comfy-Org/MiniMax-H3",
+            },
+            {
+                "id": "minimax-h3-video-vae",
+                "name": "MiniMax-H3 Video VAE",
+                "family": "MiniMax-H3",
+                "category": "模型组件",
+                "root": "configured_models",
+                "path": "vae/minimax_h3_video_vae_fp16.safetensors",
+                "kind": "file",
+                "download_url": "https://huggingface.co/Comfy-Org/MiniMax-H3",
+            },
+        ],
+    }
+    catalog_path = tmp_path / "catalog.json"
+    catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+    transformer = (
+        configured_root
+        / "diffusion_models"
+        / "shared"
+        / "minimax_h3_fl2va_pruned_int8_convrot.safetensors"
+    )
+    transformer.parent.mkdir(parents=True)
+    transformer.write_bytes(b"weights")
+
+    report = scan_models(repo_root=tmp_path, catalog_path=catalog_path)
+    by_id = {item["id"]: item for item in report["models"]}
+
+    assert report["configured_models_root"] == str(configured_root.resolve())
+    assert by_id["minimax-h3-fl2va"]["status"] == "ready"
+    assert by_id["minimax-h3-fl2va"]["absolute_path"] == str(transformer.resolve())
+    assert by_id["minimax-h3-fl2va"]["path"].startswith("<MODELS_PATH>/")
+    assert by_id["minimax-h3-video-vae"]["status"] == "missing"
+    assert "ComfyUI" in by_id["minimax-h3-video-vae"]["detail"]
+    assert "MODELS_PATH" in by_id["minimax-h3-video-vae"]["detail"]
 
 
 def test_model_scanner_detects_lfs_pointer_as_incomplete(tmp_path):

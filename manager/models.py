@@ -2,6 +2,7 @@
 
 import json
 import os
+import sqlite3
 from pathlib import Path, PurePosixPath
 
 from manager import util
@@ -18,6 +19,17 @@ GENERIC_WEIGHT_PATTERNS = (
     "*.gguf",
 )
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
+CONFIGURED_MODELS_ROOT = "configured_models"
+CONFIGURED_MODELS_HINT = (
+    "此项读取设置中的 MODELS_PATH；可将该路径设置为 ComfyUI 的 models 目录以复用模型。"
+)
+ROLE_ORDER = {
+    "训练模型": 0,
+    "模型组件": 1,
+    "训练适配器": 2,
+    "辅助模型": 3,
+    "打标模型": 4,
+}
 
 
 class ModelCatalogError(RuntimeError):
@@ -41,19 +53,57 @@ def scan_models(repo_root=None, catalog_path=None):
     catalog_file = Path(catalog_path or root / CATALOG_FILENAME)
     catalog = load_catalog(catalog_file)
     models_root = _portable_path(root, catalog.get("models_root", "./models"))
-    misplaced_index = _build_misplaced_index(models_root)
+    configured_models_root = _configured_models_path(root)
+    misplaced_indexes = {
+        models_root: _build_misplaced_index(models_root),
+    }
     expected_top_level = set()
     recognized_actual_top_level = set()
     results = []
+    family_positions = {}
 
-    for entry in catalog["models"]:
+    for catalog_index, entry in enumerate(catalog["models"]):
         portable_path = entry.get("path", "")
-        target = _portable_path(root, portable_path)
-        relative = target.relative_to(root)
-        if relative.parts:
-            expected_top_level.add(relative.parts[1] if relative.parts[0] == "models" else relative.parts[0])
-        result = _scan_entry(root, entry, target, misplaced_index)
+        uses_configured_root = entry.get("root") == CONFIGURED_MODELS_ROOT
+        if uses_configured_root:
+            path_root = configured_models_root
+            target = _relative_model_path(path_root, portable_path)
+            display_path = "<MODELS_PATH>/%s" % PurePosixPath(portable_path).as_posix()
+        else:
+            path_root = root
+            target = _portable_path(root, portable_path)
+            display_path = portable_path
+            relative = target.relative_to(root)
+            if relative.parts:
+                expected_top_level.add(
+                    relative.parts[1]
+                    if relative.parts[0] == "models"
+                    else relative.parts[0]
+                )
+
+        result = _scan_entry(
+            path_root,
+            entry,
+            target,
+            None if uses_configured_root else misplaced_indexes[models_root],
+            display_path,
+            allow_loader_search=uses_configured_root,
+        )
+        family = str(entry.get("family", "")).strip()
+        result["family"] = family
+        family_key = family.casefold() if family else "entry:%08d" % catalog_index
+        family_positions.setdefault(family_key, catalog_index)
+        result["_sort_key"] = (
+            family_positions[family_key],
+            _role_order(result["category"]),
+            catalog_index,
+        )
+        if uses_configured_root:
+            result["detail"] = "%s；%s" % (result["detail"], CONFIGURED_MODELS_HINT)
         results.append(result)
+
+        if uses_configured_root:
+            continue
         actual_path = Path(result["absolute_path"])
         if result["status"] in {"ready", "incomplete", "misplaced", "name_mismatch"}:
             try:
@@ -80,17 +130,14 @@ def scan_models(repo_root=None, catalog_path=None):
                     "detail": "不在便携版默认模型清单中；仍可在任务配置中手动指定。",
                     "download_url": "",
                     "special": False,
+                    "family": "",
+                    "_sort_key": (len(catalog["models"]) + len(results), 9, 0),
                 }
             )
 
-    order = {"incomplete": 0, "misplaced": 1, "name_mismatch": 2, "ready": 3, "missing": 4, "unrecognized": 5}
-    results.sort(
-        key=lambda item: (
-            order.get(item["status"], 9),
-            item["category"],
-            item["name"].casefold(),
-        )
-    )
+    results.sort(key=lambda item: item["_sort_key"])
+    for result in results:
+        result.pop("_sort_key", None)
     summary = {
         "ready": sum(item["status"] == "ready" for item in results),
         "issues": sum(item["status"] in {"incomplete", "misplaced", "name_mismatch"} for item in results),
@@ -101,43 +148,60 @@ def scan_models(repo_root=None, catalog_path=None):
     return {
         "schema": 1,
         "models_root": str(models_root),
+        "configured_models_root": str(configured_models_root),
         "catalog_path": str(catalog_file.resolve()),
         "summary": summary,
         "models": results,
     }
 
 
-def _scan_entry(root, entry, target, misplaced_index):
+def _scan_entry(
+    path_root,
+    entry,
+    target,
+    misplaced_index,
+    display_path,
+    allow_loader_search=False,
+):
     result = {
         "id": str(entry["id"]),
         "name": str(entry["name"]),
         "category": str(entry.get("category", "模型")),
         "status": "missing",
-        "path": str(entry["path"]),
+        "path": str(display_path),
         "absolute_path": str(target),
-        "detail": "未安装。请下载后放到 %s" % entry["path"],
+        "detail": "未安装。请下载后放到 %s" % display_path,
         "download_url": str(entry.get("download_url", "")),
         "special": bool(entry.get("special", False)),
     }
 
-    actual, case_mismatch = _resolve_existing_case(root, target.relative_to(root).parts)
+    actual, case_mismatch = _resolve_existing_case(
+        path_root, target.relative_to(path_root).parts
+    )
+    if actual is None and allow_loader_search:
+        actual = _find_loader_compatible_file(path_root, entry["path"])
+        case_mismatch = False
     if actual is None:
-        misplaced = _find_misplaced(misplaced_index, target, entry.get("kind"))
+        misplaced = (
+            _find_misplaced(misplaced_index, target, entry.get("kind"))
+            if misplaced_index is not None
+            else None
+        )
         if misplaced is not None:
             result["status"] = "misplaced"
             result["absolute_path"] = str(misplaced.resolve())
-            result["detail"] = "发现于 %s；应移动到 %s" % (misplaced, entry["path"])
+            result["detail"] = "发现于 %s；应移动到 %s" % (misplaced, display_path)
         return result
 
     result["absolute_path"] = str(actual.resolve())
     expected_kind = entry.get("kind")
     if expected_kind == "file" and not actual.is_file():
         result["status"] = "incomplete"
-        result["detail"] = "目标应为文件：%s" % entry["path"]
+        result["detail"] = "目标应为文件：%s" % display_path
         return result
     if expected_kind == "directory" and not actual.is_dir():
         result["status"] = "incomplete"
-        result["detail"] = "目标应为目录：%s" % entry["path"]
+        result["detail"] = "目标应为目录：%s" % display_path
         return result
 
     problems = _validate_content(actual, entry)
@@ -148,7 +212,7 @@ def _scan_entry(root, entry, target, misplaced_index):
 
     if case_mismatch:
         result["status"] = "name_mismatch"
-        result["detail"] = "当前名称为 %s；建议改为 %s" % (actual, entry["path"])
+        result["detail"] = "当前名称为 %s；建议改为 %s" % (actual, display_path)
         return result
 
     result["status"] = "ready"
@@ -168,6 +232,75 @@ def _portable_path(root, value):
     except ValueError:
         raise ModelCatalogError("Model path escapes repository root: %r" % value)
     return target
+
+
+def _relative_model_path(models_root, value):
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise ModelCatalogError("Invalid configured model path: %r" % value)
+    pure = PurePosixPath(value)
+    if pure.is_absolute() or ".." in pure.parts:
+        raise ModelCatalogError("Unsafe configured model path: %r" % value)
+    target = (models_root / Path(*pure.parts)).resolve()
+    try:
+        target.relative_to(models_root)
+    except ValueError:
+        raise ModelCatalogError("Configured model path escapes MODELS_PATH: %r" % value)
+    return target
+
+
+def _configured_models_path(root):
+    configured = os.environ.get("MODELS_PATH", "").strip()
+    if not configured:
+        configured = _read_models_path_setting(root)
+    if not configured:
+        return (root / "models").resolve()
+
+    configured = os.path.expandvars(os.path.expanduser(configured.strip()))
+    path = Path(configured)
+    if not path.is_absolute():
+        path = root / path
+    return path.resolve()
+
+
+def _find_loader_compatible_file(models_root, relative_path):
+    pure = PurePosixPath(relative_path)
+    filename = pure.name
+    bare = models_root / filename
+    if bare.is_file():
+        return bare
+
+    category = models_root / Path(*pure.parent.parts)
+    if not category.is_dir():
+        return None
+    for current_value, directory_names, file_names in os.walk(category):
+        directory_names.sort()
+        if filename in file_names:
+            return Path(current_value) / filename
+    return None
+
+
+def _read_models_path_setting(root):
+    database_path = root / "aitk_db.db"
+    if not database_path.is_file():
+        return ""
+    try:
+        with sqlite3.connect(database_path, timeout=1) as database:
+            row = database.execute(
+                'SELECT "value" FROM "Settings" WHERE "key" = ? LIMIT 1',
+                ("MODELS_PATH",),
+            ).fetchone()
+    except (OSError, sqlite3.Error):
+        return ""
+    if row and isinstance(row[0], str):
+        return row[0].strip()
+    return ""
+
+
+def _role_order(category):
+    for role, order in ROLE_ORDER.items():
+        if role in category:
+            return order
+    return 8
 
 
 def _resolve_existing_case(root, parts):
