@@ -271,7 +271,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             ServiceStatus = "服务运行中";
             StatusText = "AI Toolkit 已启动";
             AppendLog("success", $"UI 服务已就绪，PID {session.ProcessId}");
-            _backend.OpenUi();
+            OpenUiInBackground();
             _ = ObserveUiExitAsync(session);
         }
         catch (OperationCanceledException)
@@ -433,6 +433,26 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                     : $"服务已退出，代码 {result.ExitCode}";
             },
             null
+        );
+    }
+
+    private void OpenUiInBackground()
+    {
+        _ = Task.Run(
+            () =>
+            {
+                try
+                {
+                    _backend.OpenUi();
+                }
+                catch (Exception ex)
+                {
+                    _synchronizationContext.Post(
+                        _ => AppendLog("warning", $"无法自动打开界面：{ex.Message}"),
+                        null
+                    );
+                }
+            }
         );
     }
 

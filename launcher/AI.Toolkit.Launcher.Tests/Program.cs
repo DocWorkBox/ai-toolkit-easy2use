@@ -30,6 +30,7 @@ internal static class Program
             ("view model maintenance state", TestViewModelMaintenanceState),
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
+            ("browser launch does not block UI", TestBrowserLaunchDoesNotBlockUi),
             ("WPF window construction", TestWpfWindowConstruction),
         };
 
@@ -472,6 +473,26 @@ internal static class Program
         Assert.Equal("服务已停止", viewModel.ServiceStatus);
     }
 
+    private static async Task TestBrowserLaunchDoesNotBlockUi()
+    {
+        var backend = new FakeLauncherBackend { BlockOpenUi = true };
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        await viewModel.InitializeAsync();
+
+        try
+        {
+            await viewModel.StartUiAsync().WaitAsync(TimeSpan.FromSeconds(2));
+            await backend.OpenUiStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.Equal("服务运行中", viewModel.ServiceStatus);
+            Assert.True(!viewModel.IsBusy, "browser launch must not keep the UI busy");
+        }
+        finally
+        {
+            backend.ReleaseOpenUi();
+            await viewModel.StopUiAsync();
+        }
+    }
+
     private static async Task TestViewModelShutdownWaitsForMaintenance()
     {
         var backend = new FakeLauncherBackend { Health = RepairableEnvironment() };
@@ -686,6 +707,13 @@ internal static class Program
 
         public bool LastForce { get; private set; }
 
+        public bool BlockOpenUi { get; set; }
+
+        public TaskCompletionSource<bool> OpenUiStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly ManualResetEventSlim _openUiRelease = new(initialState: false);
+
         public Task<LauncherSnapshot> LoadSnapshotAsync(
             Action<ManagerEvent> onEvent,
             CancellationToken cancellationToken
@@ -744,7 +772,19 @@ internal static class Program
             return new FakeLauncherUiSession();
         }
 
-        public void OpenUi() { }
+        public void OpenUi()
+        {
+            OpenUiStarted.TrySetResult(true);
+            if (BlockOpenUi)
+            {
+                _openUiRelease.Wait(TimeSpan.FromSeconds(10));
+            }
+        }
+
+        public void ReleaseOpenUi()
+        {
+            _openUiRelease.Set();
+        }
 
         public void CompleteMaintenance()
         {
