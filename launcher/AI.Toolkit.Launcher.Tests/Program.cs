@@ -41,6 +41,7 @@ internal static class Program
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
             ("view model model management", TestViewModelModelManagement),
+            ("clipboard uses one non-persistent write", TestClipboardSingleWriteMode),
             ("browser launch does not block UI", TestBrowserLaunchDoesNotBlockUi),
             ("WPF window construction", TestWpfWindowConstruction),
         };
@@ -756,6 +757,32 @@ internal static class Program
 
         viewModel.OpenModelsDirectoryCommand.Execute(null);
         Assert.True(backend.ModelsDirectoryOpened, "models directory should be opened on request");
+
+        viewModel.CopyQuarkShareCommand.Execute(null);
+        Assert.Equal("https://pan.quark.cn/s/c1d5b0545545", backend.ClipboardText);
+        Assert.Equal("夸克网盘地址已复制", viewModel.StatusText);
+    }
+
+    private static Task TestClipboardSingleWriteMode()
+    {
+        var attempts = 0;
+        object? payload = null;
+        bool? persistAfterExit = null;
+
+        ClipboardWriter.SetText(
+            "https://pan.quark.cn/s/c1d5b0545545",
+            (data, copy) =>
+            {
+                attempts++;
+                payload = data;
+                persistAfterExit = copy;
+            }
+        );
+
+        Assert.Equal(1, attempts);
+        Assert.Equal("https://pan.quark.cn/s/c1d5b0545545", payload as string);
+        Assert.Equal(false, persistAfterExit);
+        return Task.CompletedTask;
     }
 
     private static async Task TestBrowserLaunchDoesNotBlockUi()
@@ -1110,6 +1137,8 @@ internal static class Program
 
         public bool ModelsDirectoryOpened { get; private set; }
 
+        public string? ClipboardText { get; private set; }
+
         public bool RestartRequiredAfterUpdate { get; set; }
 
         public TaskCompletionSource<bool> OpenUiStarted { get; } =
@@ -1195,6 +1224,11 @@ internal static class Program
         public void OpenModelsDirectory()
         {
             ModelsDirectoryOpened = true;
+        }
+
+        public void CopyTextToClipboard(string text)
+        {
+            ClipboardText = text;
         }
 
         public void OpenUrl(string url)

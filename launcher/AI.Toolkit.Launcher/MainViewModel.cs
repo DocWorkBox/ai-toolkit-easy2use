@@ -11,6 +11,7 @@ public sealed record LogEntry(DateTimeOffset Timestamp, string Level, string Mes
 public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private const int MaxLogEntries = 2000;
+    private const string QuarkShareUrl = "https://pan.quark.cn/s/c1d5b0545545";
 
     private readonly ILauncherBackend _backend;
     private readonly SynchronizationContext _synchronizationContext;
@@ -57,6 +58,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         StopCommand = new AsyncCommand(StopUiAsync, () => CanStop);
         OpenCommand = new RelayCommand(OpenUi, () => IsUiRunning);
         ScanModelsCommand = new AsyncCommand(ScanModelsAsync, CanScanModels);
+        CopyQuarkShareCommand = new RelayCommand(
+            CopyQuarkShareLink,
+            () => !_isShuttingDown
+        );
         OpenModelsDirectoryCommand = new RelayCommand(OpenModelsDirectory);
         OpenModelDownloadCommand = new RelayCommand<ModelStatusItem>(
             OpenModelDownload,
@@ -80,6 +85,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public AsyncCommand StopCommand { get; }
     public RelayCommand OpenCommand { get; }
     public AsyncCommand ScanModelsCommand { get; }
+    public RelayCommand CopyQuarkShareCommand { get; }
     public RelayCommand OpenModelsDirectoryCommand { get; }
     public RelayCommand<ModelStatusItem> OpenModelDownloadCommand { get; }
     public RelayCommand ClearLogsCommand { get; }
@@ -755,6 +761,21 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
+    private void CopyQuarkShareLink()
+    {
+        try
+        {
+            _backend.CopyTextToClipboard(QuarkShareUrl);
+            StatusText = "夸克网盘地址已复制";
+            AppendLog("success", "已复制夸克网盘模型下载地址");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("error", ex.Message);
+            StatusText = "无法复制夸克网盘地址";
+        }
+    }
+
     private void OpenModelDownload(ModelStatusItem model)
     {
         try
@@ -801,6 +822,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         StopCommand.RaiseCanExecuteChanged();
         OpenCommand.RaiseCanExecuteChanged();
         ScanModelsCommand.RaiseCanExecuteChanged();
+        CopyQuarkShareCommand.RaiseCanExecuteChanged();
         OpenModelsDirectoryCommand.RaiseCanExecuteChanged();
         OpenModelDownloadCommand.RaiseCanExecuteChanged();
     }

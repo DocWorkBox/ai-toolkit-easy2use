@@ -56,9 +56,24 @@ public interface ILauncherBackend
 
     void OpenModelsDirectory();
 
+    void CopyTextToClipboard(string text);
+
     void OpenUrl(string url);
 
     bool IsRestartRequired();
+}
+
+public static class ClipboardWriter
+{
+    public static void SetText(
+        string text,
+        Action<object, bool>? setDataObject = null
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        setDataObject ??= System.Windows.Clipboard.SetDataObject;
+        setDataObject(text, false);
+    }
 }
 
 public sealed class LauncherBackend : ILauncherBackend
@@ -204,6 +219,11 @@ public sealed class LauncherBackend : ILauncherBackend
         {
             UseShellExecute = true,
         });
+    }
+
+    public void CopyTextToClipboard(string text)
+    {
+        ClipboardWriter.SetText(text);
     }
 
     public void OpenUrl(string url)

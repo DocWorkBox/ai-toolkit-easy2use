@@ -25,6 +25,17 @@ _CREATIONFLAGS_POSITION = 14
 _patched = False
 
 
+def _ensure_text_subprocess_decode_fallback(kwargs):
+    """Prevent native Windows output from crashing UTF-8 reader threads."""
+    uses_text_mode = (
+        kwargs.get("text") is True
+        or kwargs.get("universal_newlines") is True
+        or kwargs.get("encoding") is not None
+    )
+    if uses_text_mode and kwargs.get("errors") is None:
+        kwargs["errors"] = "replace"
+
+
 def _has_console():
     import ctypes
 
@@ -46,6 +57,7 @@ def suppress_child_consoles():
     original_init = subprocess.Popen.__init__
 
     def patched_init(self, *args, **kwargs):
+        _ensure_text_subprocess_decode_fallback(kwargs)
         if len(args) >= _CREATIONFLAGS_POSITION:
             # Passed positionally; leave the caller's choice alone.
             return original_init(self, *args, **kwargs)

@@ -16,4 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AI.Toolkit.Launcher.Core\AI.Toolkit.Launcher.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\aitoolkit-icon.png" />
+  </ItemGroup>
 </Project>

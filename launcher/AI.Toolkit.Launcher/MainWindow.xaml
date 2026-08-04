@@ -140,16 +140,16 @@
                 Width="44"
                 Height="44"
                 VerticalAlignment="Top"
-                Background="{StaticResource AccentBrush}"
+                Background="#050605"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
                 CornerRadius="6">
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontFamily="Segoe UI Semibold"
-                    FontSize="17"
-                    FontWeight="SemiBold"
-                    Foreground="#07140C"
-                    Text="AI" />
+                <Image
+                    Width="32"
+                    Height="32"
+                    RenderOptions.BitmapScalingMode="HighQuality"
+                    Source="Assets/aitoolkit-icon.png"
+                    Stretch="Uniform" />
             </Border>
 
             <StackPanel Grid.Column="1" Margin="14,-2,0,0">
@@ -574,6 +574,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock FontSize="16" FontWeight="SemiBold" Text="本地模型检查" />
@@ -607,6 +608,19 @@
                         Height="38"
                         MinWidth="106"
                         Margin="0,0,8,0"
+                        Command="{Binding CopyQuarkShareCommand}"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="复制夸克网盘模型下载地址">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE8C8;" />
+                            <TextBlock Margin="8,0,0,0" Text="夸克网盘" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="2"
+                        Height="38"
+                        MinWidth="106"
+                        Margin="0,0,8,0"
                         Command="{Binding OpenModelsDirectoryCommand}"
                         Style="{StaticResource ActionButtonStyle}"
                         ToolTip="打开便携版 models 目录">
@@ -616,7 +630,7 @@
                         </StackPanel>
                     </Button>
                     <Button
-                        Grid.Column="2"
+                        Grid.Column="3"
                         Height="38"
                         MinWidth="106"
                         Margin="0"
