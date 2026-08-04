@@ -84,10 +84,12 @@ Windows launcher always sets it to the root shown in its status bar.
   the pull). `nodejs.ensure_ui_deps` owns the install instead: `npm install
   --no-save`, gated on a hash of `ui/package.json` + `ui/package-lock.json`
   (stored in the venv state), with the lockfile bytes snapshotted and restored
-  either way. `manager launch` therefore runs `npm run db_build_start`, not
-  `build_and_start`; the latter still exists for the manual
-  `cd ui && npm run build_and_start` flow in the README and calls the same
-  non-writing install via `npm run install_deps`.
+  either way. `manager launch` owns the preparation sequence: it synchronizes
+  the Prisma schema, fingerprints the UI build inputs, runs `npm run build`
+  only when sources changed or required output is missing, then runs
+  `npm run start`. The successful fingerprint is stored under `ui/.next`, so
+  normal stop/start cycles reuse the existing build. `build_and_start` remains
+  available for the manual `cd ui && npm run build_and_start` flow.
 - **Nothing global is ever installed.** FFmpeg (shared builds — the libs
   torchcodec dlopens) goes to `.ffmpeg/` ([ffmpeg.py](ffmpeg.py)), Node
   (when the system lacks >= 20) to `.node/` ([nodejs.py](nodejs.py)), the uv

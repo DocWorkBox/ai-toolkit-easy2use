@@ -1,8 +1,10 @@
-"""Launch the AI Toolkit web UI (ui/ -> npm run db_build_start)."""
+"""Prepare changed UI assets once, then launch the AI Toolkit web UI."""
 
+import hashlib
 import os
 import subprocess
 import threading
+from pathlib import Path
 
 from . import ffmpeg, nodejs
 from .util import (
@@ -11,13 +13,23 @@ from .util import (
     clean_env,
     die,
     info,
+    ok,
     python_bin_dir,
     venv_python,
+    warn,
 )
 
 UI_PORT = 8675
 UI_URL = "http://localhost:%d" % UI_PORT
 BROWSER_POLL_SECONDS = 300
+UI_DIR = os.path.join(REPO_ROOT, "ui")
+UI_BUILD_MARKER = ".aitk-build-fingerprint"
+UI_BUILD_EXCLUDED_DIRS = {".next", "dist", "node_modules"}
+UI_BUILD_OUTPUTS = (
+    ".next/BUILD_ID",
+    "dist/cron/worker.js",
+    "dist/cron/fileServer.js",
+)
 
 
 def build_env():
@@ -67,6 +79,87 @@ def _open_browser_when_ready(stop_event):
             waited += 2
 
 
+def _ui_build_input_paths(ui_dir):
+    ui_dir = Path(ui_dir)
+    paths = []
+    for current, directory_names, file_names in os.walk(ui_dir):
+        directory_names[:] = sorted(
+            name
+            for name in directory_names
+            if name not in UI_BUILD_EXCLUDED_DIRS
+        )
+        current_path = Path(current)
+        for file_name in sorted(file_names):
+            path = current_path / file_name
+            if path.is_file():
+                paths.append(path)
+    return sorted(paths, key=lambda path: path.relative_to(ui_dir).as_posix())
+
+
+def ui_build_fingerprint(ui_dir=None):
+    """Hash UI build inputs while excluding generated and installed files."""
+    ui_dir = Path(ui_dir or UI_DIR)
+    digest = hashlib.sha256()
+    digest.update(b"aitk-ui-build-v1\0")
+    for path in _ui_build_input_paths(ui_dir):
+        relative = path.relative_to(ui_dir).as_posix().encode("utf-8")
+        digest.update(relative)
+        digest.update(b"\0")
+        with path.open("rb") as handle:
+            while True:
+                chunk = handle.read(1 << 20)
+                if not chunk:
+                    break
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _ui_build_marker_path(ui_dir):
+    return Path(ui_dir) / ".next" / UI_BUILD_MARKER
+
+
+def ui_build_is_current(ui_dir=None):
+    ui_dir = Path(ui_dir or UI_DIR)
+    if any(not (ui_dir / relative).is_file() for relative in UI_BUILD_OUTPUTS):
+        return False
+    try:
+        recorded = _ui_build_marker_path(ui_dir).read_text(encoding="ascii").strip()
+    except OSError:
+        return False
+    return recorded == ui_build_fingerprint(ui_dir)
+
+
+def _mark_ui_build_current(ui_dir):
+    marker = _ui_build_marker_path(ui_dir)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    temporary = marker.with_suffix(marker.suffix + ".tmp")
+    temporary.write_text(ui_build_fingerprint(ui_dir), encoding="ascii")
+    os.replace(temporary, marker)
+
+
+def ensure_ui_build(npm, env, ui_dir=None):
+    ui_dir = str(ui_dir or UI_DIR)
+    if ui_build_is_current(ui_dir):
+        ok("UI build is current; skipping rebuild.")
+        return 0
+
+    info("UI sources or build outputs changed; building UI once...")
+    code = subprocess.call([npm, "run", "build"], cwd=ui_dir, env=env)
+    if code != 0:
+        warn("UI build failed with code %d." % code)
+        return code
+    if any(not (Path(ui_dir) / relative).is_file() for relative in UI_BUILD_OUTPUTS):
+        warn("UI build completed but required output files are missing.")
+        return 1
+    try:
+        _mark_ui_build_current(ui_dir)
+    except OSError as error:
+        warn("Could not save the UI build cache: %s" % error)
+        return 1
+    ok("UI build is ready; future launches will reuse it until sources change.")
+    return 0
+
+
 def launch_ui(open_browser=True):
     if not os.path.isfile(venv_python()):
         die("No Python environment found. Run: python3 -m manager install")
@@ -90,6 +183,15 @@ def launch_ui(open_browser=True):
     # never rewritten (see nodejs.ensure_ui_deps); a no-op once they're in sync
     nodejs.ensure_ui_deps(env=env)
 
+    info("Synchronizing the UI database schema...")
+    code = subprocess.call([npm, "run", "update_db"], cwd=UI_DIR, env=env)
+    if code != 0:
+        return code
+
+    code = ensure_ui_build(npm, env, UI_DIR)
+    if code != 0:
+        return code
+
     info("Starting AI Toolkit UI (%s) ..." % UI_URL)
     stop_event = threading.Event()
     if open_browser and not _headless():
@@ -98,7 +200,7 @@ def launch_ui(open_browser=True):
         ).start()
 
     proc = subprocess.Popen(
-        [npm, "run", "db_build_start"], cwd=os.path.join(REPO_ROOT, "ui"), env=env
+        [npm, "run", "start"], cwd=UI_DIR, env=env
     )
     try:
         return proc.wait()
