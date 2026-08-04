@@ -1,4 +1,4 @@
-import React, { use, useEffect } from 'react';
+import React, { use, useEffect, useRef } from 'react';
 import { Button } from '@headlessui/react';
 import { CaptionDatasetModal, openCaptionDatasetModal } from '@/components/CaptionDatasetModal';
 import useJobByRef from '@/hooks/useJobByRef';
@@ -8,18 +8,42 @@ import { Loader2 } from 'lucide-react';
 type AutoCaptionButtonProps = {
   datasetPath: string;
   setIsAutoCaptioning?: (isAutoCaptioning: boolean) => void;
+  onCaptioningFinished?: () => void;
   captionExt?: string;
 };
 
-export default function AutoCaptionButton({ datasetPath, setIsAutoCaptioning, captionExt }: AutoCaptionButtonProps) {
+export default function AutoCaptionButton({
+  datasetPath,
+  setIsAutoCaptioning,
+  onCaptioningFinished,
+  captionExt,
+}: AutoCaptionButtonProps) {
   const { job, status, refreshJob } = useJobByRef(datasetPath, 5000);
   const isActive = !!(job && (job.status === 'running' || job.status === 'queued'));
+  const lastFinishedJobIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (setIsAutoCaptioning) {
       setIsAutoCaptioning(isActive);
     }
   }, [isActive, setIsAutoCaptioning]);
+
+  useEffect(() => {
+    if (!job) return;
+    if (isActive) {
+      if (lastFinishedJobIdRef.current === job.id) {
+        lastFinishedJobIdRef.current = null;
+      }
+      return;
+    }
+    if (
+      ['completed', 'stopped', 'error'].includes(job.status) &&
+      lastFinishedJobIdRef.current !== job.id
+    ) {
+      lastFinishedJobIdRef.current = job.id;
+      onCaptioningFinished?.();
+    }
+  }, [job?.id, job?.status, isActive, onCaptioningFinished]);
 
   if (isActive && job) {
     return (

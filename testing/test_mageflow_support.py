@@ -3,7 +3,7 @@ from pathlib import Path
 
 REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MAGEFLOW_SOURCE = Path("extensions_built_in/diffusion_models/mageflow/mageflow.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.ts")
+OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 
 

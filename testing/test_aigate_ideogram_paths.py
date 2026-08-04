@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def test_main_ideogram4_uses_repo_model_paths():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     ideogram_source = Path("extensions_built_in/diffusion_models/ideogram4/ideogram4.py").read_text(
         encoding="utf-8"
     )
@@ -18,14 +18,14 @@ def test_main_ideogram4_uses_repo_model_paths():
 
 
 def test_main_boogu_keeps_repo_defaults():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
 
     assert "'config.process[0].model.name_or_path': ['Boogu/Boogu-Image-0.1-Base', defaultNameOrPath]" in options_source
     assert "'config.process[0].model.name_or_path': ['Boogu/Boogu-Image-0.1-Edit', defaultNameOrPath]" in options_source
 
 
 def test_main_model_defaults_do_not_use_branch_local_roots():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     ideogram_source = Path("extensions_built_in/diffusion_models/ideogram4/ideogram4.py").read_text(
         encoding="utf-8"
     )
@@ -42,7 +42,7 @@ def test_main_model_defaults_do_not_use_branch_local_roots():
 
 
 def test_main_krea2_keeps_repo_defaults():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     simple_job_source = Path("ui/src/app/jobs/new/SimpleJob.tsx").read_text(encoding="utf-8")
     krea2_source = Path("extensions_built_in/diffusion_models/krea2/krea2.py").read_text(
         encoding="utf-8"
