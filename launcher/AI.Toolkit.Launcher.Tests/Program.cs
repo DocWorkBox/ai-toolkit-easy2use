@@ -6,12 +6,17 @@ internal static class Program
 {
     private const string WpfSmokeArgument = "--wpf-smoke-child";
     private const string WpfSmokeMarker = "WPF_SMOKE_OK";
+    private const string ManagerStubArgument = "--manager-stub";
 
     private static async Task<int> Main(string[] args)
     {
         if (args.Contains(WpfSmokeArgument, StringComparer.Ordinal))
         {
             return RunWpfSmokeChild();
+        }
+        if (args.Contains(ManagerStubArgument, StringComparer.Ordinal))
+        {
+            return RunManagerStub(args);
         }
 
         var tests = new (string Name, Func<Task> Run)[]
@@ -25,6 +30,8 @@ internal static class Program
             ("JSON document output capture", TestJsonDocumentOutputCapture),
             ("managed session stop", TestManagedSessionStop),
             ("toolkit status parsing", TestToolkitStatusParsing),
+            ("environment diagnosis cache", TestEnvironmentDiagnosisCache),
+            ("launcher reuses environment diagnosis", TestLauncherReusesEnvironmentDiagnosis),
             ("UI readiness probe", TestUiReadinessProbe),
             ("view model environment controls", TestViewModelEnvironmentControls),
             ("view model maintenance state", TestViewModelMaintenanceState),
@@ -293,6 +300,18 @@ internal static class Program
               "backend": "cu130"
             }
             """;
+        const string portableUpdateJson = """
+            {
+              "version": "1.18.0",
+              "branch": "portable",
+              "dirty": false,
+              "behind": null,
+              "venv": true,
+              "deps_in_sync": false,
+              "update_available": true,
+              "backend": "cu130"
+            }
+            """;
         const string doctorJson = """
             {
               "ok": false,
@@ -317,6 +336,7 @@ internal static class Program
 
         var hardware = ToolkitStatusParser.ParseDetection(detectionJson);
         var update = ToolkitStatusParser.ParseUpdateCheck(updateJson);
+        var portableUpdate = ToolkitStatusParser.ParseUpdateCheck(portableUpdateJson);
         var environment = ToolkitStatusParser.ParseEnvironmentHealth(doctorJson);
 
         Assert.Equal("RTX 5070 Ti", hardware.PrimaryGpuName);
@@ -327,11 +347,61 @@ internal static class Program
         Assert.Equal(2, update.Behind);
         Assert.True(update.UpdateAvailable, "update should be available");
         Assert.True(!update.DependenciesInSync, "dependency state should be preserved");
+        Assert.True(portableUpdate.Behind is null, "portable check should preserve a null behind count");
         Assert.True(!environment.MeetsRequirements, "environment should be unhealthy");
         Assert.True(environment.EnvironmentExists, "environment existence was lost");
         Assert.Equal(2, environment.RepairableFailures.Count);
         Assert.Equal("requirements", environment.Checks[0].Key);
         return Task.CompletedTask;
+    }
+
+    private static Task TestEnvironmentDiagnosisCache()
+    {
+        using var fixture = new TempDirectory();
+        var cache = new EnvironmentHealthCache(fixture.Path);
+        var health = HealthyEnvironment();
+        var checkedAt = new DateTimeOffset(2026, 8, 4, 12, 30, 0, TimeSpan.Zero);
+
+        Assert.True(cache.TryLoad() is null, "an absent diagnosis cache should be ignored");
+        cache.Save(health, checkedAt);
+
+        var loaded = cache.TryLoad();
+        Assert.True(loaded is not null, "the diagnosis cache was not persisted");
+        Assert.Equal(checkedAt, loaded!.CheckedAtUtc);
+        Assert.Equal(health.RequiredPassed, loaded.Health.RequiredPassed);
+        Assert.Equal(health.RequiredTotal, loaded.Health.RequiredTotal);
+        Assert.True(File.Exists(cache.CachePath), "the diagnosis log file was not created");
+
+        File.WriteAllText(cache.CachePath, "{ invalid json", System.Text.Encoding.UTF8);
+        Assert.True(cache.TryLoad() is null, "a corrupt diagnosis cache should be ignored");
+        return Task.CompletedTask;
+    }
+
+    private static async Task TestLauncherReusesEnvironmentDiagnosis()
+    {
+        using var fixture = new TempDirectory();
+        var executable = Environment.ProcessPath
+            ?? throw new InvalidOperationException("Could not resolve the test executable.");
+        var python = new PythonCommand(executable, new[] { ManagerStubArgument }, true);
+        var backend = new LauncherBackend(fixture.Path, python);
+        var events = new List<ManagerEvent>();
+        var markerPath = Path.Combine(fixture.Path, "doctor-invocations.log");
+
+        var first = await backend.LoadSnapshotAsync(events.Add, CancellationToken.None);
+        Assert.Equal(15, first.Environment.RequiredPassed);
+        Assert.Equal(1, File.ReadAllLines(markerPath).Length);
+
+        events.Clear();
+        var second = await backend.LoadSnapshotAsync(events.Add, CancellationToken.None);
+        Assert.Equal(15, second.Environment.RequiredPassed);
+        Assert.Equal(1, File.ReadAllLines(markerPath).Length);
+        Assert.True(
+            events.Any(item => item.Message.Contains("已读取上次环境诊断", StringComparison.Ordinal)),
+            "startup did not report that it reused the diagnosis cache"
+        );
+
+        await backend.DiagnoseEnvironmentAsync(events.Add, CancellationToken.None);
+        Assert.Equal(2, File.ReadAllLines(markerPath).Length);
     }
 
     private static async Task TestUiReadinessProbe()
@@ -626,6 +696,62 @@ internal static class Program
             return 1;
         }
         return 0;
+    }
+
+    private static int RunManagerStub(string[] args)
+    {
+        var managerIndex = Array.IndexOf(args, "manager");
+        if (managerIndex < 0 || managerIndex + 1 >= args.Length)
+        {
+            Console.Error.WriteLine("Missing manager action.");
+            return 2;
+        }
+
+        switch (args[managerIndex + 1])
+        {
+            case "version":
+                Console.WriteLine("1.18.0");
+                return 0;
+            case "detect":
+                Console.WriteLine(
+                    """
+                    {
+                      "os": "windows",
+                      "arch": "x86_64",
+                      "nvidia": {
+                        "driver": "610.88",
+                        "cuda_version": "13.3",
+                        "gpus": [{"name": "RTX 5070 Ti", "memory": "16303 MiB"}]
+                      },
+                      "spec": {"backend": "cu130"}
+                    }
+                    """
+                );
+                return 0;
+            case "doctor":
+                File.AppendAllText(
+                    Path.Combine(Environment.CurrentDirectory, "doctor-invocations.log"),
+                    "doctor" + Environment.NewLine
+                );
+                Console.WriteLine(
+                    """
+                    {
+                      "ok": true,
+                      "environment_exists": true,
+                      "required_passed": 15,
+                      "required_total": 15,
+                      "failed_required": [],
+                      "repairable_failures": [],
+                      "warnings": [],
+                      "checks": []
+                    }
+                    """
+                );
+                return 0;
+            default:
+                Console.Error.WriteLine($"Unsupported manager action: {args[managerIndex + 1]}");
+                return 2;
+        }
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)

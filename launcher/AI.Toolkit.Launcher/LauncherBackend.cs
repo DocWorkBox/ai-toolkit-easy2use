@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using AiToolkit.Launcher.Core;
 
 namespace AiToolkit.Launcher;
@@ -56,12 +57,19 @@ public sealed class LauncherBackend : ILauncherBackend
     private readonly string _repositoryRoot;
     private readonly PythonCommand _python;
     private readonly ManagerClient _client;
+    private readonly EnvironmentHealthCache _environmentCache;
 
-    public LauncherBackend(string repositoryRoot, PythonCommand python, ManagerClient? client = null)
+    public LauncherBackend(
+        string repositoryRoot,
+        PythonCommand python,
+        ManagerClient? client = null,
+        EnvironmentHealthCache? environmentCache = null
+    )
     {
         _repositoryRoot = repositoryRoot;
         _python = python;
         _client = client ?? new ManagerClient();
+        _environmentCache = environmentCache ?? new EnvironmentHealthCache(repositoryRoot);
     }
 
     public string RepositoryRoot => _repositoryRoot;
@@ -79,7 +87,14 @@ public sealed class LauncherBackend : ILauncherBackend
     {
         var version = await RunCheckedAsync(ManagerAction.Version, false, onEvent, cancellationToken);
         var detection = await RunCheckedAsync(ManagerAction.Detect, false, onEvent, cancellationToken);
-        var environment = await DiagnoseEnvironmentAsync(onEvent, cancellationToken);
+        var cachedEnvironment = _environmentCache.TryLoad();
+        var environment = cachedEnvironment?.Health
+            ?? await DiagnoseEnvironmentAsync(onEvent, cancellationToken);
+        if (cachedEnvironment is not null)
+        {
+            var message = $"已读取上次环境诊断（{cachedEnvironment.CheckedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm}）";
+            onEvent(new ManagerEvent("log", "info", message, message));
+        }
         return new LauncherSnapshot(
             version.StandardOutput.Trim(),
             ToolkitStatusParser.ParseDetection(detection.StandardOutput),
@@ -99,7 +114,22 @@ public sealed class LauncherBackend : ILauncherBackend
             onEvent,
             cancellationToken
         );
-        return ToolkitStatusParser.ParseEnvironmentHealth(result.StandardOutput);
+        var health = ToolkitStatusParser.ParseEnvironmentHealth(result.StandardOutput);
+        try
+        {
+            _environmentCache.Save(health, DateTimeOffset.UtcNow);
+        }
+        catch (Exception error) when (
+            error is IOException
+                or UnauthorizedAccessException
+                or System.Security.SecurityException
+                or NotSupportedException
+        )
+        {
+            var message = $"环境诊断结果未能写入缓存：{error.Message}";
+            onEvent(new ManagerEvent("log", "warning", message, message));
+        }
+        return health;
     }
 
     public async Task<UpdateStatus> CheckUpdatesAsync(

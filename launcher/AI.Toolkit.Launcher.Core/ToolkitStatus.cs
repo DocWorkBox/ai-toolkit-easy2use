@@ -155,7 +155,9 @@ public static class ToolkitStatusParser
 
     private static int? NullableInteger(JsonElement parent, string name)
     {
-        return parent.TryGetProperty(name, out var value) && value.TryGetInt32(out var result)
+        return parent.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out var result)
             ? result
             : null;
     }
