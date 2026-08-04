@@ -7,9 +7,16 @@ import { apiClient } from '@/utils/api';
 // Entries are keyed by extension + path so different caption extensions don't
 // collide in the cache or the pending batch.
 type Resolver = { resolve: (caption: string) => void; reject: (err: unknown) => void };
-type Pending = { path: string; ext: string; resolvers: Resolver[] };
+type Pending = {
+  path: string;
+  ext: string;
+  cacheKey: string;
+  generation: number;
+  resolvers: Resolver[];
+};
 const pending = new Map<string, Pending>();
 const cache = new Map<string, string>();
+const cacheGenerations = new Map<string, number>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const FLUSH_DELAY_MS = 30;
 const MAX_BATCH = 200;
@@ -20,6 +27,14 @@ function normExt(ext: string | undefined): string {
 
 function keyFor(path: string, ext: string): string {
   return `${ext}\n${path}`;
+}
+
+function generationFor(cacheKey: string): number {
+  return cacheGenerations.get(cacheKey) ?? 0;
+}
+
+function pendingKeyFor(cacheKey: string, generation: number): string {
+  return `${generation}\n${cacheKey}`;
 }
 
 function scheduleFlush() {
@@ -54,9 +69,13 @@ async function flush() {
       try {
         const res = await apiClient.post('/api/caption/getBatch', { imgPaths: paths, ext });
         const captions: Record<string, string> = res.data?.captions ?? {};
-        for (const { path, ext: e, resolvers } of entries) {
+        for (const { path, cacheKey, generation, resolvers } of entries) {
           const value = captions[path] ?? '';
-          cache.set(keyFor(path, e), value);
+          // A refresh may have started while this request was in flight. Never
+          // let the older response replace the newer cache entry.
+          if (generationFor(cacheKey) === generation) {
+            cache.set(cacheKey, value);
+          }
           for (const r of resolvers) r.resolve(value);
         }
       } catch (err) {
@@ -76,13 +95,15 @@ function requestCaption(path: string, ext: string, signal?: AbortSignal): Promis
       reject(new DOMException('Aborted', 'AbortError'));
       return;
     }
-    const key = keyFor(path, ext);
+    const cacheKey = keyFor(path, ext);
+    const generation = generationFor(cacheKey);
+    const key = pendingKeyFor(cacheKey, generation);
     const resolver: Resolver = { resolve, reject };
     const entry = pending.get(key);
     if (entry) {
       entry.resolvers.push(resolver);
     } else {
-      pending.set(key, { path, ext, resolvers: [resolver] });
+      pending.set(key, { path, ext, cacheKey, generation, resolvers: [resolver] });
     }
     if (signal) {
       const onAbort = () => {
@@ -104,11 +125,15 @@ function requestCaption(path: string, ext: string, signal?: AbortSignal): Promis
 }
 
 export function invalidateCaption(path: string, ext?: string) {
-  cache.delete(keyFor(path, normExt(ext)));
+  const cacheKey = keyFor(path, normExt(ext));
+  cacheGenerations.set(cacheKey, generationFor(cacheKey) + 1);
+  cache.delete(cacheKey);
 }
 
 export function setCachedCaption(path: string, caption: string, ext?: string) {
-  cache.set(keyFor(path, normExt(ext)), caption);
+  const cacheKey = keyFor(path, normExt(ext));
+  cacheGenerations.set(cacheKey, generationFor(cacheKey) + 1);
+  cache.set(cacheKey, caption);
 }
 
 // Fetches caption for a path, using the module-level batcher + cache.
@@ -117,9 +142,10 @@ export default function useCaptionBatch(imgPath: string | null, refreshKey: numb
   const captionExt = normExt(ext);
   const [caption, setCaption] = useState<string>(() => (imgPath ? (cache.get(keyFor(imgPath, captionExt)) ?? '') : ''));
   const [isLoaded, setIsLoaded] = useState<boolean>(() => Boolean(imgPath && cache.has(keyFor(imgPath, captionExt))));
-  const lastPathRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
     if (!imgPath) {
       setCaption('');
       setIsLoaded(false);
@@ -132,17 +158,15 @@ export default function useCaptionBatch(imgPath: string | null, refreshKey: numb
     if (cached !== undefined) {
       setCaption(cached);
       setIsLoaded(true);
-      lastPathRef.current = imgPath;
       return;
     }
 
     let cancelled = false;
     const controller = new AbortController();
-    lastPathRef.current = imgPath;
     setIsLoaded(false);
     requestCaption(imgPath, captionExt, controller.signal)
       .then(value => {
-        if (cancelled || lastPathRef.current !== imgPath) return;
+        if (cancelled || requestIdRef.current !== requestId) return;
         setCaption(value);
         setIsLoaded(true);
       })

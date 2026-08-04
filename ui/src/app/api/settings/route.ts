@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/server/prisma';
-import { defaultTrainFolder, defaultDatasetsFolder, defaultModelsFolder } from '@/paths';
+import {
+  defaultTrainFolder,
+  defaultDatasetsFolder,
+  defaultModelsFolder,
+  legacyDefaultModelsFolder,
+} from '@/paths';
 import { flushCache } from '@/server/settings';
 
 export async function GET() {
@@ -21,7 +26,11 @@ export async function GET() {
     // MODELS_PATH from the env file always takes precedence over the setting
     if (process.env.MODELS_PATH && process.env.MODELS_PATH.trim() !== '') {
       settingsObject.MODELS_PATH = process.env.MODELS_PATH;
-    } else if (!settingsObject.MODELS_PATH || settingsObject.MODELS_PATH === '') {
+    } else if (
+      !settingsObject.MODELS_PATH ||
+      settingsObject.MODELS_PATH === '' ||
+      settingsObject.MODELS_PATH === legacyDefaultModelsFolder
+    ) {
       // if MODELS_PATH is not set, use default
       settingsObject.MODELS_PATH = defaultModelsFolder;
     }

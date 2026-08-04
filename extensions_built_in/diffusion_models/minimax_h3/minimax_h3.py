@@ -99,7 +99,7 @@ COMFY_FILES = {
     "audio_vae": "vae/minimax_h3_audio_vae_fp32.safetensors",
 }
 # tokenizer/processor/text-encoder config come from the original repo (tiny files)
-ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"
+ORIGINAL_REPO = "/datasets/studio/huggingface/models/MiniMax-H3"
 
 
 def new_save_image_function(

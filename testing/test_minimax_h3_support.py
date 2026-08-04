@@ -6,6 +6,9 @@ MODEL_SOURCE = Path("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.
 OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 SETTINGS_SOURCE = Path("ui/src/app/settings/page.tsx")
+UI_PATHS_SOURCE = Path("ui/src/paths.ts")
+CRON_PATHS_SOURCE = Path("ui/cron/paths.ts")
+SETTINGS_ROUTE_SOURCE = Path("ui/src/app/api/settings/route.ts")
 
 
 def test_minimax_h3_is_registered_with_custom_training_components():
@@ -16,6 +19,7 @@ def test_minimax_h3_is_registered_with_custom_training_components():
     assert registry.count("    MinimaxH3Model,") == 1
     assert 'arch = "minimax_h3"' in model
     assert 'COMFY_REPO = "Comfy-Org/MiniMax-H3"' in model
+    assert 'ORIGINAL_REPO = "/datasets/studio/huggingface/models/MiniMax-H3"' in model
     assert "from .src.transformer import MiniMaxH3Transformer" in model
     assert "from .src.vae import MiniMaxH3VideoVAE" in model
     assert "def get_frame_count_snapper" in model
@@ -27,7 +31,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
-    assert "'/datasets/studio/huggingface/models/MiniMax-H3'" in options
+    assert "'Comfy-Org/MiniMax-H3'" in options
     assert "'config.process[0].datasets[x].do_audio': [true, undefined]" in options
     assert "'config.process[0].datasets[x].do_i2v': [false, undefined]" in options
     assert "模型目录路径" in options
@@ -36,3 +40,16 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
     assert "Model notes" not in simple_job
+
+
+def test_aigate_comfy_models_path_is_the_effective_ui_default():
+    ui_paths = UI_PATHS_SOURCE.read_text(encoding="utf-8")
+    cron_paths = CRON_PATHS_SOURCE.read_text(encoding="utf-8")
+    settings_route = SETTINGS_ROUTE_SOURCE.read_text(encoding="utf-8")
+
+    expected_default = "export const defaultModelsFolder = '/datasets/ComfyUI/models';"
+    assert expected_default in ui_paths
+    assert expected_default in cron_paths
+    assert "let modelsPath = defaultModelsFolder" in cron_paths
+    assert "row.value !== legacyDefaultModelsFolder" in cron_paths
+    assert "settingsObject.MODELS_PATH === legacyDefaultModelsFolder" in settings_route

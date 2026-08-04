@@ -28,7 +28,6 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
   const [captionRefreshKeys, setCaptionRefreshKeys] = useState<Record<string, number>>({});
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
   const [captionBarHeight, setCaptionBarHeight] = useState(0);
-  const wasAutoCaptioningRef = useRef(false);
   const scrollParentCallback = useCallback((el: HTMLDivElement | null) => setScrollParent(el), []);
   const isRefreshingRef = useRef(false);
 
@@ -66,22 +65,19 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
     }
   }, [datasetName]);
 
-  const handleAutoCaptioningChange = useCallback(
-    (isActive: boolean) => {
-      setIsAutoCaptioning(isActive);
-      if (wasAutoCaptioningRef.current && !isActive) {
-        setCaptionRefreshKeys(prev => {
-          const next = { ...prev };
-          for (const img of imgList) {
-            next[img.img_path] = (next[img.img_path] || 0) + 1;
-          }
-          return next;
-        });
+  const refreshAllCaptions = useCallback(() => {
+    setCaptionRefreshKeys(prev => {
+      const next = { ...prev };
+      for (const img of imgList) {
+        next[img.img_path] = (next[img.img_path] || 0) + 1;
       }
-      wasAutoCaptioningRef.current = isActive;
-    },
-    [imgList],
-  );
+      return next;
+    });
+  }, [imgList]);
+
+  const handleAutoCaptioningChange = useCallback((isActive: boolean) => {
+    setIsAutoCaptioning(isActive);
+  }, []);
 
   const PageInfoContent = useMemo(() => {
     let icon = null;
@@ -164,6 +160,7 @@ export default function DatasetPage({ params }: { params: { datasetName: string 
           <AutoCaptionButton
             datasetPath={`${pathJoin(settings.DATASETS_FOLDER, datasetName)}`}
             setIsAutoCaptioning={handleAutoCaptioningChange}
+            onCaptioningFinished={refreshAllCaptions}
             captionExt={captionExt}
           />
           <Button

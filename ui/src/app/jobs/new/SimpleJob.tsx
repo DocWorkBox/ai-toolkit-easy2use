@@ -1310,7 +1310,7 @@ export default function SimpleJob({
                         />
                         {modelArch?.additionalSections?.includes('datasets.auto_frame_count') && (
                           <Checkbox
-                            label="Auto Frame Count"
+                            label="自动帧数"
                             checked={dataset.auto_frame_count || false}
                             onChange={value => setJobConfig(value, `config.process[0].datasets[${i}].auto_frame_count`)}
                             docKey="datasets.auto_frame_count"

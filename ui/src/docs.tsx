@@ -428,13 +428,12 @@ const docs: { [key: string]: ConfigDoc } = {
     ),
   },
   'datasets.auto_frame_count': {
-    title: 'Auto Frame Count',
+    title: '自动帧数',
     description: (
       <>
-        This will automatically determine the number of frames to use for each video in your dataset instead of relying
-        on a fixed num_frames. This allows you to include videos of different lengths in the dataset, and each video
-        will be processed without speeding up or slowing down. Be careful about adding long videos into your dataset, as
-        they use up more VRAM. This currently will not work with a batch size greater than 1.
+        启用后，不再使用固定的 num_frames，而是根据数据集中每个视频的长度自动确定训练帧数。
+        这样可以在同一数据集中使用不同时长的视频，并按原始播放速度处理，不会加速或减速。
+        长视频会占用更多显存，请谨慎添加。目前仅支持批量大小为 1。
       </>
     ),
   },
