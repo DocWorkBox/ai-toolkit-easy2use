@@ -37,6 +37,7 @@ internal static class Program
             ("UI readiness probe", TestUiReadinessProbe),
             ("view model environment controls", TestViewModelEnvironmentControls),
             ("view model maintenance state", TestViewModelMaintenanceState),
+            ("view model restart reminder", TestViewModelRestartReminder),
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
             ("view model model management", TestViewModelModelManagement),
@@ -581,6 +582,44 @@ internal static class Program
         Assert.Equal("环境修复完成，环境符合要求", viewModel.StatusText);
     }
 
+    private static async Task TestViewModelRestartReminder()
+    {
+        var backend = new FakeLauncherBackend
+        {
+            Health = HealthyEnvironment(),
+            RestartRequiredAfterUpdate = true,
+        };
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        var reminderCount = 0;
+        viewModel.RestartRequiredDetected += (_, _) => reminderCount++;
+
+        var update = viewModel.UpdateAsync();
+        await WaitUntilAsync(() => viewModel.IsBusy, TimeSpan.FromSeconds(2));
+        backend.CompleteMaintenance();
+        await update;
+
+        Assert.True(viewModel.RestartRequired, "a staged launcher update must require restart");
+        Assert.Equal("程序更新完成，需要重启应用", viewModel.StatusText);
+        Assert.Equal(1, reminderCount);
+
+        var ordinaryBackend = new FakeLauncherBackend { Health = HealthyEnvironment() };
+        var ordinaryViewModel = new MainViewModel(
+            ordinaryBackend,
+            new ImmediateSynchronizationContext()
+        );
+        var ordinaryReminderCount = 0;
+        ordinaryViewModel.RestartRequiredDetected += (_, _) => ordinaryReminderCount++;
+
+        var ordinaryUpdate = ordinaryViewModel.UpdateAsync();
+        await WaitUntilAsync(() => ordinaryViewModel.IsBusy, TimeSpan.FromSeconds(2));
+        ordinaryBackend.CompleteMaintenance();
+        await ordinaryUpdate;
+
+        Assert.True(!ordinaryViewModel.RestartRequired, "ordinary updates must not request restart");
+        Assert.Equal("程序更新完成，环境符合要求", ordinaryViewModel.StatusText);
+        Assert.Equal(0, ordinaryReminderCount);
+    }
+
     private static async Task TestViewModelEnvironmentControls()
     {
         var healthyBackend = new FakeLauncherBackend { Health = HealthyEnvironment() };
@@ -798,6 +837,8 @@ internal static class Program
                 Assert.True(modelGrid is not null, "model management page must expose its model grid");
                 var modelsNav = window.FindName("ModelsNav") as System.Windows.Controls.RadioButton;
                 Assert.True(modelsNav is not null, "model management page must be reachable from the main navigation");
+                var restartNotice = window.FindName("RestartNotice") as System.Windows.Controls.Border;
+                Assert.True(restartNotice is not null, "the window must expose a persistent restart notice");
                 viewModel.Models.Add(
                     new ModelStatusItem(
                         "missing-model",
@@ -1055,6 +1096,8 @@ internal static class Program
 
         public bool ModelsDirectoryOpened { get; private set; }
 
+        public bool RestartRequiredAfterUpdate { get; set; }
+
         public TaskCompletionSource<bool> OpenUiStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -1143,6 +1186,11 @@ internal static class Program
         public void OpenUrl(string url)
         {
             LastOpenedUrl = url;
+        }
+
+        public bool IsRestartRequired()
+        {
+            return RestartRequiredAfterUpdate;
         }
 
         public void ReleaseOpenUi()

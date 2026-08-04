@@ -18,6 +18,7 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         Closing += OnClosing;
         ViewModel.Logs.CollectionChanged += OnLogsChanged;
+        ViewModel.RestartRequiredDetected += OnRestartRequiredDetected;
     }
 
     public MainViewModel ViewModel { get; }
@@ -49,6 +50,22 @@ public partial class MainWindow : Window
         );
     }
 
+    private void OnRestartRequiredDetected(object? sender, EventArgs e)
+    {
+        Dispatcher.BeginInvoke(
+            new Action(
+                () =>
+                    MessageBox.Show(
+                        this,
+                        "更新已完成。请关闭并重新打开启动器，以应用本次更新的新功能。",
+                        "需要重启应用",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    )
+            )
+        );
+    }
+
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (_allowClose)
@@ -67,6 +84,7 @@ public partial class MainWindow : Window
             new Action(async () =>
             {
                 ViewModel.Logs.CollectionChanged -= OnLogsChanged;
+                ViewModel.RestartRequiredDetected -= OnRestartRequiredDetected;
                 try
                 {
                     await ViewModel.DisposeAsync();

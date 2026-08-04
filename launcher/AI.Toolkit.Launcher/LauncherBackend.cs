@@ -57,6 +57,8 @@ public interface ILauncherBackend
     void OpenModelsDirectory();
 
     void OpenUrl(string url);
+
+    bool IsRestartRequired();
 }
 
 public sealed class LauncherBackend : ILauncherBackend
@@ -216,6 +218,11 @@ public sealed class LauncherBackend : ILauncherBackend
         {
             UseShellExecute = true,
         });
+    }
+
+    public bool IsRestartRequired()
+    {
+        return LauncherSelfUpdate.HasValidPendingUpdate(_repositoryRoot);
     }
 
     private async Task<ManagerRunResult> RunCheckedAsync(

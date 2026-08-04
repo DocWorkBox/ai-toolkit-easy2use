@@ -198,27 +198,63 @@
             </Border>
         </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal">
-            <RadioButton
-                x:Name="DashboardNav"
-                GroupName="MainNavigation"
-                IsChecked="True"
-                Style="{StaticResource NavigationTabStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE80F;" />
-                    <TextBlock Margin="8,0,0,0" Text="启动管理" />
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <RadioButton
+                    x:Name="DashboardNav"
+                    GroupName="MainNavigation"
+                    IsChecked="True"
+                    Style="{StaticResource NavigationTabStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE80F;" />
+                        <TextBlock Margin="8,0,0,0" Text="启动管理" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton
+                    x:Name="ModelsNav"
+                    GroupName="MainNavigation"
+                    Style="{StaticResource NavigationTabStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE8B7;" />
+                        <TextBlock Margin="8,0,0,0" Text="模型管理" />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+
+            <Border
+                x:Name="RestartNotice"
+                Grid.Column="1"
+                Height="32"
+                Padding="10,0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="#2B2415"
+                BorderBrush="{StaticResource WarningBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                ToolTip="更新已完成。关闭并重新打开启动器后，新功能才会生效。"
+                Visibility="{Binding RestartRequired, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="13"
+                        Foreground="{StaticResource WarningBrush}"
+                        Text="&#xE7BA;" />
+                    <TextBlock
+                        Margin="7,0,0,0"
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource WarningBrush}"
+                        Text="需要重启应用以完成更新"
+                        TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-            </RadioButton>
-            <RadioButton
-                x:Name="ModelsNav"
-                GroupName="MainNavigation"
-                Style="{StaticResource NavigationTabStyle}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE8B7;" />
-                    <TextBlock Margin="8,0,0,0" Text="模型管理" />
-                </StackPanel>
-            </RadioButton>
-        </StackPanel>
+            </Border>
+        </Grid>
 
         <Grid
             Grid.Row="2"

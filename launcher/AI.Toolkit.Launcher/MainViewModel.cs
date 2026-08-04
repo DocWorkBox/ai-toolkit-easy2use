@@ -32,6 +32,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _isBusy;
     private bool _isUiRunning;
     private bool _isShuttingDown;
+    private bool _restartRequired;
 
     public MainViewModel(
         ILauncherBackend backend,
@@ -63,6 +64,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? RestartRequiredDetected;
 
     public ObservableCollection<LogEntry> Logs { get; } = new();
     public ObservableCollection<ModelStatusItem> Models { get; } = new();
@@ -173,6 +175,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
+    public bool RestartRequired
+    {
+        get => _restartRequired;
+        private set => SetField(ref _restartRequired, value);
+    }
+
     public bool CanStart =>
         !_isShuttingDown
         && !IsBusy
@@ -226,7 +234,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             ManagerAction.Update,
             false,
             "正在更新程序",
-            "程序更新完成"
+            "程序更新完成",
+            UpdateRestartRequirement
         );
     }
 
@@ -401,7 +410,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         ManagerAction action,
         bool force,
         string pendingStatus,
-        string completedStatus
+        string completedStatus,
+        Action? onCompleted = null
     )
     {
         return RunExclusiveAsync(
@@ -428,8 +438,30 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 StatusText = health.MeetsRequirements
                     ? $"{completedStatus}，环境符合要求"
                     : $"{completedStatus}，仍有环境问题";
+                onCompleted?.Invoke();
             }
         );
+    }
+
+    private void UpdateRestartRequirement()
+    {
+        if (!_backend.IsRestartRequired())
+        {
+            return;
+        }
+
+        StatusText = "程序更新完成，需要重启应用";
+        if (RestartRequired)
+        {
+            return;
+        }
+
+        RestartRequired = true;
+        AppendLog(
+            "warning",
+            "新版启动器已下载。请关闭并重新打开应用，以启用本次更新的新功能。"
+        );
+        RestartRequiredDetected?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task RunExclusiveAsync(
