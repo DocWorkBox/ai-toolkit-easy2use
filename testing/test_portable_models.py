@@ -57,23 +57,61 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
     assert by_id["qwen-image-vae"]["family"] == "Krea 2"
     assert by_id["krea2-turbo-adapter"]["family"] == "Krea 2"
 
-    minimax_ids = {
+    minimax_weight_ids = {
         "minimax-h3-fl2va",
         "minimax-h3-text-encoder",
         "minimax-h3-video-vae",
         "minimax-h3-audio-vae",
     }
-    minimax = [by_id[item_id] for item_id in minimax_ids]
-    assert {item["family"] for item in minimax} == {"MiniMax-H3"}
-    assert {item["root"] for item in minimax} == {"configured_models"}
+    minimax_weights = [by_id[item_id] for item_id in minimax_weight_ids]
+    assert {item["family"] for item in minimax_weights} == {"MiniMax-H3"}
+    assert {item["root"] for item in minimax_weights} == {"configured_models"}
     assert {
-        item["path"] for item in minimax
+        item["path"] for item in minimax_weights
     } == {
         "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
         "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
         "vae/minimax_h3_video_vae_fp16.safetensors",
         "vae/minimax_h3_audio_vae_fp32.safetensors",
     }
+
+    metadata = {
+        item_id: by_id[item_id]
+        for item_id in {
+            "minimax-h3-tokenizer",
+            "minimax-h3-processor",
+            "minimax-h3-text-encoder-config",
+        }
+    }
+    assert {item["family"] for item in metadata.values()} == {"MiniMax-H3"}
+    assert all("root" not in item for item in metadata.values())
+    assert metadata["minimax-h3-tokenizer"]["path"] == (
+        "./models/MiniMax-H3/FL2VA/tokenizer"
+    )
+    assert metadata["minimax-h3-tokenizer"]["required_all"] == [
+        "merges.txt",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json",
+    ]
+    assert metadata["minimax-h3-processor"]["path"] == (
+        "./models/MiniMax-H3/FL2VA/processor"
+    )
+    assert metadata["minimax-h3-processor"]["required_all"] == [
+        "chat_template.json",
+        "merges.txt",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json",
+    ]
+    assert metadata["minimax-h3-text-encoder-config"]["path"] == (
+        "./models/MiniMax-H3/FL2VA/text_encoder"
+    )
+    assert metadata["minimax-h3-text-encoder-config"]["required_all"] == [
+        "config.json"
+    ]
 
 
 def test_minimax_h3_is_the_only_remote_training_default():

@@ -25,6 +25,35 @@ def test_minimax_h3_is_registered_with_custom_training_components():
     assert "def get_frame_count_snapper" in model
 
 
+def test_minimax_h3_loads_original_metadata_from_project_models_folder():
+    model = MODEL_SOURCE.read_text(encoding="utf-8")
+
+    assert "from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT" in model
+    assert (
+        'ORIGINAL_LOCAL_ROOT = os.path.join(TOOLKIT_ROOT, "models", "MiniMax-H3")'
+        in model
+    )
+    for relative_path in (
+        "FL2VA/tokenizer/merges.txt",
+        "FL2VA/tokenizer/tokenizer.json",
+        "FL2VA/tokenizer/tokenizer_config.json",
+        "FL2VA/tokenizer/vocab.json",
+        "FL2VA/processor/chat_template.json",
+        "FL2VA/processor/preprocessor_config.json",
+        "FL2VA/processor/video_preprocessor_config.json",
+        "FL2VA/text_encoder/config.json",
+    ):
+        assert relative_path in model
+
+    assert 'self._resolve_original_subfolder("tokenizer")' in model
+    assert 'self._resolve_original_subfolder("processor")' in model
+    assert 'self._resolve_original_subfolder("text_encoder")' in model
+    assert "AutoTokenizer.from_pretrained(\n            tokenizer_path, local_files_only=True" in model
+    assert "AutoProcessor.from_pretrained(\n            processor_path, local_files_only=True" in model
+    assert "AutoConfig.from_pretrained(\n                text_encoder_config_path, local_files_only=True" in model
+    assert "AutoTokenizer.from_pretrained(\n            ORIGINAL_REPO" not in model
+
+
 def test_minimax_h3_ui_defaults_and_notes_are_localized():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     simple_job = SIMPLE_JOB_SOURCE.read_text(encoding="utf-8")

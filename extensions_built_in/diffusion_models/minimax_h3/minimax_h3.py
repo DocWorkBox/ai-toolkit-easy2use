@@ -23,7 +23,10 @@ and the fp16/fp32 single-file VAEs. Files are resolved under ``MODELS_PATH``
 downloaded from the hub into ``MODELS_PATH`` when missing. Individual files
 can be overridden via ``model_kwargs``: ``dit_path``, ``text_encoder_path``,
 ``video_vae_path``, ``audio_vae_path``; ``model_kwargs.partition`` picks
-``fl2va`` (default) or ``ref2va``.
+``fl2va`` (default) or ``ref2va``. The original repository's tokenizer,
+processor and text-encoder configuration are kept separately under the
+project's ``./models/MiniMax-H3`` folder so changing ``MODELS_PATH`` to a
+ComfyUI model directory does not move these small runtime files.
 
 Conventions bridged to ai-toolkit:
   - the model consumes t = 1 - sigma in [0, 1] (t=1 clean) and predicts the
@@ -51,7 +54,7 @@ from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.memory_management import MemoryManager
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
-from toolkit.paths import MODELS_PATH
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.util.comfy_quant_import import import_comfy_quantized_layers
 from toolkit.util.ostris_quant import OstrisLinear
 from toolkit.samplers.custom_flowmatch_sampler import (
@@ -98,8 +101,31 @@ COMFY_FILES = {
     "video_vae": "vae/minimax_h3_video_vae_fp16.safetensors",
     "audio_vae": "vae/minimax_h3_audio_vae_fp32.safetensors",
 }
-# tokenizer/processor/text-encoder config come from the original repo (tiny files)
+# Tokenizer/processor/text-encoder config come from the original repo. Keep
+# these small files under the project models folder, independently of the
+# configurable MODELS_PATH used by the ComfyUI weight files above.
 ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"
+ORIGINAL_LOCAL_ROOT = os.path.join(TOOLKIT_ROOT, "models", "MiniMax-H3")
+ORIGINAL_FILES = {
+    "tokenizer": (
+        "FL2VA/tokenizer/merges.txt",
+        "FL2VA/tokenizer/tokenizer.json",
+        "FL2VA/tokenizer/tokenizer_config.json",
+        "FL2VA/tokenizer/vocab.json",
+    ),
+    "processor": (
+        "FL2VA/processor/chat_template.json",
+        "FL2VA/processor/merges.txt",
+        "FL2VA/processor/preprocessor_config.json",
+        "FL2VA/processor/tokenizer.json",
+        "FL2VA/processor/tokenizer_config.json",
+        "FL2VA/processor/video_preprocessor_config.json",
+        "FL2VA/processor/vocab.json",
+    ),
+    "text_encoder": (
+        "FL2VA/text_encoder/config.json",
+    ),
+}
 
 
 def new_save_image_function(
@@ -253,6 +279,41 @@ class MinimaxH3Model(BaseModel):
             repo_id=repo_id, filename=rel_path, local_dir=MODELS_PATH
         )
 
+    def _resolve_original_subfolder(self, component: str) -> str:
+        """Resolve small original-repo metadata from project-local models."""
+        repo_files = ORIGINAL_FILES[component]
+        subfolder = os.path.dirname(repo_files[0])
+        missing = [
+            repo_file
+            for repo_file in repo_files
+            if not os.path.isfile(os.path.join(ORIGINAL_LOCAL_ROOT, repo_file))
+        ]
+        if missing:
+            import huggingface_hub
+
+            self.print_and_status_update(
+                f"Downloading MiniMax-H3 {component} metadata into "
+                f"{ORIGINAL_LOCAL_ROOT}"
+            )
+            for repo_file in missing:
+                huggingface_hub.hf_hub_download(
+                    repo_id=ORIGINAL_REPO,
+                    filename=repo_file,
+                    local_dir=ORIGINAL_LOCAL_ROOT,
+                )
+
+        remaining = [
+            repo_file
+            for repo_file in repo_files
+            if not os.path.isfile(os.path.join(ORIGINAL_LOCAL_ROOT, repo_file))
+        ]
+        if remaining:
+            raise FileNotFoundError(
+                "MiniMax-H3 metadata is incomplete under %s: %s"
+                % (ORIGINAL_LOCAL_ROOT, ", ".join(remaining))
+            )
+        return os.path.join(ORIGINAL_LOCAL_ROOT, subfolder)
+
     def _dit_component(self) -> str:
         partition = str(
             self.model_config.model_kwargs.get("partition", "fl2va")
@@ -314,11 +375,14 @@ class MinimaxH3Model(BaseModel):
             Qwen3VLForConditionalGeneration,
         )
 
+        tokenizer_path = self._resolve_original_subfolder("tokenizer")
+        processor_path = self._resolve_original_subfolder("processor")
+        text_encoder_config_path = self._resolve_original_subfolder("text_encoder")
         tokenizer = AutoTokenizer.from_pretrained(
-            ORIGINAL_REPO, subfolder="FL2VA/tokenizer"
+            tokenizer_path, local_files_only=True
         )
         processor = AutoProcessor.from_pretrained(
-            ORIGINAL_REPO, subfolder="FL2VA/processor"
+            processor_path, local_files_only=True
         )
 
         te_path = self.model_config.te_name_or_path
@@ -343,7 +407,7 @@ class MinimaxH3Model(BaseModel):
             # single-file ComfyUI checkpoint: 50 decoder layers, no final norm,
             # no lm_head; LM linears nvfp4 (AWQ), embeddings int8, vision bf16
             config = AutoConfig.from_pretrained(
-                ORIGINAL_REPO, subfolder="FL2VA/text_encoder"
+                text_encoder_config_path, local_files_only=True
             )
             # only hidden_states[50] is consumed: truncate the decoder stack to
             # 50 layers; the final norm is neutralized below so
