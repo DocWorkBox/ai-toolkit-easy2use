@@ -557,6 +557,24 @@ internal static class Program
                 );
                 var window = new MainWindow(viewModel);
                 window.Show();
+                var toolTipStyle = app.TryFindResource(typeof(System.Windows.Controls.ToolTip)) as System.Windows.Style;
+                Assert.True(toolTipStyle is not null, "the application must define a ToolTip style");
+                var toolTip = new System.Windows.Controls.ToolTip
+                {
+                    Content = viewModel.EnvironmentDetail,
+                    Style = toolTipStyle,
+                };
+                toolTip.ApplyTemplate();
+                Assert.True(
+                    toolTip.Foreground is System.Windows.Media.SolidColorBrush foreground
+                        && toolTip.Background is System.Windows.Media.SolidColorBrush background
+                        && foreground.Color != background.Color,
+                    "ToolTip foreground and background must remain readable"
+                );
+                Assert.True(
+                    !string.IsNullOrWhiteSpace(toolTip.Content?.ToString()),
+                    "environment detail ToolTip must contain diagnostic text"
+                );
                 var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
                 for (var index = 0; index < 8; index++)
                 {

@@ -235,7 +235,7 @@
                 <Button
                     Command="{Binding RepairCommand}"
                     Style="{StaticResource ActionButtonStyle}"
-                    ToolTip="强制同步并修复依赖">
+                    ToolTip="仅修复环境诊断发现的失败项">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock FontFamily="Segoe Fluent Icons" FontSize="15" Text="&#xE90F;" />
                         <TextBlock Margin="8,0,0,0" Text="修复环境" />
