@@ -12,6 +12,29 @@ python3 -m manager launch      # start the web UI (http://localhost:8675)
 python3 -m manager doctor      # diagnose problems
 ```
 
+## Windows desktop launcher
+
+The WPF launcher in `launcher/` is a thin frontend over this CLI. It never
+implements dependency or update policy itself. Build a self-contained Windows
+x64 executable with:
+
+```powershell
+.\scripts\build_windows_launcher.ps1
+```
+
+When `runtime/python/python.exe` exists, manager automatically uses the
+portable layout (`runtime/python`, `runtime/node`, `runtime/ffmpeg`,
+`runtime/uv`, and `runtime/mingit`). Set `AITK_RUNTIME_LAYOUT=standard` or
+`portable` to override detection. Long-running frontend calls can use the
+global `--json-stream` option:
+
+```bash
+python -m manager --json-stream sync --force
+```
+
+Each stdout line is UTF-8 JSON with a `message`, `log`, or final `result`
+event. Existing `detect --json` and `check --json` output is unchanged.
+
 ## Design
 
 - **The install logic lives in the repo it installs.** Every commit knows how

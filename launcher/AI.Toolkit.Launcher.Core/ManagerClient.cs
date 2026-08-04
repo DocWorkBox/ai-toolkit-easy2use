@@ -127,9 +127,16 @@ public sealed class ManagedSession : IAsyncDisposable
         var readStdout = ReadLinesAsync(
             _process.StandardOutput,
             stdout,
-            outputMode == ManagerOutputMode.JsonStream
+            outputMode == ManagerOutputMode.JsonStream,
+            outputMode != ManagerOutputMode.JsonDocument
         );
-        var readStderr = ReadLinesAsync(_process.StandardError, stderr, parseJson: false, "error");
+        var readStderr = ReadLinesAsync(
+            _process.StandardError,
+            stderr,
+            parseJson: false,
+            emitEvents: true,
+            fallbackLevel: "error"
+        );
 
         await Task.WhenAll(readStdout, readStderr, _process.WaitForExitAsync()).ConfigureAwait(false);
         return new ManagerRunResult(
@@ -144,12 +151,21 @@ public sealed class ManagedSession : IAsyncDisposable
         StreamReader reader,
         StringBuilder capture,
         bool parseJson,
+        bool emitEvents,
         string? fallbackLevel = null
     )
     {
         while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
         {
             capture.AppendLine(line);
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+            if (!emitEvents)
+            {
+                continue;
+            }
             var parsed = parseJson
                 ? ManagerEventParser.Parse(line)
                 : new ManagerEvent("log", fallbackLevel, line, line);

@@ -185,6 +185,22 @@ $env:AI_TOOLKIT_AUTH="your_token"; npm run build_and_start
 ![手机端：适配器页面（1）](ui/public/screenshots/adapter-UI0.png)
 ![手机端：适配器页面（2）](ui/public/screenshots/adapter-UI1.png)
 
+## Windows 图形启动器
+
+Windows 便携包可使用 `AI Toolkit Launcher.exe` 统一完成环境检查、安装、
+依赖修复、程序更新、诊断以及 UI 的启动和停止。启动器只调用仓库内的
+`python -m manager`，环境规则仍由当前版本的 manager 维护。
+
+开发者可在仓库根目录执行：
+
+```powershell
+.\scripts\build_windows_launcher.ps1
+```
+
+默认产物位于 `dist/windows-launcher/<版本>/win-x64/`，为 Windows x64
+自包含单文件，不要求用户预装 .NET。向便携包复制产物前，应先同步本次
+版本的 `manager/` 代码，避免启动器界面与环境管理协议版本不一致。
+
 ## FireRed-Image-Edit-1.1 预设说明
 
 - 训练 UI 已新增 `FireRed-Image-Edit-1.1` 预设，适用于基于该模型的 LoRA 训练起步配置。

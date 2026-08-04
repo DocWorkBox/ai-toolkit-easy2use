@@ -29,16 +29,16 @@ public static class PythonLocator
             }
         }
 
-        var py = FindOnPath("py.exe");
-        if (py is not null)
-        {
-            return new PythonCommand(py, new[] { "-3" }, false);
-        }
-
         var python = FindOnPath("python.exe");
         if (python is not null)
         {
             return new PythonCommand(python, Array.Empty<string>(), false);
+        }
+
+        var py = FindOnPath("py.exe");
+        if (py is not null)
+        {
+            return new PythonCommand(py, new[] { "-3" }, false);
         }
 
         throw new FileNotFoundException(

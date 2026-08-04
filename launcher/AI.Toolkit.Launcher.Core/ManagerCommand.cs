@@ -73,7 +73,11 @@ public static class ManagerCommand
                 throw new ArgumentOutOfRangeException(nameof(action), action, null);
         }
 
-        var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["PYTHONUTF8"] = "1",
+            ["PYTHONIOENCODING"] = "utf-8",
+        };
         if (python.IsPortable)
         {
             environment["AITK_RUNTIME_LAYOUT"] = "portable";
