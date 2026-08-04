@@ -142,6 +142,10 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# .NET launcher build outputs
+/launcher/**/bin/
+/launcher/**/obj/
+
 # mypy
 .mypy_cache/
 .dmypy.json
