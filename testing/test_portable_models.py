@@ -195,6 +195,8 @@ def test_windows_launcher_packaging_copies_model_catalog():
 
     assert "portable_models.json" in build_script
     assert "model catalog" in build_script
+    assert "$repositoryLauncher = Join-Path $repoRoot 'AI Toolkit Launcher.exe'" in build_script
+    assert "Copy-Item -LiteralPath $launcher -Destination $repositoryLauncher -Force" in build_script
 
 
 def test_model_scanner_reports_ready_incomplete_misplaced_and_unknown(tmp_path):

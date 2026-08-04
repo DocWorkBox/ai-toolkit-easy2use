@@ -61,6 +61,9 @@ if ($unexpected) {
     throw "Single-file publish produced unexpected files: $($unexpected.Name -join ', ')"
 }
 
+$repositoryLauncher = Join-Path $repoRoot 'AI Toolkit Launcher.exe'
+Copy-Item -LiteralPath $launcher -Destination $repositoryLauncher -Force
+
 if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
     $PortableRoot = [System.IO.Path]::GetFullPath($PortableRoot)
     if (-not (Test-Path -LiteralPath (Join-Path $PortableRoot 'manager\__main__.py'))) {
