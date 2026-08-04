@@ -105,7 +105,7 @@ def cmd_check(args):
         "fetch_ok": fetched,
         "git_checkout": git_checkout,
         "behind": behind,
-        "incoming": gitops.incoming_log(),
+        "incoming": incoming,
         "venv": env.venv_exists(),
         "deps_in_sync": env.venv_exists()
         and env.torch_matches(s)

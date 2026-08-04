@@ -48,6 +48,7 @@ def test_portable_check_uses_protable_branch_status(monkeypatch, capsys):
     assert payload["commit"] == "archive"
     assert payload["remote_commit"] == "abcdef1234567890"
     assert payload["behind"] == 1
+    assert payload["incoming"] == ["Portable branch update abcdef123456"]
     assert payload["update_available"] is True
 
 
