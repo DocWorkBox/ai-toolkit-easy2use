@@ -28,6 +28,10 @@ def test_protable_branch_keeps_local_model_defaults():
 
 
 def test_protable_branch_contains_portable_launch_assets():
+    launcher = ROOT / "AI Toolkit Launcher.exe"
+    assert launcher.is_file()
+    assert launcher.read_bytes()[:2] == b"MZ"
+    assert launcher.stat().st_size < 100 * 1024 * 1024
     assert (ROOT / "start.bat").is_file()
     assert (ROOT / "scripts/portable/nvidia_smi.cmd").is_file()
     assert (ROOT / "scripts/portable/run_portable_supervisor.ps1").is_file()
