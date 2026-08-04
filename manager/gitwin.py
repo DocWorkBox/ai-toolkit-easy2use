@@ -17,9 +17,15 @@ import platform
 import shutil
 import tempfile
 
-from .util import IS_WINDOWS, REPO_ROOT, download, extract_archive, info, ok, warn
-
-MINGIT_DIR = os.path.join(REPO_ROOT, ".mingit")
+from .util import (
+    IS_WINDOWS,
+    download,
+    extract_archive,
+    info,
+    managed_component_dir,
+    ok,
+    warn,
+)
 # Update this pin together with nothing else — it's independent of torch etc.
 _MINGIT_TAG = "v2.55.0.windows.3"
 _MINGIT_VERSION = "2.55.0.3"
@@ -37,8 +43,12 @@ def _mingit_url():
     )
 
 
+def mingit_dir():
+    return managed_component_dir("mingit")
+
+
 def local_git_exe():
-    return os.path.join(MINGIT_DIR, "cmd", "git.exe")
+    return os.path.join(mingit_dir(), "cmd", "git.exe")
 
 
 def find_git():
@@ -55,7 +65,7 @@ def ensure_git(dry_run=False):
     if find_git():
         return False
     if dry_run:
-        info("[dry-run] would install MinGit into %s" % MINGIT_DIR)
+        info("[dry-run] would install MinGit into %s" % mingit_dir())
         return False
     tmp = tempfile.mkdtemp(prefix="aitk_mingit_")
     try:
@@ -67,10 +77,11 @@ def ensure_git(dry_run=False):
         if not os.path.isfile(os.path.join(extracted, "cmd", "git.exe")):
             warn("Unexpected MinGit archive layout — skipping local git install.")
             return False
-        if os.path.isdir(MINGIT_DIR):
-            shutil.rmtree(MINGIT_DIR)
-        shutil.move(extracted, MINGIT_DIR)
-        ok("Local Git (MinGit) installed at %s" % MINGIT_DIR)
+        target = mingit_dir()
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+        shutil.move(extracted, target)
+        ok("Local Git (MinGit) installed at %s" % target)
         return True
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

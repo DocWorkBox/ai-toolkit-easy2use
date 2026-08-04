@@ -7,12 +7,11 @@ import threading
 from . import ffmpeg, nodejs
 from .util import (
     IS_LINUX,
-    IS_WINDOWS,
     REPO_ROOT,
     clean_env,
     die,
     info,
-    venv_dir,
+    python_bin_dir,
     venv_python,
 )
 
@@ -33,7 +32,7 @@ def build_env():
         path_dirs.append(nodejs.node_bin_dir())
     ff_paths, ff_libs = ffmpeg.env_additions()
     path_dirs += ff_paths
-    vbin = os.path.join(venv_dir(), "Scripts" if IS_WINDOWS else "bin")
+    vbin = python_bin_dir()
     if os.path.isdir(vbin):
         path_dirs.append(vbin)
     if path_dirs:

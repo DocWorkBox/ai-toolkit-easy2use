@@ -147,7 +147,10 @@ def cmd_update(args):
             ok("Code updated to %s." % gitops.current_commit())
             # Re-exec so the freshly pulled manager code runs its own dependency
             # sync and migrations (the in-memory copy of this module is stale now).
-            cmd = [sys.executable, "-m", "manager", "sync"]
+            cmd = [sys.executable, "-m", "manager"]
+            if util.json_stream_mode():
+                cmd.append("--json-stream")
+            cmd.append("sync")
             if args.dry_run:
                 cmd.append("--dry-run")
             sys.exit(subprocess.call(cmd, cwd=util.REPO_ROOT))
@@ -183,6 +186,11 @@ def _toolkit_version():
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="manager", description="AI Toolkit install / update manager"
+    )
+    parser.add_argument(
+        "--json-stream",
+        action="store_true",
+        help="emit NDJSON progress events for install, sync, or update",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -237,12 +245,23 @@ def main(argv=None):
     if not getattr(args, "command", None):
         parser.print_help()
         return 1
-    util.set_json_mode(bool(getattr(args, "json", False)))
+    if args.json_stream and args.command not in ("install", "sync", "update"):
+        parser.error("--json-stream is supported by install, sync, and update")
+    util.set_json_stream_mode(args.json_stream)
+    util.set_json_mode(bool(getattr(args, "json", False)) or args.json_stream)
     try:
-        args.fn(args)
+        result = args.fn(args)
     except KeyboardInterrupt:
         return 130
-    return 0
+    exit_code = 0 if result is None else int(result)
+    if args.json_stream:
+        util.emit_event(
+            "result",
+            command=args.command,
+            ok=exit_code == 0,
+            exit_code=exit_code,
+        )
+    return exit_code
 
 
 if __name__ == "__main__":

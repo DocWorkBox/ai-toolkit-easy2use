@@ -27,15 +27,13 @@ import tempfile
 from .util import (
     IS_MAC,
     IS_WINDOWS,
-    REPO_ROOT,
     download,
     extract_archive,
     info,
+    managed_component_dir,
     ok,
     warn,
 )
-
-FFMPEG_DIR = os.path.join(REPO_ROOT, ".ffmpeg")
 
 # FFmpeg 8 on all BtbN platforms — torchcodec 0.15 (pinned in spec.py)
 # supports ffmpeg up to 8. Bump these together with the torchcodec pin.
@@ -60,12 +58,16 @@ _SOURCES = {
 _SPARK_NATIVE_SOURCE = _BTBN + "ffmpeg-n8.1-latest-winarm64-lgpl-shared-8.1.zip"
 
 
+def ffmpeg_dir():
+    return managed_component_dir("ffmpeg")
+
+
 def bin_dir():
-    return os.path.join(FFMPEG_DIR, "bin")
+    return os.path.join(ffmpeg_dir(), "bin")
 
 
 def lib_dir():
-    return os.path.join(FFMPEG_DIR, "lib")
+    return os.path.join(ffmpeg_dir(), "lib")
 
 
 def ffmpeg_exe():
@@ -73,7 +75,7 @@ def ffmpeg_exe():
 
 
 def is_installed(source_url):
-    marker = os.path.join(FFMPEG_DIR, ".source")
+    marker = os.path.join(ffmpeg_dir(), ".source")
     if not os.path.isfile(ffmpeg_exe()) or not os.path.isfile(marker):
         return False
     with open(marker) as f:
@@ -81,7 +83,7 @@ def is_installed(source_url):
 
 
 def _mark_installed(source_url):
-    with open(os.path.join(FFMPEG_DIR, ".source"), "w") as f:
+    with open(os.path.join(ffmpeg_dir(), ".source"), "w") as f:
         f.write(source_url)
 
 
@@ -101,9 +103,10 @@ def _install_btbn(url):
         if inner is None:
             warn("Unexpected ffmpeg archive layout — skipping ffmpeg install.")
             return False
-        if os.path.isdir(FFMPEG_DIR):
-            shutil.rmtree(FFMPEG_DIR)
-        shutil.move(inner, FFMPEG_DIR)
+        target = ffmpeg_dir()
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+        shutil.move(inner, target)
         return True
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -157,14 +160,17 @@ def ensure_ffmpeg(detection, dry_run=False, spec=None):
         ok("Local FFmpeg already installed (.ffmpeg/).")
         return False
     if dry_run:
-        info("[dry-run] would install local FFmpeg from %s into %s" % (url, FFMPEG_DIR))
+        info(
+            "[dry-run] would install local FFmpeg from %s into %s"
+            % (url, ffmpeg_dir())
+        )
         return False
     installed = (
         _install_mac(detection) if detection["os"] == "mac" else _install_btbn(url)
     )
     if installed:
         _mark_installed(url)
-        ok("Local FFmpeg installed at %s" % FFMPEG_DIR)
+        ok("Local FFmpeg installed at %s" % ffmpeg_dir())
     return installed
 
 

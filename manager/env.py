@@ -18,6 +18,7 @@ import sys
 from .util import (
     REPO_ROOT,
     IS_WINDOWS,
+    PORTABLE_LAYOUT,
     clean_env,
     die,
     file_hash,
@@ -25,6 +26,7 @@ from .util import (
     info,
     ok,
     run,
+    runtime_layout,
     venv_dir,
     venv_python,
     warn,
@@ -101,6 +103,13 @@ def ensure_venv(spec, dry_run=False):
         want = _uv_python_platform(spec.uv_python)
         have = _venv_platform()
         if want and have and want != have:
+            if runtime_layout() == PORTABLE_LAYOUT:
+                die(
+                    "Bundled portable Python is %s but this hardware needs %s. "
+                    "Replace the portable runtime with a compatible build; the "
+                    "manager will not delete runtime/python automatically."
+                    % (have, want)
+                )
             if dry_run:
                 info(
                     "[dry-run] venv is %s but this spec needs %s — would "

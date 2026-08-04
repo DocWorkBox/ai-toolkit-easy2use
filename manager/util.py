@@ -20,11 +20,34 @@ USER_AGENT = (
 
 # When --json is used, human output goes to stderr so stdout stays machine-readable
 _json_mode = False
+_json_stream_mode = False
+
+RUNTIME_LAYOUT_ENV = "AITK_RUNTIME_LAYOUT"
+STANDARD_LAYOUT = "standard"
+PORTABLE_LAYOUT = "portable"
 
 
 def set_json_mode(enabled):
     global _json_mode
     _json_mode = enabled
+
+
+def set_json_stream_mode(enabled):
+    global _json_stream_mode
+    _json_stream_mode = enabled
+    if enabled and hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+def json_stream_mode():
+    return _json_stream_mode
+
+
+def emit_event(event_type, **payload):
+    event = {"type": event_type}
+    event.update(payload)
+    sys.stdout.write(json.dumps(event, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
 
 
 def _supports_color(stream):
@@ -33,7 +56,10 @@ def _supports_color(stream):
     return hasattr(stream, "isatty") and stream.isatty()
 
 
-def _emit(prefix, msg, color):
+def _emit(prefix, msg, color, level):
+    if _json_stream_mode:
+        emit_event("message", level=level, message=str(msg))
+        return
     stream = sys.stderr if _json_mode else sys.stdout
     if _supports_color(stream):
         stream.write("\033[%sm%s\033[0m %s\n" % (color, prefix, msg))
@@ -43,19 +69,19 @@ def _emit(prefix, msg, color):
 
 
 def info(msg):
-    _emit("[*]", msg, "36")
+    _emit("[*]", msg, "36", "info")
 
 
 def ok(msg):
-    _emit("[+]", msg, "32")
+    _emit("[+]", msg, "32", "success")
 
 
 def warn(msg):
-    _emit("[!]", msg, "33")
+    _emit("[!]", msg, "33", "warning")
 
 
 def error(msg):
-    _emit("[x]", msg, "31")
+    _emit("[x]", msg, "31", "error")
 
 
 def die(msg, code=1):
@@ -80,12 +106,28 @@ def run(cmd, cwd=None, capture=False, check=True, env=None, stream=False):
     if capture:
         kwargs["stdout"] = subprocess.PIPE
         kwargs["stderr"] = subprocess.PIPE
+    elif _json_stream_mode:
+        kwargs["stdout"] = subprocess.PIPE
+        kwargs["stderr"] = subprocess.STDOUT
     elif _json_mode and not stream:
         # keep stdout clean in json mode
         kwargs["stdout"] = sys.stderr
 
+    streamed_live = False
     try:
-        proc = subprocess.run(cmd, **kwargs)
+        if _json_stream_mode and stream and not capture:
+            streamed_live = True
+            proc = subprocess.Popen(cmd, **kwargs)
+            while True:
+                raw = proc.stdout.readline()
+                if not raw:
+                    break
+                text = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+                if text:
+                    emit_event("log", stream="combined", message=text)
+            proc.wait()
+        else:
+            proc = subprocess.run(cmd, **kwargs)
     except FileNotFoundError:
         if check:
             die("Command not found: %s" % cmd[0])
@@ -94,6 +136,11 @@ def run(cmd, cwd=None, capture=False, check=True, env=None, stream=False):
     out = None
     if capture:
         out = proc.stdout.decode("utf-8", errors="replace").strip()
+    elif _json_stream_mode and not streamed_live and proc.stdout:
+        text = proc.stdout.decode("utf-8", errors="replace")
+        for line in text.splitlines():
+            if line:
+                emit_event("log", stream="combined", message=line)
     if check and proc.returncode != 0:
         detail = ""
         if capture and proc.stderr:
@@ -110,8 +157,15 @@ def find_uv():
     """Find uv: repo-local .uv/ first, then PATH, then common install dirs."""
     home = os.path.expanduser("~")
     candidates = [
-        os.path.join(REPO_ROOT, ".uv", "uv.exe" if IS_WINDOWS else "uv"),
+        os.path.join(
+            managed_component_dir("uv"), "uv.exe" if IS_WINDOWS else "uv"
+        ),
     ]
+    legacy_local = os.path.join(
+        REPO_ROOT, ".uv", "uv.exe" if IS_WINDOWS else "uv"
+    )
+    if legacy_local not in candidates:
+        candidates.append(legacy_local)
     for c in candidates:
         if os.path.isfile(c) and os.access(c, os.X_OK):
             return c
@@ -133,8 +187,33 @@ def find_uv():
     return None
 
 
+def runtime_layout():
+    """Selected local runtime layout: standard repo install or Windows portable."""
+    override = os.environ.get(RUNTIME_LAYOUT_ENV, "").strip().lower()
+    if override:
+        if override not in (STANDARD_LAYOUT, PORTABLE_LAYOUT):
+            raise ValueError(
+                "%s must be '%s' or '%s', got %r"
+                % (RUNTIME_LAYOUT_ENV, STANDARD_LAYOUT, PORTABLE_LAYOUT, override)
+            )
+        return override
+    portable_python = os.path.join(REPO_ROOT, "runtime", "python", "python.exe")
+    if IS_WINDOWS and os.path.isfile(portable_python):
+        return PORTABLE_LAYOUT
+    return STANDARD_LAYOUT
+
+
+def managed_component_dir(name):
+    """Root for a manager-owned runtime component in the selected layout."""
+    if runtime_layout() == PORTABLE_LAYOUT:
+        return os.path.join(REPO_ROOT, "runtime", name)
+    return os.path.join(REPO_ROOT, "." + name)
+
+
 def venv_dir():
-    """Existing venv dir (.venv preferred, matching ui/cron/pythonPath.ts), else default target."""
+    """Existing Python environment directory, or the selected layout target."""
+    if runtime_layout() == PORTABLE_LAYOUT:
+        return managed_component_dir("python")
     for name in (".venv", "venv"):
         d = os.path.join(REPO_ROOT, name)
         if os.path.isdir(d):
@@ -145,8 +224,19 @@ def venv_dir():
 def venv_python(venv=None):
     venv = venv or venv_dir()
     if IS_WINDOWS:
+        if runtime_layout() == PORTABLE_LAYOUT:
+            portable = managed_component_dir("python")
+            if os.path.normcase(os.path.abspath(venv)) == os.path.normcase(
+                os.path.abspath(portable)
+            ):
+                return os.path.join(venv, "python.exe")
         return os.path.join(venv, "Scripts", "python.exe")
     return os.path.join(venv, "bin", "python3")
+
+
+def python_bin_dir(venv=None):
+    """Directory placed on PATH for the selected Python environment."""
+    return os.path.dirname(venv_python(venv))
 
 
 # Env vars that let a system/conda/pyenv Python leak into our subprocesses.
@@ -178,7 +268,9 @@ def clean_env(extra=None):
     env = os.environ.copy()
     for var in _SCRUB_VARS:
         env.pop(var, None)
-    env.setdefault("UV_PYTHON_INSTALL_DIR", os.path.join(REPO_ROOT, ".uv", "python"))
+    env.setdefault(
+        "UV_PYTHON_INSTALL_DIR", os.path.join(managed_component_dir("uv"), "python")
+    )
     if extra:
         env.update(extra)
     return env

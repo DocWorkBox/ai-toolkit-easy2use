@@ -19,13 +19,13 @@ from .util import (
     extract_archive,
     file_hash,
     info,
+    managed_component_dir,
     ok,
     run,
     warn,
     which,
 )
 
-NODE_DIR = os.path.join(REPO_ROOT, ".node")
 # Node 24 is the current LTS line and matches the dgx_instructions.md guidance.
 NODE_VERSION = "24.11.1"
 MIN_NODE_MAJOR = 20
@@ -34,9 +34,14 @@ UI_DIR = os.path.join(REPO_ROOT, "ui")
 UI_STATE_KEY = "ui_deps_hash"
 
 
+def node_dir():
+    return managed_component_dir("node")
+
+
 def node_bin_dir():
     # windows zips have node.exe/npm.cmd at the archive root; unix under bin/
-    return NODE_DIR if IS_WINDOWS else os.path.join(NODE_DIR, "bin")
+    root = node_dir()
+    return root if IS_WINDOWS else os.path.join(root, "bin")
 
 
 def local_node_exe():
@@ -134,7 +139,7 @@ def ensure_node(detection, dry_run=False):
     if dry_run:
         info(
             "[dry-run] would install portable Node.js v%s into %s"
-            % (NODE_VERSION, NODE_DIR)
+            % (NODE_VERSION, node_dir())
         )
         return False
     tmp = tempfile.mkdtemp(prefix="aitk_node_")
@@ -146,10 +151,11 @@ def ensure_node(detection, dry_run=False):
         if not os.path.isdir(inner):
             warn("Unexpected Node.js archive layout — skipping node install.")
             return False
-        if os.path.isdir(NODE_DIR):
-            shutil.rmtree(NODE_DIR)
-        shutil.move(inner, NODE_DIR)
-        ok("Portable Node.js v%s installed at %s" % (NODE_VERSION, NODE_DIR))
+        target = node_dir()
+        if os.path.isdir(target):
+            shutil.rmtree(target)
+        shutil.move(inner, target)
+        ok("Portable Node.js v%s installed at %s" % (NODE_VERSION, target))
         return True
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

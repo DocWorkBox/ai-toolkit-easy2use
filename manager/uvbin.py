@@ -13,9 +13,15 @@ import shutil
 import stat
 import tempfile
 
-from .util import IS_MAC, IS_WINDOWS, REPO_ROOT, download, extract_archive, ok, warn
-
-UV_DIR = os.path.join(REPO_ROOT, ".uv")
+from .util import (
+    IS_MAC,
+    IS_WINDOWS,
+    download,
+    extract_archive,
+    managed_component_dir,
+    ok,
+    warn,
+)
 
 _RELEASE = "https://github.com/astral-sh/uv/releases/latest/download/"
 
@@ -35,8 +41,12 @@ def _asset():
     )
 
 
+def uv_dir():
+    return managed_component_dir("uv")
+
+
 def local_uv_exe():
-    return os.path.join(UV_DIR, "uv.exe" if IS_WINDOWS else "uv")
+    return os.path.join(uv_dir(), "uv.exe" if IS_WINDOWS else "uv")
 
 
 def ensure_uv(dry_run=False):
@@ -48,7 +58,7 @@ def ensure_uv(dry_run=False):
     if dry_run:
         from .util import info
 
-        info("[dry-run] would download uv into %s" % UV_DIR)
+        info("[dry-run] would download uv into %s" % uv_dir())
         return False
     tmp = tempfile.mkdtemp(prefix="aitk_uv_")
     try:
@@ -66,7 +76,7 @@ def ensure_uv(dry_run=False):
         if not found:
             warn("Unexpected uv archive layout — continuing without uv.")
             return False
-        os.makedirs(UV_DIR, exist_ok=True)
+        os.makedirs(uv_dir(), exist_ok=True)
         dest = local_uv_exe()
         shutil.move(found, dest)
         os.chmod(
