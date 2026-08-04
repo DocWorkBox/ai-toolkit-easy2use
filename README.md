@@ -17,7 +17,7 @@
 
 - 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image / Krea 2 / Mage-Flow 等
 - 编辑：Qwen-Image-Edit / Qwen-Image-Edit-2509 / Qwen-Image-Edit-2511 / HiDream E1 / FireRed-Image-Edit-1.1 / Mage-Flow Edit 预设
-- 视频：Wan 2.x / LTX-2 / LTX-2.3 等
+- 视频：Wan 2.x / LTX-2 / LTX-2.3 / MiniMax-H3 等
 - 音频：ACE-Step 1.5 / ACE-Step 1.5 XL
 - 实验性：Zeta-Chroma 等
 
@@ -158,6 +158,10 @@ $env:AI_TOOLKIT_AUTH="your_token"; npm run build_and_start
 
 ## 近期已并入的重要上游能力
 
+- MiniMax-H3 T2V / I2V 训练支持
+- 新增跨平台环境 manager、Windows 无窗口启停和 NVIDIA Spark 构建支持
+- 视频 latent 多线程预处理、AV1/PyAV 解码回退和无音轨视频兼容
+- 新增 ConvRot/NVFP4/uintx 量化链路，并改进 LoRA 合并往返精度
 - Mage-Flow / Mage-Flow Edit 训练支持
 - 视频帧顺序解码、视频像素空间 `uint8` 缓存与样本缩略图优化
 - Qwen Image 原生增加 `1328` 分辨率支持

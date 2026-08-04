@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { createRequire } from 'module';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { cached } from '@/server/apiCache';
+import { loadMacstats } from '@/server/macstats';
 
 const execAsync = promisify(exec);
 
@@ -49,11 +49,8 @@ async function getMacGpuInfo(): Promise<MacGpuResult | null> {
     let memUsed = 0;
     let memTotal = memoryTotal;
 
-    try {
-      // Use createRequire to hide from webpack static analysis so it doesn't fail on non-mac platforms
-      const nativeRequire = createRequire(import.meta.url);
-      const ms = nativeRequire('macstats') as any;
-
+    const ms = loadMacstats();
+    if (ms) {
       try {
         const gpuData = ms.getGpuDataSync();
         temperature = gpuData.temperature || 0;
@@ -86,8 +83,6 @@ async function getMacGpuInfo(): Promise<MacGpuResult | null> {
       } catch {
         // ignore
       }
-    } catch (error) {
-      console.warn('macstats not available:', error);
     }
 
     return { name: gpuName, memUsed, memTotal, gpuLoad, temperature, fanSpeed, powerDraw };
