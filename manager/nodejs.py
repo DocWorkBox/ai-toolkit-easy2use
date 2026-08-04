@@ -208,7 +208,7 @@ def check_ui_dependencies():
         return False, "npm is not available"
     try:
         result = subprocess.run(
-            [npm, "ls", "--depth=0", "--json"],
+            [npm, "ls", "--depth=0", "--omit=optional", "--json"],
             cwd=UI_DIR,
             env=process_env,
             stdout=subprocess.PIPE,
@@ -223,7 +223,7 @@ def check_ui_dependencies():
     return False, detail.splitlines()[0] if detail else "npm dependency check failed"
 
 
-def ensure_ui_deps(env=None, dry_run=False):
+def ensure_ui_deps(env=None, dry_run=False, force=False):
     """Install ui/node_modules without ever rewriting ui/package-lock.json.
 
     A plain `npm install` treats the lockfile as writable and re-derives it for
@@ -247,7 +247,7 @@ def ensure_ui_deps(env=None, dry_run=False):
         warn("ui/package-lock.json is missing — skipping UI dependency install.")
         return False
     want = _ui_deps_hash()
-    if ui_deps_in_sync():
+    if ui_deps_in_sync() and not force:
         ok("UI dependencies already installed.")
         return False
     if dry_run:

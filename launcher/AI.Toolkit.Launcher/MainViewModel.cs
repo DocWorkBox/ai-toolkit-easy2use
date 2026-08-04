@@ -187,8 +187,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public Task RepairAsync()
     {
         return RunMaintenanceAsync(
-            ManagerAction.Sync,
-            true,
+            ManagerAction.Repair,
+            false,
             "正在修复环境",
             "环境修复完成"
         );
@@ -513,17 +513,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             EnvironmentStatus = "环境不符合要求";
             var failed = health.Checks
                 .Where(check => check.Required && !check.Passed)
-                .Select(check => LocalizeCheckName(check.Key, check.Label))
+                .Select(DescribeFailedCheck)
                 .Distinct(StringComparer.Ordinal)
-                .Take(3)
+                .Take(2)
                 .ToArray();
             var issueText = failed.Length > 0
-                ? string.Join("、", failed)
+                ? string.Join("；", failed)
                 : string.Join("、", health.FailedRequired.Take(3));
             EnvironmentDetail = $"{health.RequiredPassed}/{health.RequiredTotal} 项通过";
             if (!string.IsNullOrWhiteSpace(issueText))
             {
-                EnvironmentDetail += $" · 问题：{issueText}";
+                EnvironmentDetail += $" · {issueText}";
             }
         }
 
@@ -548,6 +548,43 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
         OnPropertyChanged(nameof(CanStart));
         RefreshCommands();
+    }
+
+    private static string DescribeFailedCheck(EnvironmentCheckStatus check)
+    {
+        if (check.Key == "requirements" && !string.IsNullOrWhiteSpace(check.Detail))
+        {
+            return string.Join(
+                "；",
+                check.Detail
+                    .Split("; ", StringSplitOptions.RemoveEmptyEntries)
+                    .Take(2)
+                    .Select(LocalizeRequirementProblem)
+            );
+        }
+
+        var name = LocalizeCheckName(check.Key, check.Label);
+        return string.IsNullOrWhiteSpace(check.Detail) ? name : $"{name}：{check.Detail}";
+    }
+
+    private static string LocalizeRequirementProblem(string problem)
+    {
+        const string versionMarker = " is installed, expected ";
+        var versionIndex = problem.IndexOf(versionMarker, StringComparison.Ordinal);
+        if (versionIndex > 0)
+        {
+            var installed = problem[..versionIndex];
+            var expected = problem[(versionIndex + versionMarker.Length)..];
+            return $"{installed}，要求 {expected}";
+        }
+
+        const string missingMarker = " is not installed";
+        if (problem.EndsWith(missingMarker, StringComparison.Ordinal))
+        {
+            return $"{problem[..^missingMarker.Length]} 未安装";
+        }
+
+        return problem;
     }
 
     private static string LocalizeCheckName(string key, string fallback)

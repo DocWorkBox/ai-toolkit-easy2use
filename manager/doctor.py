@@ -159,6 +159,7 @@ def collect_environment_report():
                 bool(expected_python) and python_version == expected_python,
                 "%s (expected %s)"
                 % (python_version or "unavailable", expected_python or "unknown"),
+                repairable=False,
             )
         )
 
@@ -195,7 +196,13 @@ def collect_environment_report():
 
         pip_ok, pip_detail = _pip_check()
         checks.append(
-            _result("pip_check", "python packages", pip_ok, pip_detail)
+            _result(
+                "pip_check",
+                "python packages",
+                pip_ok,
+                pip_detail,
+                repairable=False,
+            )
         )
         requirements_ok, requirements_detail = (
             env.requirements_healthy(wanted)

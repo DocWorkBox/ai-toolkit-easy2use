@@ -6,6 +6,7 @@ public enum ManagerAction
     Check,
     Install,
     Sync,
+    Repair,
     Update,
     Launch,
     Doctor,
@@ -51,10 +52,11 @@ public static class ManagerCommand
                 break;
             case ManagerAction.Install:
             case ManagerAction.Sync:
+            case ManagerAction.Repair:
             case ManagerAction.Update:
                 arguments.Add("--json-stream");
                 arguments.Add(action.ToString().ToLowerInvariant());
-                if (force)
+                if (force && action != ManagerAction.Repair)
                 {
                     arguments.Add("--force");
                 }

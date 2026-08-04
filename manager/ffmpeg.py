@@ -148,7 +148,7 @@ def source_url(detection, spec=None):
     return _SOURCES.get((detection["os"], detection["arch"]))
 
 
-def ensure_ffmpeg(detection, dry_run=False, spec=None):
+def ensure_ffmpeg(detection, dry_run=False, spec=None, force=False):
     url = source_url(detection, spec=spec)
     if url is None:
         warn(
@@ -156,7 +156,7 @@ def ensure_ffmpeg(detection, dry_run=False, spec=None):
             % (detection["os"], detection["arch"])
         )
         return False
-    if is_installed(url):
+    if is_installed(url) and not force:
         ok("Local FFmpeg already installed (.ffmpeg/).")
         return False
     if dry_run:

@@ -56,7 +56,12 @@ public sealed class ManagerClient
             throw new InvalidOperationException($"Could not start '{invocation.FileName}'.");
         }
 
-        return new ManagedSession(process, invocation.OutputMode, onEvent);
+        return new ManagedSession(
+            process,
+            invocation.OutputMode,
+            onEvent,
+            WindowsProcessJob.TryAssign(process)
+        );
     }
 }
 
@@ -64,18 +69,24 @@ public sealed class ManagedSession : IAsyncDisposable
 {
     private readonly Process _process;
     private readonly object _eventLock = new();
+    private readonly object _stopLock = new();
     private readonly Action<ManagerEvent> _onEvent;
+    private readonly WindowsProcessJob? _processJob;
+    private readonly CancellationTokenSource _outputCancellation = new();
+    private Task? _stopTask;
     private int _stopRequested;
     private int _disposed;
 
     internal ManagedSession(
         Process process,
         ManagerOutputMode outputMode,
-        Action<ManagerEvent> onEvent
+        Action<ManagerEvent> onEvent,
+        WindowsProcessJob? processJob
     )
     {
         _process = process;
         _onEvent = onEvent;
+        _processJob = processJob;
         ProcessId = process.Id;
         Completion = CompleteAsync(outputMode);
     }
@@ -84,22 +95,34 @@ public sealed class ManagedSession : IAsyncDisposable
 
     public Task<ManagerRunResult> Completion { get; }
 
-    public async Task StopAsync()
+    public Task StopAsync()
+    {
+        lock (_stopLock)
+        {
+            return _stopTask ??= StopCoreAsync();
+        }
+    }
+
+    private async Task StopCoreAsync()
     {
         Interlocked.Exchange(ref _stopRequested, 1);
-        try
+        var jobTerminated = _processJob?.Terminate() == true;
+        if (!jobTerminated)
         {
-            if (!_process.HasExited)
-            {
-                _process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (InvalidOperationException)
-        {
-            // The process exited between the state check and Kill.
+            await TryTaskKillAsync().ConfigureAwait(false);
+            TryKillRoot();
         }
 
-        await Completion.ConfigureAwait(false);
+        try
+        {
+            await Completion.WaitAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            TryKillRoot();
+            _outputCancellation.Cancel();
+            await Completion.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -109,7 +132,7 @@ public sealed class ManagedSession : IAsyncDisposable
             return;
         }
 
-        if (!_process.HasExited)
+        if (!Completion.IsCompleted)
         {
             await StopAsync().ConfigureAwait(false);
         }
@@ -117,6 +140,8 @@ public sealed class ManagedSession : IAsyncDisposable
         {
             await Completion.ConfigureAwait(false);
         }
+        _outputCancellation.Dispose();
+        _processJob?.Dispose();
         _process.Dispose();
     }
 
@@ -155,24 +180,90 @@ public sealed class ManagedSession : IAsyncDisposable
         string? fallbackLevel = null
     )
     {
-        while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line)
+        try
         {
-            capture.AppendLine(line);
-            if (string.IsNullOrWhiteSpace(line))
+            while (await reader.ReadLineAsync(_outputCancellation.Token).ConfigureAwait(false)
+                is { } line)
             {
-                continue;
+                capture.AppendLine(line);
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+                if (!emitEvents)
+                {
+                    continue;
+                }
+                var parsed = parseJson
+                    ? ManagerEventParser.Parse(line)
+                    : new ManagerEvent("log", fallbackLevel, line, line);
+                lock (_eventLock)
+                {
+                    _onEvent(parsed);
+                }
             }
-            if (!emitEvents)
+        }
+        catch (OperationCanceledException) when (_outputCancellation.IsCancellationRequested)
+        {
+            // A process outside the managed job retained a redirected pipe during shutdown.
+        }
+    }
+
+    private async Task TryTaskKillAsync()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            var taskkillPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "taskkill.exe"
+            );
+            var startInfo = new ProcessStartInfo
             {
-                continue;
-            }
-            var parsed = parseJson
-                ? ManagerEventParser.Parse(line)
-                : new ManagerEvent("log", fallbackLevel, line, line);
-            lock (_eventLock)
+                FileName = taskkillPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            startInfo.ArgumentList.Add("/PID");
+            startInfo.ArgumentList.Add(ProcessId.ToString());
+            startInfo.ArgumentList.Add("/T");
+            startInfo.ArgumentList.Add("/F");
+            using var taskkill = Process.Start(startInfo);
+            if (taskkill is null)
             {
-                _onEvent(parsed);
+                return;
             }
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await taskkill.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception error) when (
+            error is InvalidOperationException
+                or System.ComponentModel.Win32Exception
+                or OperationCanceledException
+        )
+        {
+            // Fall through to Process.Kill below.
+        }
+    }
+
+    private void TryKillRoot()
+    {
+        try
+        {
+            if (!_process.HasExited)
+            {
+                _process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (Exception error) when (
+            error is InvalidOperationException or System.ComponentModel.Win32Exception
+        )
+        {
+            // The process exited between the state check and Kill.
         }
     }
 }

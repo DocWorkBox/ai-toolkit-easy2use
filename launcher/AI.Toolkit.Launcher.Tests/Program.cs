@@ -128,6 +128,18 @@ internal static class Program
         Assert.Equal("utf-8", invocation.Environment["PYTHONIOENCODING"]);
         Assert.Equal(ManagerOutputMode.JsonStream, invocation.OutputMode);
 
+        var repair = ManagerCommand.Create(
+            fixture.Path,
+            python,
+            ManagerAction.Repair,
+            force: true
+        );
+        Assert.SequenceEqual(
+            new[] { "-m", "manager", "--json-stream", "repair" },
+            repair.Arguments
+        );
+        Assert.Equal(ManagerOutputMode.JsonStream, repair.OutputMode);
+
         var doctor = ManagerCommand.Create(
             fixture.Path,
             python,
@@ -215,21 +227,43 @@ internal static class Program
 
     private static async Task TestManagedSessionStop()
     {
+        var childStarted = new TaskCompletionSource<int>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         var invocation = new ManagerInvocation(
             "powershell.exe",
-            new[] { "-NoProfile", "-Command", "Start-Sleep -Seconds 30" },
+            new[]
+            {
+                "-NoProfile",
+                "-Command",
+                "$child = Start-Process -FilePath 'powershell.exe' "
+                    + "-ArgumentList '-NoProfile','-Command','Start-Sleep -Seconds 30' "
+                    + "-PassThru -NoNewWindow; Write-Output ('CHILD=' + $child.Id)",
+            },
             Environment.CurrentDirectory,
             new Dictionary<string, string>(),
             ManagerOutputMode.Plain
         );
         var client = new ManagerClient();
-        await using var session = client.StartSession(invocation, _ => { });
+        await using var session = client.StartSession(
+            invocation,
+            item =>
+            {
+                if (item.Message.StartsWith("CHILD=", StringComparison.Ordinal)
+                    && int.TryParse(item.Message[6..], out var childId))
+                {
+                    childStarted.TrySetResult(childId);
+                }
+            }
+        );
 
         Assert.True(session.ProcessId > 0, "session did not start");
-        await session.StopAsync();
+        var childProcessId = await childStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await session.StopAsync().WaitAsync(TimeSpan.FromSeconds(10));
         var result = await session.Completion;
         Assert.True(result.WasStopped, "session should report an explicit stop");
         AssertProcessExited(session.ProcessId);
+        AssertProcessExited(childProcessId);
     }
 
     private static Task TestToolkitStatusParsing()
@@ -341,6 +375,8 @@ internal static class Program
         await WaitUntilAsync(() => viewModel.IsBusy, TimeSpan.FromSeconds(2));
         Assert.True(!viewModel.CanStart, "start must be disabled during maintenance");
         Assert.Equal("正在修复环境", viewModel.StatusText);
+        Assert.Equal(ManagerAction.Repair, backend.LastAction);
+        Assert.True(!backend.LastForce, "targeted repair must not use force sync");
 
         backend.Health = HealthyEnvironment();
         backend.CompleteMaintenance();
@@ -403,6 +439,17 @@ internal static class Program
         Assert.True(
             runnableOutdated.CanStart,
             "a runnable environment may start while a non-launch dependency needs repair"
+        );
+        Assert.True(
+            runnableOutdated.EnvironmentDetail.Contains(
+                "huggingface_hub 1.10.1",
+                StringComparison.Ordinal
+            )
+                && runnableOutdated.EnvironmentDetail.Contains(
+                    "==1.23.0",
+                    StringComparison.Ordinal
+                ),
+            "the environment card should identify the installed and required dependency versions"
         );
     }
 
@@ -635,6 +682,10 @@ internal static class Program
 
         public EnvironmentHealth Health { get; set; } = HealthyEnvironment();
 
+        public ManagerAction? LastAction { get; private set; }
+
+        public bool LastForce { get; private set; }
+
         public Task<LauncherSnapshot> LoadSnapshotAsync(
             Action<ManagerEvent> onEvent,
             CancellationToken cancellationToken
@@ -683,6 +734,8 @@ internal static class Program
             CancellationToken cancellationToken
         )
         {
+            LastAction = action;
+            LastForce = force;
             return _maintenance.Task;
         }
 
@@ -796,7 +849,7 @@ internal static class Program
                     false,
                     true,
                     true,
-                    "version mismatch"
+                    "huggingface_hub 1.10.1 is installed, expected ==1.23.0"
                 ),
             }
         );

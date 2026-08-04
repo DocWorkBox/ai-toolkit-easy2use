@@ -452,12 +452,20 @@ for line in entries:
         try:
             metadata.version(name)
         except metadata.PackageNotFoundError:
-            problems.append("%s is not installed" % name)
+            problems.append({
+                "requirement": line,
+                "name": name,
+                "reason": "missing",
+            })
         continue
     try:
         requirement = Requirement(line)
     except Exception:
-        problems.append("could not parse requirement: %s" % line)
+        problems.append({
+            "requirement": line,
+            "name": "",
+            "reason": "invalid",
+        })
         continue
     if requirement.marker and not requirement.marker.evaluate():
         continue
@@ -465,24 +473,30 @@ for line in entries:
     try:
         installed = metadata.version(requirement.name)
     except metadata.PackageNotFoundError:
-        problems.append("%s is not installed" % requirement.name)
+        problems.append({
+            "requirement": line,
+            "name": requirement.name,
+            "reason": "missing",
+        })
         continue
     if requirement.specifier and not requirement.specifier.contains(
         installed, prereleases=True
     ):
-        problems.append(
-            "%s %s is installed, expected %s"
-            % (requirement.name, installed, requirement.specifier)
-        )
+        problems.append({
+            "requirement": line,
+            "name": requirement.name,
+            "reason": "version",
+            "installed": installed,
+            "expected": str(requirement.specifier),
+        })
 
 print(json.dumps({"ok": not problems, "checked": checked, "problems": problems}))
 """
 
 
-def requirements_healthy(spec):
-    """Validate installed distributions against the active requirements files."""
+def _requirements_report(spec):
     if not venv_exists():
-        return False, "AI Toolkit Python environment is not installed"
+        return None, "AI Toolkit Python environment is not installed"
     try:
         result = subprocess.run(
             [
@@ -498,14 +512,77 @@ def requirements_healthy(spec):
         )
         payload = json.loads(result.stdout.decode().strip() or "{}")
     except (OSError, subprocess.TimeoutExpired, ValueError):
-        return False, "could not validate installed requirements"
+        return None, "could not validate installed requirements"
     if result.returncode != 0:
         detail = result.stderr.decode(errors="replace").strip()
-        return False, detail or "requirements validation failed"
+        return None, detail or "requirements validation failed"
+    return payload, None
+
+
+def _requirement_problem_text(problem):
+    if not isinstance(problem, dict):
+        return str(problem)
+    name = problem.get("name") or problem.get("requirement") or "requirement"
+    reason = problem.get("reason")
+    if reason == "missing":
+        return "%s is not installed" % name
+    if reason == "version":
+        return "%s %s is installed, expected %s" % (
+            name,
+            problem.get("installed") or "unknown",
+            problem.get("expected") or "the pinned version",
+        )
+    return "could not parse requirement: %s" % (problem.get("requirement") or name)
+
+
+def requirements_healthy(spec):
+    """Validate installed distributions against the active requirements files."""
+    payload, error = _requirements_report(spec)
+    if error:
+        return False, error
     problems = payload.get("problems") or []
     if payload.get("ok"):
         return True, "%d requirements match" % int(payload.get("checked") or 0)
-    return False, "; ".join(str(problem) for problem in problems[:3])
+    return False, "; ".join(
+        _requirement_problem_text(problem) for problem in problems[:3]
+    )
+
+
+def repair_requirements(spec, dry_run=False):
+    """Install only missing or mismatched requirement entries."""
+    payload, error = _requirements_report(spec)
+    if error:
+        warn(error)
+        return False
+    problems = payload.get("problems") or []
+    targets = []
+    for problem in problems:
+        if not isinstance(problem, dict) or problem.get("reason") == "invalid":
+            continue
+        requirement = problem.get("requirement")
+        if requirement and requirement not in targets:
+            targets.append(requirement)
+    if not targets:
+        ok("No missing or mismatched Python requirements found.")
+        return False
+
+    pins = _torch_pin_args(spec, dry_run=dry_run)
+    find_links = list(pins)
+    for url in spec.find_links:
+        find_links += ["--find-links", url]
+    info("Repairing Python requirements: %s" % ", ".join(targets))
+    _pip_install(targets + find_links, dry_run=dry_run)
+    _verify_torch(spec, dry_run=dry_run)
+
+    if not dry_run:
+        healthy, _ = requirements_healthy(spec)
+        if healthy:
+            state = load_state()
+            state["req_hash"] = requirements_hash(spec)
+            state["backend"] = spec.backend
+            state["git_pins"] = _git_pinned_packages(spec)
+            save_state(state)
+    return True
 
 
 def _git_pinned_packages(spec):

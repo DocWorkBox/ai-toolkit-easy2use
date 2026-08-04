@@ -65,6 +65,13 @@ def cmd_sync(args):
     env.sync(s, detection, dry_run=args.dry_run, force=args.force)
 
 
+def cmd_repair(args):
+    from manager import repair
+
+    detection, s = _resolve_spec(args)
+    repair.repair_environment(s, detection, dry_run=args.dry_run)
+
+
 def cmd_check(args):
     _, s = _resolve_spec(args)
     git_checkout = gitops.is_checkout()
@@ -226,6 +233,10 @@ def main(argv=None):
             help="reinstall requirements even if in sync",
         )
 
+    p = add("repair", cmd_repair, help="repair only failed environment checks")
+    p.add_argument("--cpu", action="store_true", help="allow CPU-only repair")
+    p.add_argument("--dry-run", action="store_true")
+
     p = add("check", cmd_check, help="check for updates (use --json for machines)")
     p.add_argument("--json", action="store_true")
     p.add_argument("--cpu", action="store_true", help=argparse.SUPPRESS)
@@ -257,8 +268,13 @@ def main(argv=None):
     if not getattr(args, "command", None):
         parser.print_help()
         return 1
-    if args.json_stream and args.command not in ("install", "sync", "update"):
-        parser.error("--json-stream is supported by install, sync, and update")
+    if args.json_stream and args.command not in (
+        "install",
+        "sync",
+        "repair",
+        "update",
+    ):
+        parser.error("--json-stream is supported by install, sync, repair, and update")
     util.set_json_stream_mode(args.json_stream)
     util.set_json_mode(bool(getattr(args, "json", False)) or args.json_stream)
     try:
