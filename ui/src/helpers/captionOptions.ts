@@ -92,7 +92,7 @@ export const captionerTypes: CaptionOption[] = [
             { value: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
             { value: '/model/ModelScope/Qwen/Qwen3.6-27B', label: 'Qwen/Qwen3.6-27B' },
-            { value: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated', label: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated' },
+            { value: '/model/HuggingFace/huihui-ai/Huihui-Qwen3.6-27B-abliterated', label: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated' },
         ],
         additionalSections: [
             'caption.prompt_template',

@@ -34,7 +34,7 @@ def test_compshare_qwen_model_options_do_not_leak_into_api_captioner():
     model_options = [
         "/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct",
         "/model/ModelScope/Qwen/Qwen3.6-27B",
-        "huihui-ai/Huihui-Qwen3.6-27B-abliterated",
+        "/model/HuggingFace/huihui-ai/Huihui-Qwen3.6-27B-abliterated",
         "huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated",
     ]
 

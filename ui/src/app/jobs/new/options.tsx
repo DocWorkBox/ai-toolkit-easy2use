@@ -741,7 +741,7 @@ export const modelArchs: ModelArch[] = [
     isVideoModel: true,
     defaults: {
       // default updates when [selected, unselected] in the UI
-      'config.process[0].model.name_or_path': ['Comfy-Org/MiniMax-H3', defaultNameOrPath],
+      'config.process[0].model.name_or_path': ['/model/ModelScope/Comfy-Org/MiniMax-H3', defaultNameOrPath],
       // the Comfy-Org weights are pre-quantized (int8 convrot DiT, nvfp4 TE); these
       // qtypes match the checkpoints exactly, so the load is unchanged. Picking a
       // different qtype re-quantizes layer by layer into that format.

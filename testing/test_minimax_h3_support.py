@@ -31,7 +31,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
-    assert "'Comfy-Org/MiniMax-H3'" in options
+    assert "'/model/ModelScope/Comfy-Org/MiniMax-H3'" in options
     assert "'config.process[0].datasets[x].do_audio': [true, undefined]" in options
     assert "'config.process[0].datasets[x].do_i2v': [false, undefined]" in options
     assert "模型目录路径" in options
