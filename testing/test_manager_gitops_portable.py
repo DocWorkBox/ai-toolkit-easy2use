@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 
 from manager import __main__ as manager_main
-from manager import env, gitops, portable_update, util
+from manager import env, gitops, portable_update
 
 
 def test_archive_checkout_uses_portable_git_metadata(monkeypatch):
@@ -50,10 +50,46 @@ def test_portable_check_uses_protable_branch_status(monkeypatch, capsys):
     assert payload["behind"] == 1
     assert payload["incoming"] == ["Portable branch update abcdef123456"]
     assert payload["update_available"] is True
+    assert payload["dependency_update_available"] is False
 
 
-def test_portable_update_syncs_dependencies_when_code_is_current(monkeypatch):
-    observed = []
+def test_portable_check_keeps_dependency_advice_separate_from_code(
+    monkeypatch, capsys
+):
+    monkeypatch.setattr(gitops, "is_checkout", lambda: False)
+    monkeypatch.setattr(
+        portable_update,
+        "remote_status",
+        lambda: {
+            "fetch_ok": True,
+            "branch": "protable",
+            "local_commit": "abcdef1234567890",
+            "remote_commit": "abcdef1234567890",
+            "behind": 0,
+            "error": None,
+        },
+    )
+    monkeypatch.setattr(
+        manager_main,
+        "_resolve_spec",
+        lambda args: ({"os": "windows"}, SimpleNamespace(backend="cu130")),
+    )
+    monkeypatch.setattr(env, "venv_exists", lambda: True)
+    monkeypatch.setattr(env, "torch_matches", lambda spec: False)
+    monkeypatch.setattr(env, "requirements_in_sync", lambda spec: True)
+
+    manager_main.cmd_check(SimpleNamespace(json=True, cpu=False))
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["behind"] == 0
+    assert payload["deps_in_sync"] is False
+    assert payload["dependency_update_available"] is True
+    assert payload["update_available"] is False
+
+
+def test_portable_update_does_not_sync_dependencies_when_code_is_current(
+    monkeypatch,
+):
     monkeypatch.setattr(gitops, "is_checkout", lambda: False)
     monkeypatch.setattr(
         portable_update,
@@ -68,13 +104,15 @@ def test_portable_update_syncs_dependencies_when_code_is_current(monkeypatch):
     monkeypatch.setattr(
         manager_main,
         "_resolve_spec",
-        lambda args: ({"os": "windows"}, "portable-spec"),
+        lambda args: (_ for _ in ()).throw(
+            AssertionError("portable code update resolved the environment")
+        ),
     )
     monkeypatch.setattr(
         env,
         "sync",
-        lambda spec, detection, dry_run=False: observed.append(
-            (spec, detection, dry_run)
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("portable code update synced dependencies")
         ),
     )
 
@@ -82,11 +120,7 @@ def test_portable_update_syncs_dependencies_when_code_is_current(monkeypatch):
         SimpleNamespace(force=False, auto=False, dry_run=False)
     )
 
-    assert observed == [("portable-spec", {"os": "windows"}, False)]
-
-
-def test_portable_update_reexecutes_after_code_overlay(monkeypatch):
-    observed = []
+def test_portable_update_does_not_sync_dependencies_after_code_overlay(monkeypatch):
     monkeypatch.setattr(gitops, "is_checkout", lambda: False)
     monkeypatch.setattr(
         portable_update,
@@ -101,11 +135,11 @@ def test_portable_update_reexecutes_after_code_overlay(monkeypatch):
     monkeypatch.setattr(
         manager_main,
         "_reexec_sync",
-        lambda args: observed.append((args.dry_run, util.json_stream_mode())),
+        lambda args: (_ for _ in ()).throw(
+            AssertionError("portable code update re-executed dependency sync")
+        ),
     )
 
     manager_main.cmd_update(
         SimpleNamespace(force=False, auto=False, dry_run=False)
     )
-
-    assert observed == [(False, False)]

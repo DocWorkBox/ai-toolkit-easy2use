@@ -112,7 +112,10 @@ def cmd_check(args):
         and env.requirements_in_sync(s),
         "backend": s.backend,
     }
-    data["update_available"] = bool(behind) or not data["deps_in_sync"]
+    data["dependency_update_available"] = not data["deps_in_sync"]
+    data["update_available"] = bool(behind) or (
+        git_checkout and data["dependency_update_available"]
+    )
     if args.json:
         print_json(data)
         return
@@ -132,27 +135,22 @@ def cmd_check(args):
 
 
 def cmd_update(args):
-    """git pull (never destructive) + dependency sync.
+    """Update code without destructive local changes.
 
-    Local work is sacred: a dirty tree either aborts (default), or with
-    --auto is skipped with a warning so run scripts can continue to launch.
-    We never reset/clean; even a forced pull is --ff-only, which git itself
-    aborts rather than overwriting local changes.
+    Archive-style portable bundles update code only; environment changes stay
+    behind the explicit diagnose/repair controls. Git checkouts retain the
+    pull-then-sync behavior. Local work is sacred: a dirty checkout either
+    aborts (default), or with --auto is skipped with a warning. We never
+    reset/clean; even a forced pull is --ff-only.
     """
     if not gitops.is_checkout():
         try:
-            result = portable_update.update_from_remote(dry_run=args.dry_run)
+            portable_update.update_from_remote(dry_run=args.dry_run)
         except portable_update.PortableUpdateError as error:
             if getattr(args, "auto", False):
                 warn("Could not update portable code — %s" % error)
-                result = {"changed": False}
             else:
                 die(str(error))
-        if result["changed"] and not args.dry_run:
-            _reexec_sync(args)
-            return
-        detection, s = _resolve_spec(args)
-        env.sync(s, detection, dry_run=args.dry_run)
         return
 
     auto = getattr(args, "auto", False)
