@@ -9,6 +9,8 @@ from .util import run, REPO_ROOT, die
 def _git(args, capture=True, check=True):
     git = gitwin.find_git()
     if not git:
+        if not check:
+            return 127, None
         die(
             "git was not found. On Windows run `python -m manager sync` to "
             "install a local copy; elsewhere install git with your package "
@@ -20,18 +22,25 @@ def _git(args, capture=True, check=True):
     return run([git] + args, cwd=REPO_ROOT, capture=capture, check=check, env=env)
 
 
+def is_checkout():
+    code, out = _git(["rev-parse", "--is-inside-work-tree"], check=False)
+    return code == 0 and out == "true"
+
+
 def current_branch():
-    _, out = _git(["rev-parse", "--abbrev-ref", "HEAD"])
-    return out
+    code, out = _git(["rev-parse", "--abbrev-ref", "HEAD"], check=False)
+    return out if code == 0 and out else "portable"
 
 
 def current_commit():
-    _, out = _git(["rev-parse", "--short", "HEAD"])
-    return out
+    code, out = _git(["rev-parse", "--short", "HEAD"], check=False)
+    return out if code == 0 and out else "archive"
 
 
 def is_dirty():
-    _, out = _git(["status", "--porcelain"])
+    code, out = _git(["status", "--porcelain"], check=False)
+    if code != 0:
+        return False
     # untracked files don't block updates; modified/staged tracked files do
     for line in (out or "").splitlines():
         if not line.startswith("??"):

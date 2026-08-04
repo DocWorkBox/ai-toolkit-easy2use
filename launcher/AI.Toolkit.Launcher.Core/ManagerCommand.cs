@@ -64,7 +64,8 @@ public static class ManagerCommand
                 arguments.AddRange(new[] { "launch", "--no-browser" });
                 break;
             case ManagerAction.Doctor:
-                arguments.Add("doctor");
+                arguments.AddRange(new[] { "doctor", "--json" });
+                outputMode = ManagerOutputMode.JsonDocument;
                 break;
             case ManagerAction.Version:
                 arguments.Add("version");
@@ -75,6 +76,7 @@ public static class ManagerCommand
 
         var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["AITK_ROOT"] = repositoryRoot,
             ["PYTHONUTF8"] = "1",
             ["PYTHONIOENCODING"] = "utf-8",
         };

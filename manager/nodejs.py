@@ -187,6 +187,42 @@ def _ui_deps_hash():
     )
 
 
+def ui_deps_in_sync():
+    """Whether the installed UI dependencies match this checkout."""
+    from . import env as env_mod
+
+    return (
+        env_mod.venv_exists()
+        and env_mod.load_state().get(UI_STATE_KEY) == _ui_deps_hash()
+        and os.path.isdir(os.path.join(UI_DIR, "node_modules"))
+    )
+
+
+def check_ui_dependencies():
+    """Validate the installed top-level Node dependency tree."""
+    if not os.path.isdir(os.path.join(UI_DIR, "node_modules")):
+        return False, "node_modules is missing"
+    process_env = npm_env()
+    npm = find_npm(process_env)
+    if npm is None:
+        return False, "npm is not available"
+    try:
+        result = subprocess.run(
+            [npm, "ls", "--depth=0", "--json"],
+            cwd=UI_DIR,
+            env=process_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=180,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False, "could not validate UI dependencies"
+    if result.returncode == 0:
+        return True, "installed dependency tree is valid"
+    detail = (result.stderr or result.stdout).decode(errors="replace").strip()
+    return False, detail.splitlines()[0] if detail else "npm dependency check failed"
+
+
 def ensure_ui_deps(env=None, dry_run=False):
     """Install ui/node_modules without ever rewriting ui/package-lock.json.
 
@@ -211,10 +247,9 @@ def ensure_ui_deps(env=None, dry_run=False):
         warn("ui/package-lock.json is missing — skipping UI dependency install.")
         return False
     want = _ui_deps_hash()
-    if env_mod.venv_exists() and env_mod.load_state().get(UI_STATE_KEY) == want:
-        if os.path.isdir(os.path.join(UI_DIR, "node_modules")):
-            ok("UI dependencies already installed.")
-            return False
+    if ui_deps_in_sync():
+        ok("UI dependencies already installed.")
+        return False
     if dry_run:
         info("[dry-run] would run: npm install --no-save (in %s)" % UI_DIR)
         return False

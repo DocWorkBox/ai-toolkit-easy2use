@@ -7,7 +7,10 @@ import shutil
 import subprocess
 import sys
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_ROOT = os.path.abspath(
+    os.environ.get("AITK_ROOT")
+    or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 IS_WINDOWS = platform.system() == "Windows"
 IS_MAC = platform.system() == "Darwin"

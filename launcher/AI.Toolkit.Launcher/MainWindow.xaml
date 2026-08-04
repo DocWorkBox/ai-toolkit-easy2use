@@ -167,6 +167,13 @@
                             FontWeight="SemiBold"
                             Text="{Binding EnvironmentStatus}"
                             TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="11"
+                            Foreground="{StaticResource MutedTextBrush}"
+                            Text="{Binding EnvironmentDetail}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip="{Binding EnvironmentDetail}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -391,7 +398,12 @@
         </Border>
 
         <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <ProgressBar
+                Grid.ColumnSpan="2"
                 Height="3"
                 Margin="0,7,0,0"
                 VerticalAlignment="Top"
@@ -406,6 +418,17 @@
                 FontSize="11"
                 Foreground="{StaticResource MutedTextBrush}"
                 Text="{Binding StatusText}" />
+            <TextBlock
+                Grid.Column="1"
+                MaxWidth="620"
+                Margin="16,13,0,0"
+                VerticalAlignment="Center"
+                FontFamily="Cascadia Mono, Consolas"
+                FontSize="10"
+                Foreground="#717971"
+                Text="{Binding ManagedRoot}"
+                TextTrimming="CharacterEllipsis"
+                ToolTip="{Binding ManagedRoot}" />
         </Grid>
     </Grid>
 </Window>

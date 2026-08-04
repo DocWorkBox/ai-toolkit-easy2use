@@ -26,6 +26,7 @@ internal static class Program
             ("managed session stop", TestManagedSessionStop),
             ("toolkit status parsing", TestToolkitStatusParsing),
             ("UI readiness probe", TestUiReadinessProbe),
+            ("view model environment controls", TestViewModelEnvironmentControls),
             ("view model maintenance state", TestViewModelMaintenanceState),
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
@@ -122,9 +123,21 @@ internal static class Program
             invocation.Arguments
         );
         Assert.Equal("portable", invocation.Environment["AITK_RUNTIME_LAYOUT"]);
+        Assert.Equal(fixture.Path, invocation.Environment["AITK_ROOT"]);
         Assert.Equal("1", invocation.Environment["PYTHONUTF8"]);
         Assert.Equal("utf-8", invocation.Environment["PYTHONIOENCODING"]);
         Assert.Equal(ManagerOutputMode.JsonStream, invocation.OutputMode);
+
+        var doctor = ManagerCommand.Create(
+            fixture.Path,
+            python,
+            ManagerAction.Doctor
+        );
+        Assert.SequenceEqual(
+            new[] { "-m", "manager", "doctor", "--json" },
+            doctor.Arguments
+        );
+        Assert.Equal(ManagerOutputMode.JsonDocument, doctor.OutputMode);
         return Task.CompletedTask;
     }
 
@@ -245,9 +258,31 @@ internal static class Program
               "backend": "cu130"
             }
             """;
+        const string doctorJson = """
+            {
+              "ok": false,
+              "environment_exists": true,
+              "required_passed": 10,
+              "required_total": 12,
+              "failed_required": ["requirements", "ffmpeg"],
+              "repairable_failures": ["requirements", "ffmpeg"],
+              "warnings": ["disk_space"],
+              "checks": [
+                {
+                  "key": "requirements",
+                  "label": "AI Toolkit requirements",
+                  "passed": false,
+                  "required": true,
+                  "repairable": true,
+                  "detail": "out of sync"
+                }
+              ]
+            }
+            """;
 
         var hardware = ToolkitStatusParser.ParseDetection(detectionJson);
         var update = ToolkitStatusParser.ParseUpdateCheck(updateJson);
+        var environment = ToolkitStatusParser.ParseEnvironmentHealth(doctorJson);
 
         Assert.Equal("RTX 5070 Ti", hardware.PrimaryGpuName);
         Assert.Equal("16303 MiB", hardware.PrimaryGpuMemory);
@@ -257,6 +292,10 @@ internal static class Program
         Assert.Equal(2, update.Behind);
         Assert.True(update.UpdateAvailable, "update should be available");
         Assert.True(!update.DependenciesInSync, "dependency state should be preserved");
+        Assert.True(!environment.MeetsRequirements, "environment should be unhealthy");
+        Assert.True(environment.EnvironmentExists, "environment existence was lost");
+        Assert.Equal(2, environment.RepairableFailures.Count);
+        Assert.Equal("requirements", environment.Checks[0].Key);
         return Task.CompletedTask;
     }
 
@@ -294,7 +333,7 @@ internal static class Program
 
     private static async Task TestViewModelMaintenanceState()
     {
-        var backend = new FakeLauncherBackend();
+        var backend = new FakeLauncherBackend { Health = RepairableEnvironment() };
         var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
         await viewModel.InitializeAsync();
 
@@ -303,18 +342,75 @@ internal static class Program
         Assert.True(!viewModel.CanStart, "start must be disabled during maintenance");
         Assert.Equal("正在修复环境", viewModel.StatusText);
 
+        backend.Health = HealthyEnvironment();
         backend.CompleteMaintenance();
         await repair;
 
         Assert.True(!viewModel.IsBusy, "busy state was not cleared");
         Assert.True(viewModel.CanStart, "start should be enabled after maintenance");
-        Assert.Equal("环境修复完成", viewModel.StatusText);
+        Assert.Equal("环境修复完成，环境符合要求", viewModel.StatusText);
+    }
+
+    private static async Task TestViewModelEnvironmentControls()
+    {
+        var healthyBackend = new FakeLauncherBackend { Health = HealthyEnvironment() };
+        var healthy = new MainViewModel(
+            healthyBackend,
+            new ImmediateSynchronizationContext()
+        );
+        await healthy.InitializeAsync();
+
+        Assert.Equal("环境符合要求", healthy.EnvironmentStatus);
+        Assert.True(
+            healthy.EnvironmentDetail.Contains("12/12", StringComparison.Ordinal),
+            "healthy check count should be visible"
+        );
+        Assert.Equal(healthyBackend.RepositoryRoot, healthy.ManagedRoot);
+        Assert.True(!healthy.InstallCommand.CanExecute(null), "install must be disabled");
+        Assert.True(!healthy.RepairCommand.CanExecute(null), "repair must be disabled");
+        Assert.True(healthy.CanStart, "start should be enabled for a healthy environment");
+
+        var missing = new MainViewModel(
+            new FakeLauncherBackend { Health = MissingEnvironment() },
+            new ImmediateSynchronizationContext()
+        );
+        await missing.InitializeAsync();
+        Assert.Equal("环境未安装", missing.EnvironmentStatus);
+        Assert.True(missing.InstallCommand.CanExecute(null), "install should be enabled");
+        Assert.True(!missing.RepairCommand.CanExecute(null), "repair should be disabled");
+        Assert.True(!missing.CanStart, "start should be disabled without an environment");
+
+        var repairable = new MainViewModel(
+            new FakeLauncherBackend { Health = RepairableEnvironment() },
+            new ImmediateSynchronizationContext()
+        );
+        await repairable.InitializeAsync();
+        Assert.Equal("环境不符合要求", repairable.EnvironmentStatus);
+        Assert.True(!repairable.InstallCommand.CanExecute(null), "install should be disabled");
+        Assert.True(repairable.RepairCommand.CanExecute(null), "repair should be enabled");
+        Assert.True(!repairable.CanStart, "start should be disabled until repair completes");
+
+        var runnableOutdated = new MainViewModel(
+            new FakeLauncherBackend { Health = RunnableOutdatedEnvironment() },
+            new ImmediateSynchronizationContext()
+        );
+        await runnableOutdated.InitializeAsync();
+        Assert.Equal("环境不符合要求", runnableOutdated.EnvironmentStatus);
+        Assert.True(
+            runnableOutdated.RepairCommand.CanExecute(null),
+            "repair should be available for an outdated dependency"
+        );
+        Assert.True(
+            runnableOutdated.CanStart,
+            "a runnable environment may start while a non-launch dependency needs repair"
+        );
     }
 
     private static async Task TestViewModelUiLifecycle()
     {
         var backend = new FakeLauncherBackend();
         var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        await viewModel.InitializeAsync();
 
         await viewModel.StartUiAsync();
 
@@ -331,8 +427,9 @@ internal static class Program
 
     private static async Task TestViewModelShutdownWaitsForMaintenance()
     {
-        var backend = new FakeLauncherBackend();
+        var backend = new FakeLauncherBackend { Health = RepairableEnvironment() };
         var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        await viewModel.InitializeAsync();
         var repair = viewModel.RepairAsync();
         await WaitUntilAsync(() => viewModel.IsBusy, TimeSpan.FromSeconds(2));
 
@@ -534,6 +631,10 @@ internal static class Program
         private readonly TaskCompletionSource<ManagerRunResult> _maintenance =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public string RepositoryRoot { get; } = @"C:\portable\ai-toolkit";
+
+        public EnvironmentHealth Health { get; set; } = HealthyEnvironment();
+
         public Task<LauncherSnapshot> LoadSnapshotAsync(
             Action<ManagerEvent> onEvent,
             CancellationToken cancellationToken
@@ -551,9 +652,18 @@ internal static class Program
                         "13.3",
                         "cu130"
                     ),
-                    "便携运行时"
+                    Health,
+                    RepositoryRoot
                 )
             );
+        }
+
+        public Task<EnvironmentHealth> DiagnoseEnvironmentAsync(
+            Action<ManagerEvent> onEvent,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.FromResult(Health);
         }
 
         public Task<UpdateStatus> CheckUpdatesAsync(
@@ -587,6 +697,109 @@ internal static class Program
         {
             _maintenance.TrySetResult(new ManagerRunResult(0, string.Empty, string.Empty, false));
         }
+    }
+
+    private static EnvironmentHealth HealthyEnvironment()
+    {
+        return new EnvironmentHealth(
+            true,
+            true,
+            12,
+            12,
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            Array.Empty<EnvironmentCheckStatus>()
+        );
+    }
+
+    private static EnvironmentHealth MissingEnvironment()
+    {
+        return new EnvironmentHealth(
+            false,
+            false,
+            5,
+            6,
+            new[] { "venv" },
+            new[] { "venv" },
+            Array.Empty<string>(),
+            new[]
+            {
+                new EnvironmentCheckStatus(
+                    "venv",
+                    "AI Toolkit environment",
+                    false,
+                    true,
+                    true,
+                    "not installed"
+                ),
+            }
+        );
+    }
+
+    private static EnvironmentHealth RepairableEnvironment()
+    {
+        return new EnvironmentHealth(
+            false,
+            true,
+            10,
+            12,
+            new[] { "requirements", "ffmpeg" },
+            new[] { "requirements", "ffmpeg" },
+            Array.Empty<string>(),
+            new[]
+            {
+                new EnvironmentCheckStatus(
+                    "requirements",
+                    "AI Toolkit requirements",
+                    false,
+                    true,
+                    true,
+                    "out of sync"
+                ),
+                new EnvironmentCheckStatus(
+                    "ffmpeg",
+                    "ffmpeg (local)",
+                    false,
+                    true,
+                    true,
+                    "not installed"
+                ),
+            }
+        );
+    }
+
+    private static EnvironmentHealth RunnableOutdatedEnvironment()
+    {
+        return new EnvironmentHealth(
+            false,
+            true,
+            14,
+            15,
+            new[] { "requirements" },
+            new[] { "requirements" },
+            Array.Empty<string>(),
+            new[]
+            {
+                new EnvironmentCheckStatus(
+                    "venv", "AI Toolkit environment", true, true, true, "installed"
+                ),
+                new EnvironmentCheckStatus(
+                    "node", "node", true, true, true, "v22"
+                ),
+                new EnvironmentCheckStatus(
+                    "ui_dependencies", "UI dependencies", true, true, true, "valid"
+                ),
+                new EnvironmentCheckStatus(
+                    "requirements",
+                    "AI Toolkit requirements",
+                    false,
+                    true,
+                    true,
+                    "version mismatch"
+                ),
+            }
+        );
     }
 
     private sealed class FakeLauncherUiSession : ILauncherUiSession

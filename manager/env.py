@@ -301,6 +301,16 @@ def _version_matches(current, want, backend):
     return current == want and backend in ("mps", "cpu")
 
 
+def torch_stack_matches(spec, stack):
+    """Whether a previously imported torch stack matches the selected spec."""
+    if not stack:
+        return False
+    return all(
+        _version_matches(stack.get(name), version, spec.backend)
+        for name, version in spec.torch_packages.items()
+    )
+
+
 def torch_matches(spec):
     """True only if the whole trio is at the pinned version AND imports.
 
@@ -308,13 +318,7 @@ def torch_matches(spec):
     torchvision while leaving torch untouched, and torchaudio keeps its version
     number even when its extension can no longer load.
     """
-    stack = torch_stack()
-    if not stack:
-        return False
-    return all(
-        _version_matches(stack.get(name), version, spec.backend)
-        for name, version in spec.torch_packages.items()
-    )
+    return torch_stack_matches(spec, torch_stack())
 
 
 def ensure_torch(spec, dry_run=False):
@@ -405,6 +409,103 @@ def requirements_in_sync(spec):
     if not venv_exists():
         return False
     return load_state().get("req_hash") == requirements_hash(spec)
+
+
+_REQUIREMENTS_HEALTH_SCRIPT = r"""
+import importlib.metadata as metadata
+import json
+import os
+import sys
+from packaging.requirements import Requirement
+
+seen = set()
+entries = []
+
+def scan(path):
+    path = os.path.abspath(path)
+    if path in seen or not os.path.isfile(path):
+        return
+    seen.add(path)
+    with open(path, encoding="utf-8") as handle:
+        for raw in handle:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("-r ") or line.startswith("--requirement "):
+                include = line.split(None, 1)[1]
+                scan(os.path.join(os.path.dirname(path), include))
+                continue
+            if line.startswith("-"):
+                continue
+            entries.append(line)
+
+scan(sys.argv[1])
+checked = 0
+problems = []
+for line in entries:
+    if line.startswith(("git+", "hg+", "svn+")):
+        tail = line.split("#", 1)[0].rstrip("/").rsplit("/", 1)[-1]
+        name = tail.split("@", 1)[0]
+        if name.endswith(".git"):
+            name = name[:-4]
+        checked += 1
+        try:
+            metadata.version(name)
+        except metadata.PackageNotFoundError:
+            problems.append("%s is not installed" % name)
+        continue
+    try:
+        requirement = Requirement(line)
+    except Exception:
+        problems.append("could not parse requirement: %s" % line)
+        continue
+    if requirement.marker and not requirement.marker.evaluate():
+        continue
+    checked += 1
+    try:
+        installed = metadata.version(requirement.name)
+    except metadata.PackageNotFoundError:
+        problems.append("%s is not installed" % requirement.name)
+        continue
+    if requirement.specifier and not requirement.specifier.contains(
+        installed, prereleases=True
+    ):
+        problems.append(
+            "%s %s is installed, expected %s"
+            % (requirement.name, installed, requirement.specifier)
+        )
+
+print(json.dumps({"ok": not problems, "checked": checked, "problems": problems}))
+"""
+
+
+def requirements_healthy(spec):
+    """Validate installed distributions against the active requirements files."""
+    if not venv_exists():
+        return False, "AI Toolkit Python environment is not installed"
+    try:
+        result = subprocess.run(
+            [
+                venv_python(),
+                "-c",
+                _REQUIREMENTS_HEALTH_SCRIPT,
+                spec.requirements_path(),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=180,
+            env=clean_env(),
+        )
+        payload = json.loads(result.stdout.decode().strip() or "{}")
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return False, "could not validate installed requirements"
+    if result.returncode != 0:
+        detail = result.stderr.decode(errors="replace").strip()
+        return False, detail or "requirements validation failed"
+    problems = payload.get("problems") or []
+    if payload.get("ok"):
+        return True, "%d requirements match" % int(payload.get("checked") or 0)
+    return False, "; ".join(str(problem) for problem in problems[:3])
 
 
 def _git_pinned_packages(spec):

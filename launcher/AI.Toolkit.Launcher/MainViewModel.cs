@@ -16,10 +16,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly SemaphoreSlim _operationLock = new(1, 1);
     private ILauncherUiSession? _uiSession;
     private CancellationTokenSource? _operationCancellation;
+    private EnvironmentHealth? _environmentHealth;
     private string _versionText = "正在读取";
     private string _gpuName = "正在检测 GPU";
     private string _gpuDetail = "-";
     private string _environmentStatus = "正在检查环境";
+    private string _environmentDetail = "等待完整依赖诊断";
+    private string _managedRoot;
     private string _updateStatus = "尚未检查";
     private string _serviceStatus = "服务已停止";
     private string _statusText = "准备就绪";
@@ -33,13 +36,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     )
     {
         _backend = backend;
+        _managedRoot = backend.RepositoryRoot;
         _synchronizationContext = synchronizationContext
             ?? SynchronizationContext.Current
             ?? new SynchronizationContext();
 
-        InstallCommand = new AsyncCommand(InstallAsync, CanRunMaintenance);
+        InstallCommand = new AsyncCommand(InstallAsync, CanInstallEnvironment);
         CheckUpdatesCommand = new AsyncCommand(CheckUpdatesAsync, CanRunMaintenance);
-        RepairCommand = new AsyncCommand(RepairAsync, CanRunMaintenance);
+        RepairCommand = new AsyncCommand(RepairAsync, CanRepairEnvironment);
         UpdateCommand = new AsyncCommand(UpdateAsync, CanRunMaintenance);
         DoctorCommand = new AsyncCommand(DoctorAsync, CanRunMaintenance);
         StartCommand = new AsyncCommand(StartUiAsync, () => CanStart);
@@ -84,6 +88,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         get => _environmentStatus;
         private set => SetField(ref _environmentStatus, value);
+    }
+
+    public string EnvironmentDetail
+    {
+        get => _environmentDetail;
+        private set => SetField(ref _environmentDetail, value);
+    }
+
+    public string ManagedRoot
+    {
+        get => _managedRoot;
+        private set => SetField(ref _managedRoot, value);
     }
 
     public string UpdateStatus
@@ -131,7 +147,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
-    public bool CanStart => !_isShuttingDown && !IsBusy && _uiSession is null;
+    public bool CanStart =>
+        !_isShuttingDown
+        && !IsBusy
+        && _uiSession is null
+        && EnvironmentCanLaunch();
 
     public bool CanStop => !_isShuttingDown && _uiSession is not null;
 
@@ -145,8 +165,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 VersionText = snapshot.Version;
                 GpuName = snapshot.Hardware.PrimaryGpuName;
                 GpuDetail = $"{snapshot.Hardware.PrimaryGpuMemory}  |  CUDA {snapshot.Hardware.CudaVersion}  |  {snapshot.Hardware.Backend}";
-                EnvironmentStatus = snapshot.RuntimeDescription;
-                StatusText = "环境信息已加载";
+                ManagedRoot = snapshot.RepositoryRoot;
+                ApplyEnvironmentHealth(snapshot.Environment);
+                StatusText = snapshot.Environment.MeetsRequirements
+                    ? "环境检查完成，可以启动"
+                    : "环境检查完成，需要处理问题";
             }
         );
     }
@@ -183,11 +206,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public Task DoctorAsync()
     {
-        return RunMaintenanceAsync(
-            ManagerAction.Doctor,
-            false,
+        return RunExclusiveAsync(
             "正在运行诊断",
-            "环境诊断完成"
+            async cancellationToken =>
+            {
+                var health = await _backend.DiagnoseEnvironmentAsync(
+                    AppendEvent,
+                    cancellationToken
+                );
+                ApplyEnvironmentHealth(health);
+                StatusText = health.MeetsRequirements
+                    ? "诊断完成，环境符合要求"
+                    : "诊断完成，发现环境问题";
+            }
         );
     }
 
@@ -198,9 +229,6 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             async cancellationToken =>
             {
                 var update = await _backend.CheckUpdatesAsync(AppendEvent, cancellationToken);
-                EnvironmentStatus = update.DependenciesInSync
-                    ? "依赖已同步"
-                    : "依赖需要同步";
                 UpdateStatus = update.UpdateAvailable
                     ? update.Behind is > 0
                         ? $"有 {update.Behind} 个代码更新"
@@ -341,8 +369,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                         $"manager {action.ToString().ToLowerInvariant()} 失败，代码 {result.ExitCode}。"
                     );
                 }
-                StatusText = completedStatus;
-                EnvironmentStatus = "环境已同步";
+                var health = await _backend.DiagnoseEnvironmentAsync(
+                    AppendEvent,
+                    cancellationToken
+                );
+                ApplyEnvironmentHealth(health);
+                StatusText = health.MeetsRequirements
+                    ? $"{completedStatus}，环境符合要求"
+                    : $"{completedStatus}，仍有环境问题";
             }
         );
     }
@@ -422,6 +456,121 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool CanRunMaintenance()
     {
         return !_isShuttingDown && !IsBusy && _uiSession is null;
+    }
+
+    private bool CanInstallEnvironment()
+    {
+        return CanRunMaintenance() && _environmentHealth?.EnvironmentExists == false;
+    }
+
+    private bool CanRepairEnvironment()
+    {
+        return CanRunMaintenance()
+            && _environmentHealth is
+            {
+                EnvironmentExists: true,
+                MeetsRequirements: false,
+            }
+            && _environmentHealth.RepairableFailures.Count > 0;
+    }
+
+    private bool EnvironmentCanLaunch()
+    {
+        if (_environmentHealth is not { EnvironmentExists: true } health)
+        {
+            return false;
+        }
+        if (health.MeetsRequirements)
+        {
+            return true;
+        }
+
+        var launchChecks = new[] { "venv", "node", "ui_dependencies" };
+        return launchChecks.All(
+            key => health.Checks.Any(check => check.Key == key && check.Passed)
+        );
+    }
+
+    private void ApplyEnvironmentHealth(EnvironmentHealth health)
+    {
+        _environmentHealth = health;
+        if (!health.EnvironmentExists)
+        {
+            EnvironmentStatus = "环境未安装";
+            EnvironmentDetail = "未找到 AI Toolkit Python 环境";
+        }
+        else if (health.MeetsRequirements)
+        {
+            EnvironmentStatus = "环境符合要求";
+            EnvironmentDetail = $"{health.RequiredPassed}/{health.RequiredTotal} 项必需检查通过";
+            if (health.Warnings.Count > 0)
+            {
+                EnvironmentDetail += $" · {health.Warnings.Count} 项建议";
+            }
+        }
+        else
+        {
+            EnvironmentStatus = "环境不符合要求";
+            var failed = health.Checks
+                .Where(check => check.Required && !check.Passed)
+                .Select(check => LocalizeCheckName(check.Key, check.Label))
+                .Distinct(StringComparer.Ordinal)
+                .Take(3)
+                .ToArray();
+            var issueText = failed.Length > 0
+                ? string.Join("、", failed)
+                : string.Join("、", health.FailedRequired.Take(3));
+            EnvironmentDetail = $"{health.RequiredPassed}/{health.RequiredTotal} 项通过";
+            if (!string.IsNullOrWhiteSpace(issueText))
+            {
+                EnvironmentDetail += $" · 问题：{issueText}";
+            }
+        }
+
+        AppendLog(
+            health.MeetsRequirements ? "success" : "warning",
+            $"环境诊断：{health.RequiredPassed}/{health.RequiredTotal} 项必需检查通过；目标目录：{ManagedRoot}"
+        );
+        foreach (var check in health.Checks.Where(check => check.Required && !check.Passed))
+        {
+            AppendLog(
+                "error",
+                $"{LocalizeCheckName(check.Key, check.Label)}：{check.Detail}"
+            );
+        }
+        foreach (var check in health.Checks.Where(check => !check.Required && !check.Passed))
+        {
+            AppendLog(
+                "warning",
+                $"建议项 {LocalizeCheckName(check.Key, check.Label)}：{check.Detail}"
+            );
+        }
+
+        OnPropertyChanged(nameof(CanStart));
+        RefreshCommands();
+    }
+
+    private static string LocalizeCheckName(string key, string fallback)
+    {
+        return key switch
+        {
+            "environment_spec" => "硬件环境规格",
+            "git" => "Git",
+            "gpu" => "GPU",
+            "venv" => "Python 环境",
+            "python" => "Python 版本",
+            "torch" => "PyTorch",
+            "torchvision" => "TorchVision",
+            "torchaudio" => "TorchAudio",
+            "torch_stack_pins" => "PyTorch 固定版本",
+            "pip_check" => "Python 依赖完整性",
+            "requirements" => "AI Toolkit 依赖",
+            "torch_gpu" => "PyTorch GPU",
+            "node" => "Node.js",
+            "ui_dependencies" => "UI 依赖",
+            "ffmpeg" => "FFmpeg",
+            _ => fallback,
+        };
     }
 
     private void OpenUi()

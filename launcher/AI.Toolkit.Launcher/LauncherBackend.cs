@@ -6,7 +6,8 @@ namespace AiToolkit.Launcher;
 public sealed record LauncherSnapshot(
     string Version,
     HardwareStatus Hardware,
-    string RuntimeDescription
+    EnvironmentHealth Environment,
+    string RepositoryRoot
 );
 
 public interface ILauncherUiSession : IAsyncDisposable
@@ -19,12 +20,19 @@ public interface ILauncherUiSession : IAsyncDisposable
 
 public interface ILauncherBackend
 {
+    string RepositoryRoot { get; }
+
     Task<LauncherSnapshot> LoadSnapshotAsync(
         Action<ManagerEvent> onEvent,
         CancellationToken cancellationToken
     );
 
     Task<UpdateStatus> CheckUpdatesAsync(
+        Action<ManagerEvent> onEvent,
+        CancellationToken cancellationToken
+    );
+
+    Task<EnvironmentHealth> DiagnoseEnvironmentAsync(
         Action<ManagerEvent> onEvent,
         CancellationToken cancellationToken
     );
@@ -71,11 +79,27 @@ public sealed class LauncherBackend : ILauncherBackend
     {
         var version = await RunCheckedAsync(ManagerAction.Version, false, onEvent, cancellationToken);
         var detection = await RunCheckedAsync(ManagerAction.Detect, false, onEvent, cancellationToken);
+        var environment = await DiagnoseEnvironmentAsync(onEvent, cancellationToken);
         return new LauncherSnapshot(
             version.StandardOutput.Trim(),
             ToolkitStatusParser.ParseDetection(detection.StandardOutput),
-            _python.IsPortable ? "便携运行时" : "标准 Python 环境"
+            environment,
+            _repositoryRoot
         );
+    }
+
+    public async Task<EnvironmentHealth> DiagnoseEnvironmentAsync(
+        Action<ManagerEvent> onEvent,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await RunCheckedAsync(
+            ManagerAction.Doctor,
+            false,
+            onEvent,
+            cancellationToken
+        );
+        return ToolkitStatusParser.ParseEnvironmentHealth(result.StandardOutput);
     }
 
     public async Task<UpdateStatus> CheckUpdatesAsync(

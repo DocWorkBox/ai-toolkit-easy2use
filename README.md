@@ -201,6 +201,16 @@ Windows 便携包可使用 `AI Toolkit Launcher.exe` 统一完成环境检查、
 自包含单文件，不要求用户预装 .NET。向便携包复制产物前，应先同步本次
 版本的 `manager/` 代码，避免启动器界面与环境管理协议版本不一致。
 
+部署到便携包时传入其根目录，脚本会同时复制匹配版本的 `manager/` 和
+`AI Toolkit Launcher.exe`：
+
+```powershell
+.\scripts\build_windows_launcher.ps1 -PortableRoot C:\path\to\ai-toolkit-portable
+```
+
+启动器窗口底部会显示当前实际管理的根目录。环境状态来自完整诊断，
+不是启动器自身所在机器能否找到任意 Python。
+
 ## FireRed-Image-Edit-1.1 预设说明
 
 - 训练 UI 已新增 `FireRed-Image-Edit-1.1` 预设，适用于基于该模型的 LoRA 训练起步配置。

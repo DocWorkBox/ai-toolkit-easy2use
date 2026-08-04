@@ -33,7 +33,13 @@ python -m manager --json-stream sync --force
 ```
 
 Each stdout line is UTF-8 JSON with a `message`, `log`, or final `result`
-event. Existing `detect --json` and `check --json` output is unchanged.
+event. `detect --json`, `check --json`, and `doctor --json` remain single JSON
+documents for status queries.
+
+`doctor --json` validates the selected AI Toolkit Python version, installed
+requirements, PyTorch imports, GPU visibility, Node dependency tree, and local
+FFmpeg. `AITK_ROOT` can explicitly select the checkout being managed; the
+Windows launcher always sets it to the root shown in its status bar.
 
 ## Design
 

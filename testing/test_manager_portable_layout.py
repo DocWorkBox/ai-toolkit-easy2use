@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +12,24 @@ from manager import ffmpeg, gitwin, nodejs, util, uvbin
 def _touch(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"")
+
+
+def test_repo_root_can_be_explicitly_selected_for_a_launcher(tmp_path):
+    selected = tmp_path / "portable-root"
+    selected.mkdir()
+    process_env = os.environ.copy()
+    process_env["AITK_ROOT"] = str(selected)
+
+    result = subprocess.run(
+        [sys.executable, "-c", "from manager.util import REPO_ROOT; print(REPO_ROOT)"],
+        cwd=os.path.dirname(os.path.dirname(__file__)),
+        env=process_env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.stdout.strip() == str(selected)
 
 
 def test_auto_detects_windows_portable_runtime(monkeypatch, tmp_path):

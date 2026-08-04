@@ -66,8 +66,18 @@ if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
     if (-not (Test-Path -LiteralPath (Join-Path $PortableRoot 'manager\__main__.py'))) {
         throw "PortableRoot is not an AI Toolkit checkout: $PortableRoot"
     }
+    $sourceManager = Join-Path $repoRoot 'manager'
+    $targetManager = Join-Path $PortableRoot 'manager'
+    Get-ChildItem -LiteralPath $sourceManager -File -Recurse | Where-Object {
+        $_.Extension -ne '.pyc' -and $_.FullName -notmatch '[\\/]__pycache__[\\/]'
+    } | ForEach-Object {
+        $relative = $_.FullName.Substring($sourceManager.Length).TrimStart('\', '/')
+        $target = Join-Path $targetManager $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+        Copy-Item -LiteralPath $_.FullName -Destination $target -Force
+    }
     Copy-Item -LiteralPath $launcher -Destination (Join-Path $PortableRoot 'AI Toolkit Launcher.exe') -Force
-    Write-Host "Launcher copied to $PortableRoot"
+    Write-Host "Matching manager and launcher copied to $PortableRoot"
 }
 
 $file = Get-Item -LiteralPath $launcher

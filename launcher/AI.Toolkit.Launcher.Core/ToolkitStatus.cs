@@ -23,6 +23,26 @@ public sealed record UpdateStatus(
     string Backend
 );
 
+public sealed record EnvironmentCheckStatus(
+    string Key,
+    string Label,
+    bool Passed,
+    bool Required,
+    bool Repairable,
+    string Detail
+);
+
+public sealed record EnvironmentHealth(
+    bool MeetsRequirements,
+    bool EnvironmentExists,
+    int RequiredPassed,
+    int RequiredTotal,
+    IReadOnlyList<string> FailedRequired,
+    IReadOnlyList<string> RepairableFailures,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<EnvironmentCheckStatus> Checks
+);
+
 public static class ToolkitStatusParser
 {
     public static HardwareStatus ParseDetection(string json)
@@ -56,6 +76,41 @@ public static class ToolkitStatusParser
             Boolean(root, "deps_in_sync"),
             Boolean(root, "update_available"),
             String(root, "backend", "未知")
+        );
+    }
+
+    public static EnvironmentHealth ParseEnvironmentHealth(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var checks = new List<EnvironmentCheckStatus>();
+        if (root.TryGetProperty("checks", out var checkArray)
+            && checkArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var check in checkArray.EnumerateArray())
+            {
+                checks.Add(
+                    new EnvironmentCheckStatus(
+                        String(check, "key", "unknown"),
+                        String(check, "label", "unknown"),
+                        Boolean(check, "passed"),
+                        Boolean(check, "required"),
+                        Boolean(check, "repairable"),
+                        String(check, "detail")
+                    )
+                );
+            }
+        }
+
+        return new EnvironmentHealth(
+            Boolean(root, "ok"),
+            Boolean(root, "environment_exists"),
+            Integer(root, "required_passed"),
+            Integer(root, "required_total"),
+            StringArray(root, "failed_required"),
+            StringArray(root, "repairable_failures"),
+            StringArray(root, "warnings"),
+            checks
         );
     }
 
@@ -103,5 +158,27 @@ public static class ToolkitStatusParser
         return parent.TryGetProperty(name, out var value) && value.TryGetInt32(out var result)
             ? result
             : null;
+    }
+
+    private static int Integer(JsonElement parent, string name)
+    {
+        return parent.TryGetProperty(name, out var value) && value.TryGetInt32(out var result)
+            ? result
+            : 0;
+    }
+
+    private static IReadOnlyList<string> StringArray(JsonElement parent, string name)
+    {
+        if (!parent.TryGetProperty(name, out var value)
+            || value.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        return value.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString() ?? string.Empty)
+            .Where(item => item.Length > 0)
+            .ToArray();
     }
 }

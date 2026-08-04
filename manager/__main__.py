@@ -67,8 +67,9 @@ def cmd_sync(args):
 
 def cmd_check(args):
     _, s = _resolve_spec(args)
-    fetched = gitops.fetch()
-    behind = gitops.behind_count()
+    git_checkout = gitops.is_checkout()
+    fetched = gitops.fetch() if git_checkout else False
+    behind = gitops.behind_count() if git_checkout else None
     data = {
         "version": _toolkit_version(),
         "branch": gitops.current_branch(),
@@ -76,6 +77,7 @@ def cmd_check(args):
         "remote_commit": gitops.remote_commit(),
         "dirty": gitops.is_dirty(),
         "fetch_ok": fetched,
+        "git_checkout": git_checkout,
         "behind": behind,
         "incoming": gitops.incoming_log(),
         "venv": env.venv_exists(),
@@ -111,6 +113,15 @@ def cmd_update(args):
     We never reset/clean; even a forced pull is --ff-only, which git itself
     aborts rather than overwriting local changes.
     """
+    if not gitops.is_checkout():
+        warn(
+            "Portable archive detected — code updates are handled by the "
+            "portable package. Syncing this package's dependencies only."
+        )
+        detection, s = _resolve_spec(args)
+        env.sync(s, detection, dry_run=args.dry_run)
+        return
+
     auto = getattr(args, "auto", False)
     skip_pull = False
 
@@ -166,7 +177,7 @@ def cmd_launch(args):
 def cmd_doctor(args):
     from manager import doctor
 
-    doctor.run_doctor()
+    doctor.run_doctor(json_output=args.json)
 
 
 def cmd_version(args):
@@ -238,7 +249,8 @@ def main(argv=None):
         action="store_true",
         help="do not open a browser when the UI is ready",
     )
-    add("doctor", cmd_doctor, help="diagnose the environment")
+    p = add("doctor", cmd_doctor, help="diagnose the environment")
+    p.add_argument("--json", action="store_true")
     add("version", cmd_version, help="print the toolkit version")
 
     args = parser.parse_args(argv)
