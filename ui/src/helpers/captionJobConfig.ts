@@ -12,8 +12,8 @@ export const defaultCaptionJobConfig: CaptionJobConfig = {
         sqlite_db_path: './aitk_db.db',
         device: 'cuda',
         caption: {
-          model_name_or_path: "ACE-Step/acestep-transcriber",
-          model_name_or_path2: "ACE-Step/acestep-captioner",
+          model_name_or_path: "./models/acestep-transcriber",
+          model_name_or_path2: "./models/acestep-captioner",
           dtype: 'bf16',
           quantize: true,
           qtype: 'float8',

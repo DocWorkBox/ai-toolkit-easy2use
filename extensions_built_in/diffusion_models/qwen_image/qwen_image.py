@@ -93,7 +93,7 @@ class QwenImageModel(BaseModel):
 
         if base_model_path.endswith(".safetensors"):
             # use the repo for extras
-            base_model_path = "Qwen/Qwen-Image"
+            base_model_path = "./models/Qwen-Image"
 
         self.print_and_status_update("Loading transformer")
 
@@ -101,7 +101,7 @@ class QwenImageModel(BaseModel):
             # load the safetensors file
             transformer = QwenImageTransformer2DModel.from_single_file(
                 model_path,
-                config="Qwen/Qwen-Image",
+                config="./models/Qwen-Image",
                 subfolder="transformer",
                 torch_dtype=model_dtype,
             )

@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 
 # Edit release (clean bf16 safetensors); same layout as the base repo.
-BOOGU_EDIT_PATH = "Boogu/Boogu-Image-0.1-Edit"
+BOOGU_EDIT_PATH = "./models/Boogu-Image-0.1-Edit"
 
 # System prompt the edit model was trained with (SYSTEM_PROMPT_4_TI2I upstream).
 SYSTEM_PROMPT_TI2I = (

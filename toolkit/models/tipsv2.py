@@ -11,6 +11,7 @@ Original remote code: https://huggingface.co/google/tipsv2-b14-dpt
 
 import functools
 import math
+import os
 from dataclasses import dataclass
 from typing import Callable, Optional, Sequence, Tuple, Union
 
@@ -728,7 +729,7 @@ class TIPSv2DPTOutput:
 
 # Hard-coded config for the b14-dpt variant — matches config.json on the hub.
 _B14_DPT_CONFIG = dict(
-    backbone_repo="google/tipsv2-b14",
+    backbone_repo="./models/tipsv2-b14",
     embed_dim=768,
     channels=256,
     post_process_channels=(96, 192, 384, 768),
@@ -867,7 +868,7 @@ class TIPSv2DPTModel(nn.Module):
     @classmethod
     def from_pretrained(
         cls,
-        model_id: str = "google/tipsv2-b14-dpt",
+        model_id: str = "./models/tipsv2-b14-dpt",
         device: Union[str, torch.device] = "cpu",
         dtype: torch.dtype = torch.float32,
         cache_dir: Optional[str] = None,
@@ -881,21 +882,29 @@ class TIPSv2DPTModel(nn.Module):
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
 
-        if model_id != "google/tipsv2-b14-dpt":
-            raise NotImplementedError(
-                f"Local TIPSv2DPTModel only supports 'google/tipsv2-b14-dpt'; got {model_id!r}"
-            )
-
         model = cls()
 
-        dpt_ckpt = hf_hub_download(model_id, "model.safetensors", cache_dir=cache_dir)
+        if os.path.isdir(model_id):
+            dpt_ckpt = os.path.join(model_id, "model.safetensors")
+            if not os.path.isfile(dpt_ckpt):
+                raise FileNotFoundError(f"TIPSv2 DPT weights are missing. Expected {dpt_ckpt}")
+        else:
+            dpt_ckpt = hf_hub_download(model_id, "model.safetensors", cache_dir=cache_dir)
         dpt_state = load_file(dpt_ckpt)
 
-        backbone_ckpt = hf_hub_download(
-            model.config["backbone_repo"],
-            "model.safetensors",
-            cache_dir=cache_dir,
-        )
+        backbone_repo = model.config["backbone_repo"]
+        if os.path.isdir(backbone_repo):
+            backbone_ckpt = os.path.join(backbone_repo, "model.safetensors")
+            if not os.path.isfile(backbone_ckpt):
+                raise FileNotFoundError(
+                    f"TIPSv2 backbone weights are missing. Expected {backbone_ckpt}"
+                )
+        else:
+            backbone_ckpt = hf_hub_download(
+                backbone_repo,
+                "model.safetensors",
+                cache_dir=cache_dir,
+            )
         backbone_state = load_file(backbone_ckpt)
         # Backbone repo stores both vision and text encoders — keep only vision_encoder.*.
         backbone_state = {
@@ -1002,7 +1011,7 @@ class TIPSv2VisionModel(nn.Module):
     @classmethod
     def from_pretrained(
         cls,
-        model_id: str = "google/tipsv2-so400m14",
+        model_id: str = "./models/tipsv2-so400m14",
         device: Union[str, torch.device] = "cpu",
         dtype: torch.dtype = torch.float32,
         cache_dir: Optional[str] = None,
@@ -1017,13 +1026,21 @@ class TIPSv2VisionModel(nn.Module):
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
 
-        config_path = hf_hub_download(model_id, "config.json", cache_dir=cache_dir)
+        if os.path.isdir(model_id):
+            config_path = os.path.join(model_id, "config.json")
+            ckpt = os.path.join(model_id, "model.safetensors")
+            if not os.path.isfile(config_path) or not os.path.isfile(ckpt):
+                raise FileNotFoundError(
+                    f"TIPSv2 vision model is incomplete. Expected config.json and model.safetensors in {model_id}"
+                )
+        else:
+            config_path = hf_hub_download(model_id, "config.json", cache_dir=cache_dir)
+            ckpt = hf_hub_download(model_id, "model.safetensors", cache_dir=cache_dir)
         with open(config_path) as f:
             config = json.load(f)
 
         model = cls(config)
 
-        ckpt = hf_hub_download(model_id, "model.safetensors", cache_dir=cache_dir)
         state = load_file(ckpt)
         # Repo stores vision + text encoders — keep only vision_encoder.*.
         state = {k: v for k, v in state.items() if k.startswith("vision_encoder.")}

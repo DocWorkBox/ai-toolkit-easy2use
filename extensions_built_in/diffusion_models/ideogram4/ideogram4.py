@@ -60,7 +60,7 @@ scheduler_config = {
 FP8_SCALE_SUFFIX = ".weight_scale"
 
 # The text encoder is frozen, stock Qwen3-VL-8B-Instruct.
-QWEN3_VL_PATH = "Qwen/Qwen3-VL-8B-Instruct"
+QWEN3_VL_PATH = "./models/Qwen3-VL-8B-Instruct"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 

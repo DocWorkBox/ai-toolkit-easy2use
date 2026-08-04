@@ -307,6 +307,8 @@ class ZImageL2PModel(ZImageModel):
             and model_path.endswith(".safetensors")
             and model_path.count("/") >= 2
         ):
+            if model_path.replace("\\", "/").startswith("./models/"):
+                raise FileNotFoundError(f"L2P checkpoint is missing. Expected {model_path}")
             repo_id, filename = model_path.rsplit("/", 1)
             target_dir = os.path.join(MODELS_PATH, "diffusion_models")
             target_path = os.path.join(target_dir, filename)

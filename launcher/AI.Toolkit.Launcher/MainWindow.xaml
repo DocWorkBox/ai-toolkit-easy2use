@@ -22,11 +22,105 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="6" />
         </Style>
+
+        <Style x:Key="NavigationTabStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="MinWidth" Value="112" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border
+                            x:Name="Chrome"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#243128" />
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#42604B" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModelGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="#090B09" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,1,0" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalGridLinesBrush" Value="#2B302B" />
+            <Setter Property="RowBackground" Value="#101310" />
+            <Setter Property="AlternatingRowBackground" Value="#141714" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="CanUserAddRows" Value="False" />
+            <Setter Property="CanUserDeleteRows" Value="False" />
+            <Setter Property="CanUserResizeRows" Value="False" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="AutoGenerateColumns" Value="False" />
+            <Setter Property="EnableRowVirtualization" Value="True" />
+            <Setter Property="EnableColumnVirtualization" Value="True" />
+            <Setter Property="SelectionMode" Value="Single" />
+            <Setter Property="SelectionUnit" Value="FullRow" />
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
+
+        <Style TargetType="DataGridRow">
+            <Setter Property="MinHeight" Value="46" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#223229" />
+                    <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="26,22,26,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="58" />
+            <RowDefinition Height="44" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="18" />
             <RowDefinition Height="Auto" />
@@ -104,7 +198,32 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="0,14,0,0">
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <RadioButton
+                x:Name="DashboardNav"
+                GroupName="MainNavigation"
+                IsChecked="True"
+                Style="{StaticResource NavigationTabStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE80F;" />
+                    <TextBlock Margin="8,0,0,0" Text="启动管理" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton
+                x:Name="ModelsNav"
+                GroupName="MainNavigation"
+                Style="{StaticResource NavigationTabStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE8B7;" />
+                    <TextBlock Margin="8,0,0,0" Text="模型管理" />
+                </StackPanel>
+            </RadioButton>
+        </StackPanel>
+
+        <Grid
+            Grid.Row="2"
+            Margin="0,8,0,0"
+            Visibility="{Binding IsChecked, ElementName=DashboardNav, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.5*" />
                 <ColumnDefinition Width="1.15*" />
@@ -207,12 +326,13 @@
         </Grid>
 
         <Border
-            Grid.Row="3"
+            Grid.Row="4"
             Padding="14,14,6,6"
             Background="{StaticResource SurfaceBrush}"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
-            CornerRadius="6">
+            CornerRadius="6"
+            Visibility="{Binding IsChecked, ElementName=DashboardNav, Converter={StaticResource BoolToVisibilityConverter}}">
             <WrapPanel>
                 <Button
                     Command="{Binding InstallCommand}"
@@ -290,11 +410,12 @@
         </Border>
 
         <Border
-            Grid.Row="5"
+            Grid.Row="6"
             Background="#090B09"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
-            CornerRadius="6">
+            CornerRadius="6"
+            Visibility="{Binding IsChecked, ElementName=DashboardNav, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="42" />
@@ -397,7 +518,190 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="6">
+        <Border
+            Grid.Row="2"
+            Grid.RowSpan="5"
+            Background="{StaticResource SurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="6"
+            Visibility="{Binding IsChecked, ElementName=ModelsNav, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="70" />
+                    <RowDefinition Height="42" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Margin="16,10,10,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="本地模型检查" />
+                        <TextBlock
+                            MaxWidth="760"
+                            Margin="0,5,0,0"
+                            FontFamily="Cascadia Mono, Consolas"
+                            FontSize="10"
+                            Foreground="{StaticResource MutedTextBrush}"
+                            Text="{Binding ModelsRoot}"
+                            TextTrimming="CharacterEllipsis"
+                            ToolTip="{Binding ModelsRoot}" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="1"
+                        Height="38"
+                        MinWidth="106"
+                        Margin="0,0,8,0"
+                        Command="{Binding OpenModelsDirectoryCommand}"
+                        Style="{StaticResource ActionButtonStyle}"
+                        ToolTip="打开便携版 models 目录">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE8B7;" />
+                            <TextBlock Margin="8,0,0,0" Text="打开目录" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="2"
+                        Height="38"
+                        MinWidth="106"
+                        Margin="0"
+                        Command="{Binding ScanModelsCommand}"
+                        Style="{StaticResource StartButtonStyle}"
+                        ToolTip="重新检查模型名称、路径和必需文件">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe Fluent Icons" FontSize="14" Text="&#xE721;" />
+                            <TextBlock Margin="8,0,0,0" Text="扫描模型" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Border
+                    Grid.Row="1"
+                    Padding="16,0"
+                    Background="#141714"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,1,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource MutedTextBrush}"
+                            Text="{Binding ModelSummaryText}" />
+                        <TextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{StaticResource MutedTextBrush}"
+                            Text="下载按钮仅打开官方页面，不会自动安装" />
+                    </Grid>
+                </Border>
+
+                <DataGrid
+                    x:Name="ModelGrid"
+                    Grid.Row="2"
+                    ItemsSource="{Binding Models}"
+                    Style="{StaticResource ModelGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="90" Header="状态">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontSize="11" FontWeight="SemiBold" Text="{Binding StatusLabel}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="ready">
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="missing">
+                                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="incomplete">
+                                                        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="misplaced">
+                                                        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="name_mismatch">
+                                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="180" Header="模型">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="{StaticResource MutedTextBrush}" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="240" Header="训练器读取路径">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        FontFamily="Cascadia Mono, Consolas"
+                                        FontSize="10"
+                                        Foreground="#C6CDC6"
+                                        Text="{Binding Path}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding AbsolutePath}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="*" MinWidth="220" Header="检查结果">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        FontSize="11"
+                                        Foreground="{StaticResource MutedTextBrush}"
+                                        Text="{Binding Detail}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding Detail}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="100" Header="获取模型">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button
+                                        Height="30"
+                                        MinWidth="80"
+                                        Margin="0"
+                                        Padding="9,0"
+                                        Command="{Binding DataContext.OpenModelDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        Style="{StaticResource ActionButtonStyle}"
+                                        ToolTip="在浏览器中打开官方模型仓库"
+                                        Visibility="{Binding CanDownload, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe Fluent Icons" FontSize="13" Text="&#xE896;" />
+                                            <TextBlock Margin="6,0,0,0" Text="官方页面" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="7">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

@@ -167,7 +167,7 @@ class HidreamO1Model(BaseModel):
             )
             processor_path = self.model_config.extras_name_or_path
             if processor_path.endswith(".safetensors"):
-                processor_path = "HiDream-ai/HiDream-O1-Image"
+                processor_path = "./models/HiDream-O1-Image"
             processor = AutoProcessor.from_pretrained(processor_path)
 
         tokenizer = get_tokenizer(processor)

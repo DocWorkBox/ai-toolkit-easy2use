@@ -46,8 +46,8 @@ scheduler_config = {
 }
 
 # LLAMA_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-LLAMA_MODEL_PATH = "unsloth/Meta-Llama-3.1-8B-Instruct"
-BASE_MODEL_PATH = "HiDream-ai/HiDream-I1-Full"
+LLAMA_MODEL_PATH = "./models/Meta-Llama-3.1-8B-Instruct"
+BASE_MODEL_PATH = "./models/HiDream-I1-Full"
 
 
 class HidreamModel(BaseModel):

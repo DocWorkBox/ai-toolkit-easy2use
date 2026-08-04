@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using AiToolkit.Launcher.Core;
 
@@ -26,6 +27,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private string _updateStatus = "尚未检查";
     private string _serviceStatus = "服务已停止";
     private string _statusText = "准备就绪";
+    private string _modelsRoot;
+    private string _modelSummaryText = "尚未扫描模型目录";
     private bool _isBusy;
     private bool _isUiRunning;
     private bool _isShuttingDown;
@@ -37,6 +40,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         _backend = backend;
         _managedRoot = backend.RepositoryRoot;
+        _modelsRoot = Path.Combine(backend.RepositoryRoot, "models");
         _synchronizationContext = synchronizationContext
             ?? SynchronizationContext.Current
             ?? new SynchronizationContext();
@@ -49,12 +53,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         StartCommand = new AsyncCommand(StartUiAsync, () => CanStart);
         StopCommand = new AsyncCommand(StopUiAsync, () => CanStop);
         OpenCommand = new RelayCommand(OpenUi, () => IsUiRunning);
+        ScanModelsCommand = new AsyncCommand(ScanModelsAsync, CanScanModels);
+        OpenModelsDirectoryCommand = new RelayCommand(OpenModelsDirectory);
+        OpenModelDownloadCommand = new RelayCommand<ModelStatusItem>(
+            OpenModelDownload,
+            model => !_isShuttingDown && model.CanDownload
+        );
         ClearLogsCommand = new RelayCommand(Logs.Clear, () => Logs.Count > 0);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<LogEntry> Logs { get; } = new();
+    public ObservableCollection<ModelStatusItem> Models { get; } = new();
 
     public AsyncCommand InstallCommand { get; }
     public AsyncCommand CheckUpdatesCommand { get; }
@@ -64,6 +75,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public AsyncCommand StartCommand { get; }
     public AsyncCommand StopCommand { get; }
     public RelayCommand OpenCommand { get; }
+    public AsyncCommand ScanModelsCommand { get; }
+    public RelayCommand OpenModelsDirectoryCommand { get; }
+    public RelayCommand<ModelStatusItem> OpenModelDownloadCommand { get; }
     public RelayCommand ClearLogsCommand { get; }
 
     public string VersionText
@@ -118,6 +132,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         get => _statusText;
         private set => SetField(ref _statusText, value);
+    }
+
+    public string ModelsRoot
+    {
+        get => _modelsRoot;
+        private set => SetField(ref _modelsRoot, value);
+    }
+
+    public string ModelSummaryText
+    {
+        get => _modelSummaryText;
+        private set => SetField(ref _modelSummaryText, value);
     }
 
     public bool IsBusy
@@ -235,6 +261,31 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                         : "依赖需要更新"
                     : "已是最新版本";
                 StatusText = "更新检查完成";
+            }
+        );
+    }
+
+    public Task ScanModelsAsync()
+    {
+        return RunExclusiveAsync(
+            "正在扫描模型目录",
+            async cancellationToken =>
+            {
+                var report = await _backend.ScanModelsAsync(AppendEvent, cancellationToken);
+                ModelsRoot = report.ModelsRoot;
+                Models.Clear();
+                foreach (var model in report.Models)
+                {
+                    Models.Add(model);
+                }
+
+                var summary = report.Summary;
+                ModelSummaryText = $"可用 {summary.Ready} · 文件问题 {summary.Issues} · 未安装 {summary.Missing} · 未识别 {summary.Unrecognized}";
+                StatusText = "模型目录扫描完成";
+                AppendLog(
+                    summary.Issues > 0 ? "warning" : "success",
+                    $"模型扫描：{ModelSummaryText}；目录：{report.ModelsRoot}"
+                );
             }
         );
     }
@@ -478,6 +529,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         return !_isShuttingDown && !IsBusy && _uiSession is null;
     }
 
+    private bool CanScanModels()
+    {
+        return !_isShuttingDown && !IsBusy;
+    }
+
     private bool CanInstallEnvironment()
     {
         return CanRunMaintenance() && _environmentHealth?.EnvironmentExists == false;
@@ -643,6 +699,33 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
+    private void OpenModelsDirectory()
+    {
+        try
+        {
+            _backend.OpenModelsDirectory();
+        }
+        catch (Exception ex)
+        {
+            AppendLog("error", ex.Message);
+            StatusText = "无法打开模型目录";
+        }
+    }
+
+    private void OpenModelDownload(ModelStatusItem model)
+    {
+        try
+        {
+            _backend.OpenUrl(model.DownloadUrl);
+            AppendLog("info", $"已打开 {model.Name} 的官方模型页面");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("error", ex.Message);
+            StatusText = "无法打开模型下载页面";
+        }
+    }
+
     private void AppendEvent(ManagerEvent managerEvent)
     {
         AppendLog(managerEvent.Level ?? managerEvent.Type, managerEvent.Message);
@@ -674,6 +757,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         StartCommand.RaiseCanExecuteChanged();
         StopCommand.RaiseCanExecuteChanged();
         OpenCommand.RaiseCanExecuteChanged();
+        ScanModelsCommand.RaiseCanExecuteChanged();
+        OpenModelsDirectoryCommand.RaiseCanExecuteChanged();
+        OpenModelDownloadCommand.RaiseCanExecuteChanged();
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)

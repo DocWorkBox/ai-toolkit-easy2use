@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 scheduler_config = {"num_train_timesteps": 1000}
 
-BASE_MODEL_PATH = "OmniGen2/OmniGen2"
+BASE_MODEL_PATH = "./models/OmniGen2"
 
 
 class OmniGen2Model(BaseModel):

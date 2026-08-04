@@ -24,8 +24,8 @@ warnings.filterwarnings("ignore")
 logging.disable(logging.WARNING)
 
 TARGET_SAMPLE_RATE = 16000
-CAPTIONER_ID = "ACE-Step/acestep-captioner"
-TRANSCRIBER_ID = "ACE-Step/acestep-transcriber"
+CAPTIONER_ID = "./models/acestep-captioner"
+TRANSCRIBER_ID = "./models/acestep-transcriber"
 
 # Key profiles for Krumhansl-Schmuckler key detection
 MAJOR_PROFILE = np.array(

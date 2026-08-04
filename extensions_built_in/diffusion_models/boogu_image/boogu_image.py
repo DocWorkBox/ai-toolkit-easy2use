@@ -60,7 +60,7 @@ scheduler_config = {
 # Released weights. The "-fp8" sibling ships torchao float8 weights that need
 # cache_dit/torchao to deserialize; the plain repo ships clean bf16 safetensors,
 # which load directly and let ai-toolkit do its own (optional) quantization.
-BOOGU_BASE_PATH = "Boogu/Boogu-Image-0.1-Base"
+BOOGU_BASE_PATH = "./models/Boogu-Image-0.1-Base"
 
 # System prompt the base T2I model was trained with (SYSTEM_PROMPT_4_T2I upstream).
 SYSTEM_PROMPT_T2I = (

@@ -108,7 +108,7 @@ class ControlGenerator:
         if self.control_bg_remover is None:
             from transformers import AutoModelForImageSegmentation
             self.control_bg_remover = AutoModelForImageSegmentation.from_pretrained(
-                'ZhengPeng7/BiRefNet_HR',
+                './models/BiRefNet_HR',
                 trust_remote_code=True,
                 revision="a7a562f6fd16021180f2f4348f4de003a2d3d1e1",
                 dtype=torch.float16
@@ -166,7 +166,7 @@ class ControlGenerator:
                 from transformers import pipeline
                 self.control_depth_model = pipeline(
                     task="depth-estimation",
-                    model="depth-anything/Depth-Anything-V2-Large-hf",
+                    model="./models/Depth-Anything-V2-Large-hf",
                     device=device,
                     torch_dtype=torch.float16
                 )
@@ -208,7 +208,7 @@ class ControlGenerator:
             if self.control_line_model is None:
                 from controlnet_aux import TEEDdetector
                 self.control_line_model = TEEDdetector.from_pretrained(
-                    "fal-ai/teed", filename="5_model.pth").to(device)
+                    "./models/teed", filename="5_model.pth").to(device)
             img = image.copy()
             img = self.control_line_model(img, detect_resolution=1024)
             # apply threshold

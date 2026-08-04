@@ -77,7 +77,7 @@ dit_prefix = "model.diffusion_model."
 vae_prefix = "vae."
 audio_vae_prefix = "audio_vae."
 vocoder_prefix = "vocoder."
-base_te_path = "Lightricks/gemma-3-12b-it-qat-q4_0-unquantized"
+base_te_path = "./models/gemma-3-12b-it-qat-q4_0-unquantized"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
@@ -252,6 +252,8 @@ class LTX2Model(BaseModel):
         self.print_and_status_update("Loading transformer")
 
         if not os.path.exists(model_path) and model_path.endswith(".safetensors"):
+            if model_path.replace("\\", "/").startswith("./models/"):
+                raise FileNotFoundError(f"LTX checkpoint is missing. Expected {model_path}")
             # download the model from the Hugging Face Hub if it is not a local path
             splits = model_path.split("/")
             if len(splits) != 3:

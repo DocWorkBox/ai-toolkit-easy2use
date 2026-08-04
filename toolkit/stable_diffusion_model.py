@@ -376,7 +376,7 @@ class StableDiffusion:
 
             print_acc("Loading SD3 model")
             # assume it is the large model
-            base_model_path = "stabilityai/stable-diffusion-3.5-large"
+            base_model_path = "./models/stable-diffusion-3.5-large"
             print_acc("Loading transformer")
             subfolder = 'transformer'
             transformer_path = model_path
@@ -496,9 +496,9 @@ class StableDiffusion:
                 te_kwargs['device_map'] = "auto"
                 te_is_quantized = True
 
-            main_model_path = "PixArt-alpha/PixArt-XL-2-1024-MS"
+            main_model_path = "./models/PixArt-XL-2-1024-MS"
             if self.model_config.is_pixart_sigma:
-                main_model_path = "PixArt-alpha/pixart_sigma_sdxlvae_T5_diffusers"
+                main_model_path = "./models/pixart_sigma_sdxlvae_T5_diffusers"
 
             main_model_path = model_path
 

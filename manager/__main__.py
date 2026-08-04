@@ -11,6 +11,7 @@ frontend (shell scripts, the desktop launcher, the web UI) shells out to.
     python3 -m manager launch           start the web UI
     python3 -m manager detect [--json]  show detected hardware
     python3 -m manager doctor           full environment diagnostics
+    python3 -m manager models [--json]  scan portable model paths and files
 """
 
 import argparse
@@ -22,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from manager import detect as detect_mod
-from manager import env, gitops, launch, portable_update, spec as spec_mod, util
+from manager import env, gitops, launch, models as models_mod, portable_update, spec as spec_mod, util
 from manager.util import die, info, ok, print_json, warn
 
 
@@ -220,6 +221,25 @@ def cmd_version(args):
     print(_toolkit_version())
 
 
+def cmd_models(args):
+    report = models_mod.scan_models()
+    if args.json:
+        print_json(report)
+        return
+    summary = report["summary"]
+    info(
+        "Model scan: %d ready, %d issue(s), %d not installed, %d unrecognized"
+        % (
+            summary["ready"],
+            summary["issues"],
+            summary["missing"],
+            summary["unrecognized"],
+        )
+    )
+    for item in report["models"]:
+        print("[%s] %s: %s" % (item["status"].upper(), item["name"], item["detail"]))
+
+
 def _toolkit_version():
     version = {}
     try:
@@ -290,6 +310,8 @@ def main(argv=None):
         help="do not open a browser when the UI is ready",
     )
     p = add("doctor", cmd_doctor, help="diagnose the environment")
+    p.add_argument("--json", action="store_true")
+    p = add("models", cmd_models, help="scan the portable models directory")
     p.add_argument("--json", action="store_true")
     add("version", cmd_version, help="print the toolkit version")
 

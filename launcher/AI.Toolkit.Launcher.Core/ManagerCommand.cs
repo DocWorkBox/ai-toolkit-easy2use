@@ -10,6 +10,7 @@ public enum ManagerAction
     Update,
     Launch,
     Doctor,
+    Models,
     Version,
 }
 
@@ -67,6 +68,10 @@ public static class ManagerCommand
                 break;
             case ManagerAction.Doctor:
                 arguments.AddRange(new[] { "doctor", "--json" });
+                outputMode = ManagerOutputMode.JsonDocument;
+                break;
+            case ManagerAction.Models:
+                arguments.AddRange(new[] { "models", "--json" });
                 outputMode = ManagerOutputMode.JsonDocument;
                 break;
             case ManagerAction.Version:

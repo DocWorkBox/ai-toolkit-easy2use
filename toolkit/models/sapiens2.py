@@ -1058,7 +1058,7 @@ class Sapiens2Matting(nn.Module):
     @classmethod
     def from_pretrained(
         cls,
-        repo_id: str = "facebook/sapiens2-matting-1b",
+        repo_id: str = "./models/sapiens2",
         filename: str = "sapiens2_1b_matting.safetensors",
         arch: str = "sapiens2_1b",
         img_size: Tuple[int, int] = (1024, 768),
@@ -1069,8 +1069,15 @@ class Sapiens2Matting(nn.Module):
         import huggingface_hub
         from safetensors.torch import load_file
 
-        safetensors_path = os.path.join(MODELS_PATH, "sapiens2", filename)
+        if repo_id.replace("\\", "/").startswith("./models/"):
+            safetensors_path = os.path.join(repo_id, filename)
+        else:
+            safetensors_path = os.path.join(MODELS_PATH, "sapiens2", filename)
         if not os.path.exists(safetensors_path):
+            if repo_id.replace("\\", "/").startswith("./models/"):
+                raise FileNotFoundError(
+                    f"Sapiens2 matting weights are missing. Expected {safetensors_path}"
+                )
             print(f"Downloading pretrained weights from HuggingFace Hub: {repo_id}/{filename}...")
             os.makedirs(os.path.dirname(safetensors_path), exist_ok=True)
             safetensors_path = huggingface_hub.hf_hub_download(

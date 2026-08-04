@@ -104,7 +104,7 @@ export const defaultJobConfig: JobConfig = {
           use_ui_logger: true,
         },
         model: {
-          name_or_path: 'ostris/Flex.1-alpha',
+          name_or_path: './models/Flex.1-alpha',
           quantize: true,
           qtype: 'qfloat8',
           quantize_te: true,

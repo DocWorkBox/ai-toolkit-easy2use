@@ -45,8 +45,8 @@ V2_UNET_PARAMS_CONTEXT_DIM = 1024
 # V2_UNET_PARAMS_USE_LINEAR_PROJECTION = True
 
 # Diffusersの設定を読み込むための参照モデル
-DIFFUSERS_REF_MODEL_ID_V1 = "runwayml/stable-diffusion-v1-5"
-DIFFUSERS_REF_MODEL_ID_V2 = "stabilityai/stable-diffusion-2-1"
+DIFFUSERS_REF_MODEL_ID_V1 = "./models/stable-diffusion-v1-5"
+DIFFUSERS_REF_MODEL_ID_V2 = "./models/stable-diffusion-2-1"
 
 
 # region StableDiffusion->Diffusersの変換コード
@@ -1257,7 +1257,7 @@ def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dt
         converted_text_encoder_checkpoint = convert_ldm_clip_checkpoint_v1(state_dict)
 
         logging.set_verbosity_error()  # don't show annoying warning
-        text_model = CLIPTextModel.from_pretrained("openai/clip-vit-large-patch14").to(device)
+        text_model = CLIPTextModel.from_pretrained("./models/clip-vit-large-patch14").to(device)
         logging.set_verbosity_warning()
 
         # latest transformers doesnt have position ids. Do we remove it?

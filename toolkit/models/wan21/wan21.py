@@ -401,7 +401,7 @@ class Wan21(BaseModel):
             subfolder = None
             transformer_path = os.path.join(transformer_path, 'transformer')
 
-        te_path = "ai-toolkit/umt5_xxl_encoder"
+        te_path = "./models/umt5_xxl_encoder"
         if os.path.exists(os.path.join(model_path, 'text_encoder')):
             te_path = model_path
 

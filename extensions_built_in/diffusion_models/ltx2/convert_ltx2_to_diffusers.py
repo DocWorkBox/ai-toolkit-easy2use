@@ -229,7 +229,7 @@ def get_ltx2_transformer_config(
     if version == "test":
         # Produces a transformer of the same size as used in test_models_transformer_ltx2.py
         config = {
-            "model_id": "diffusers-internal-dev/dummy-ltx2",
+            "model_id": "./models/dummy-ltx2",
             "diffusers_config": {
                 "in_channels": 4,
                 "out_channels": 4,
@@ -272,7 +272,7 @@ def get_ltx2_transformer_config(
         special_keys_remap = LTX_2_0_TRANSFORMER_SPECIAL_KEYS_REMAP
     elif version == "2.0":
         config = {
-            "model_id": "Lightricks/LTX-2",
+            "model_id": "./models/LTX-2",
             "diffusers_config": {
                 "in_channels": 128,
                 "out_channels": 128,
@@ -322,7 +322,7 @@ def get_ltx2_transformer_config(
         special_keys_remap = LTX_2_0_TRANSFORMER_SPECIAL_KEYS_REMAP
     elif version == "2.3":
         config = {
-            "model_id": "Lightricks/LTX-2.3",
+            "model_id": "./models/LTX-2.3",
             "diffusers_config": {
                 "in_channels": 128,
                 "out_channels": 128,
@@ -378,7 +378,7 @@ def get_ltx2_connectors_config(
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     if version == "test":
         config = {
-            "model_id": "diffusers-internal-dev/dummy-ltx2",
+            "model_id": "./models/dummy-ltx2",
             "diffusers_config": {
                 "caption_channels": 16,
                 "text_proj_in_factor": 3,
@@ -398,7 +398,7 @@ def get_ltx2_connectors_config(
         }
     elif version == "2.0":
         config = {
-            "model_id": "Lightricks/LTX-2",
+            "model_id": "./models/LTX-2",
             "diffusers_config": {
                 "caption_channels": 3840,
                 "text_proj_in_factor": 49,
@@ -425,7 +425,7 @@ def get_ltx2_connectors_config(
         special_keys_remap = LTX_2_0_CONNECTORS_SPECIAL_KEYS_REMAP
     elif version == "2.3":
         config = {
-            "model_id": "Lightricks/LTX-2.3",
+            "model_id": "./models/LTX-2.3",
             "diffusers_config": {
                 "caption_channels": 3840,
                 "text_proj_in_factor": 49,
@@ -524,7 +524,7 @@ def get_ltx2_video_vae_config(
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     if version == "test":
         config = {
-            "model_id": "diffusers-internal-dev/dummy-ltx2",
+            "model_id": "./models/dummy-ltx2",
             "diffusers_config": {
                 "in_channels": 3,
                 "out_channels": 3,
@@ -566,7 +566,7 @@ def get_ltx2_video_vae_config(
         special_keys_remap = LTX_2_0_VAE_SPECIAL_KEYS_REMAP
     elif version == "2.0":
         config = {
-            "model_id": "Lightricks/LTX-2",
+            "model_id": "./models/LTX-2",
             "diffusers_config": {
                 "in_channels": 3,
                 "out_channels": 3,
@@ -609,7 +609,7 @@ def get_ltx2_video_vae_config(
         special_keys_remap = LTX_2_0_VAE_SPECIAL_KEYS_REMAP
     elif version == "2.3":
         config = {
-            "model_id": "Lightricks/LTX-2.3",
+            "model_id": "./models/LTX-2.3",
             "diffusers_config": {
                 "in_channels": 3,
                 "out_channels": 3,
@@ -695,7 +695,7 @@ def get_ltx2_audio_vae_config(
 ) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     if version == "2.0":
         config = {
-            "model_id": "Lightricks/LTX-2",
+            "model_id": "./models/LTX-2",
             "diffusers_config": {
                 "base_channels": 128,
                 "output_channels": 2,
@@ -720,7 +720,7 @@ def get_ltx2_audio_vae_config(
         special_keys_remap = LTX_2_0_AUDIO_VAE_SPECIAL_KEYS_REMAP
     elif version == "2.3":
         config = {
-            "model_id": "Lightricks/LTX-2.3",
+            "model_id": "./models/LTX-2.3",
             "diffusers_config": {
                 "base_channels": 128,
                 "output_channels": 2,
@@ -779,7 +779,7 @@ def get_ltx2_vocoder_config(
 ) -> tuple[Dict[str, Any], dict[str, Any], dict[str, Any]]:
     if version == "2.0":
         config = {
-            "model_id": "Lightricks/LTX-2",
+            "model_id": "./models/LTX-2",
             "diffusers_config": {
                 "in_channels": 128,
                 "hidden_channels": 1024,
@@ -800,7 +800,7 @@ def get_ltx2_vocoder_config(
         special_keys_remap = LTX_2_0_VOCODER_SPECIAL_KEYS_REMAP
     elif version == "2.3":
         config = {
-            "model_id": "Lightricks/LTX-2.3",
+            "model_id": "./models/LTX-2.3",
             "diffusers_config": {
                 "in_channels": 128,
                 "hidden_channels": 1536,

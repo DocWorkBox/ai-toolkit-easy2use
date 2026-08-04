@@ -38,6 +38,11 @@ public interface ILauncherBackend
         CancellationToken cancellationToken
     );
 
+    Task<ModelScanReport> ScanModelsAsync(
+        Action<ManagerEvent> onEvent,
+        CancellationToken cancellationToken
+    );
+
     Task<ManagerRunResult> RunActionAsync(
         ManagerAction action,
         bool force,
@@ -48,6 +53,10 @@ public interface ILauncherBackend
     ILauncherUiSession StartUi(Action<ManagerEvent> onEvent);
 
     void OpenUi();
+
+    void OpenModelsDirectory();
+
+    void OpenUrl(string url);
 }
 
 public sealed class LauncherBackend : ILauncherBackend
@@ -146,6 +155,20 @@ public sealed class LauncherBackend : ILauncherBackend
         return ToolkitStatusParser.ParseUpdateCheck(result.StandardOutput);
     }
 
+    public async Task<ModelScanReport> ScanModelsAsync(
+        Action<ManagerEvent> onEvent,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await RunCheckedAsync(
+            ManagerAction.Models,
+            false,
+            onEvent,
+            cancellationToken
+        );
+        return ToolkitStatusParser.ParseModelScan(result.StandardOutput);
+    }
+
     public Task<ManagerRunResult> RunActionAsync(
         ManagerAction action,
         bool force,
@@ -168,7 +191,28 @@ public sealed class LauncherBackend : ILauncherBackend
 
     public void OpenUi()
     {
-        Process.Start(new ProcessStartInfo(LauncherBackend.UiAddress.AbsoluteUri)
+        OpenUrl(LauncherBackend.UiAddress.AbsoluteUri);
+    }
+
+    public void OpenModelsDirectory()
+    {
+        var modelsDirectory = Path.Combine(_repositoryRoot, "models");
+        Directory.CreateDirectory(modelsDirectory);
+        Process.Start(new ProcessStartInfo(modelsDirectory)
+        {
+            UseShellExecute = true,
+        });
+    }
+
+    public void OpenUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+        {
+            throw new ArgumentException("Only HTTP(S) addresses can be opened.", nameof(url));
+        }
+
+        Process.Start(new ProcessStartInfo(uri.AbsoluteUri)
         {
             UseShellExecute = true,
         });

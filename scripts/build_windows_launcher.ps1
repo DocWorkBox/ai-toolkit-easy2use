@@ -76,8 +76,9 @@ if (-not [string]::IsNullOrWhiteSpace($PortableRoot)) {
         New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
         Copy-Item -LiteralPath $_.FullName -Destination $target -Force
     }
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'portable_models.json') -Destination (Join-Path $PortableRoot 'portable_models.json') -Force
     Copy-Item -LiteralPath $launcher -Destination (Join-Path $PortableRoot 'AI Toolkit Launcher.exe') -Force
-    Write-Host "Matching manager and launcher copied to $PortableRoot"
+    Write-Host "Matching manager, model catalog, and launcher copied to $PortableRoot"
 }
 
 $file = Get-Item -LiteralPath $launcher

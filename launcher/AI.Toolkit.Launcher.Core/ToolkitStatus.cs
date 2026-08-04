@@ -43,6 +43,50 @@ public sealed record EnvironmentHealth(
     IReadOnlyList<EnvironmentCheckStatus> Checks
 );
 
+public sealed record ModelScanSummary(
+    int Ready,
+    int Issues,
+    int Missing,
+    int Unrecognized,
+    int Total
+);
+
+public sealed record ModelStatusItem(
+    string Id,
+    string Name,
+    string Category,
+    string Status,
+    string Path,
+    string AbsolutePath,
+    string Detail,
+    string DownloadUrl,
+    bool Special
+)
+{
+    public string StatusLabel => Status switch
+    {
+        "ready" => "可用",
+        "missing" => "缺失",
+        "incomplete" => "文件不完整",
+        "misplaced" => "位置错误",
+        "name_mismatch" => "名称不匹配",
+        "unrecognized" => "未识别",
+        _ => "未知",
+    };
+
+    public bool CanDownload =>
+        Status is "missing" or "incomplete" or "misplaced" or "name_mismatch"
+        && Uri.TryCreate(DownloadUrl, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps;
+}
+
+public sealed record ModelScanReport(
+    string ModelsRoot,
+    string CatalogPath,
+    ModelScanSummary Summary,
+    IReadOnlyList<ModelStatusItem> Models
+);
+
 public static class ToolkitStatusParser
 {
     public static HardwareStatus ParseDetection(string json)
@@ -111,6 +155,47 @@ public static class ToolkitStatusParser
             StringArray(root, "repairable_failures"),
             StringArray(root, "warnings"),
             checks
+        );
+    }
+
+    public static ModelScanReport ParseModelScan(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var summary = ObjectOrDefault(root, "summary");
+        var models = new List<ModelStatusItem>();
+        if (root.TryGetProperty("models", out var modelArray)
+            && modelArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var model in modelArray.EnumerateArray())
+            {
+                models.Add(
+                    new ModelStatusItem(
+                        String(model, "id"),
+                        String(model, "name"),
+                        String(model, "category", "模型"),
+                        String(model, "status", "unknown"),
+                        String(model, "path"),
+                        String(model, "absolute_path"),
+                        String(model, "detail"),
+                        String(model, "download_url"),
+                        Boolean(model, "special")
+                    )
+                );
+            }
+        }
+
+        return new ModelScanReport(
+            String(root, "models_root"),
+            String(root, "catalog_path"),
+            new ModelScanSummary(
+                Integer(summary, "ready"),
+                Integer(summary, "issues"),
+                Integer(summary, "missing"),
+                Integer(summary, "unrecognized"),
+                Integer(summary, "total")
+            ),
+            models
         );
     }
 

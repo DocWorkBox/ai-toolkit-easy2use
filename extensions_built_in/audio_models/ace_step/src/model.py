@@ -1328,7 +1328,7 @@ def load_models(checkpoint_path, device="cuda", dtype=torch.bfloat16):
     # Tokenizer — download from HF
     print("  Loading tokenizer...")
     tok = AutoTokenizer.from_pretrained(
-        "Qwen/Qwen3-Embedding-0.6B", trust_remote_code=False
+        "./models/Qwen3-Embedding-0.6B", trust_remote_code=False
     )
 
     del sd  # free memory

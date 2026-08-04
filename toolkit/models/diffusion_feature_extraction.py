@@ -13,7 +13,6 @@ from toolkit.data_transfer_object.data_loader import DataLoaderBatchDTO
 from toolkit.samplers.custom_flowmatch_sampler import CustomFlowMatchEulerDiscreteScheduler
 from toolkit.models.base_model import BaseModel
 from toolkit.models.sapiens2 import Sapiens2
-import huggingface_hub
 
 
 def _fold_frames_to_batch(x: torch.Tensor) -> torch.Tensor:
@@ -173,10 +172,10 @@ class DiffusionFeatureExtractor3(nn.Module):
         self.version = 3
         if vae is None:
             vae = AutoencoderTiny.from_pretrained(
-                "madebyollin/taef1", torch_dtype=torch.bfloat16)
+                "./models/taef1", torch_dtype=torch.bfloat16)
         self.vae = vae
         # image_encoder_path = "google/siglip-so400m-patch14-384"
-        image_encoder_path = "google/siglip2-so400m-patch16-512"
+        image_encoder_path = "./models/siglip2-so400m-patch16-512"
         try:
             self.image_processor = SiglipImageProcessor.from_pretrained(
                 image_encoder_path)
@@ -376,7 +375,7 @@ class DiffusionFeatureExtractor4(nn.Module):
             raise ValueError("vae must be provided for DFE4")
         self.vae = vae
         # image_encoder_path = "google/siglip-so400m-patch14-384"
-        image_encoder_path = "google/siglip2-so400m-patch16-naflex"
+        image_encoder_path = "./models/siglip2-so400m-patch16-naflex"
         from transformers import Siglip2ImageProcessor, Siglip2VisionModel
         try:
             self.image_processor = Siglip2ImageProcessor.from_pretrained(
@@ -676,7 +675,7 @@ class DiffusionFeatureExtractor6(nn.Module):
         self.vae = vae
         # pretrained_model_name = "facebook/dinov3-vits16-pretrain-lvd1689m"
         # pretrained_model_name = "facebook/dinov3-vitl16-pretrain-lvd1689m"
-        pretrained_model_name = "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+        pretrained_model_name = "./models/dinov3-vith16plus-pretrain-lvd1689m"
         # pretrained_model_name = "facebook/dinov3-vit7b16-pretrain-lvd1689m"
         self.processor = AutoImageProcessor.from_pretrained(pretrained_model_name)
         self.model = AutoModel.from_pretrained(
@@ -857,7 +856,7 @@ class DiffusionFeatureExtractor7(nn.Module):
         self.version = 7
         self.sd_ref = weakref.ref(sd) if sd is not None else None
         from toolkit.models.tipsv2 import TIPSv2DPTModel
-        pretrained_model_name = "google/tipsv2-b14-dpt"
+        pretrained_model_name = "./models/tipsv2-b14-dpt"
         self.model = TIPSv2DPTModel.from_pretrained(
             pretrained_model_name,
             dtype=dtype,
@@ -1074,7 +1073,11 @@ class DiffusionFeatureExtractor9(nn.Module):
 
         self.version = 9
         self.sd_ref = weakref.ref(sd) if sd is not None else None
-        ckpt_path = huggingface_hub.hf_hub_download(repo_id="facebook/sapiens2-pretrain-1b", filename="sapiens2_1b_pretrain.safetensors")
+        ckpt_path = "./models/sapiens2/sapiens2_1b_pretrain.safetensors"
+        if not os.path.isfile(ckpt_path):
+            raise FileNotFoundError(
+                f"Sapiens2 weights are missing. Expected {ckpt_path}"
+            )
         self.model = Sapiens2(arch="sapiens2_1b", img_size=(1024, 768), patch_size=16).eval().cuda()  # img_size is (H, W)
         self.model.load_state_dict(load_file(ckpt_path))
         self.model.to(device, dtype=dtype)

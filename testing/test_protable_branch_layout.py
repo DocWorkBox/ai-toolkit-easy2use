@@ -23,8 +23,8 @@ def test_protable_branch_keeps_local_model_defaults():
     assert "'./models/Qwen3.6-27B'" in captioners
     assert 'default="./models/Qwen3-VL-8B-Instruct"' in upsampler
 
-    assert "'Boogu/Boogu-Image-0.1-Base'" in options
-    assert "'Boogu/Boogu-Image-0.1-Edit'" in options
+    assert "'./models/Boogu-Image-0.1-Base'" in options
+    assert "'./models/Boogu-Image-0.1-Edit'" in options
 
 
 def test_protable_branch_contains_portable_launch_assets():

@@ -30,6 +30,7 @@ internal static class Program
             ("JSON document output capture", TestJsonDocumentOutputCapture),
             ("managed session stop", TestManagedSessionStop),
             ("toolkit status parsing", TestToolkitStatusParsing),
+            ("model scan parsing", TestModelScanParsing),
             ("environment diagnosis cache", TestEnvironmentDiagnosisCache),
             ("launcher reuses environment diagnosis", TestLauncherReusesEnvironmentDiagnosis),
             ("pending launcher update validation", TestPendingLauncherUpdateValidation),
@@ -38,6 +39,7 @@ internal static class Program
             ("view model maintenance state", TestViewModelMaintenanceState),
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
+            ("view model model management", TestViewModelModelManagement),
             ("browser launch does not block UI", TestBrowserLaunchDoesNotBlockUi),
             ("WPF window construction", TestWpfWindowConstruction),
         };
@@ -159,6 +161,80 @@ internal static class Program
             doctor.Arguments
         );
         Assert.Equal(ManagerOutputMode.JsonDocument, doctor.OutputMode);
+
+        var models = ManagerCommand.Create(
+            fixture.Path,
+            python,
+            ManagerAction.Models
+        );
+        Assert.SequenceEqual(
+            new[] { "-m", "manager", "models", "--json" },
+            models.Arguments
+        );
+        Assert.Equal(ManagerOutputMode.JsonDocument, models.OutputMode);
+        return Task.CompletedTask;
+    }
+
+    private static Task TestModelScanParsing()
+    {
+        const string json = """
+            {
+              "models_root": "C:\\portable\\models",
+              "catalog_path": "C:\\portable\\portable_models.json",
+              "summary": {
+                "ready": 1,
+                "issues": 1,
+                "missing": 1,
+                "unrecognized": 0,
+                "total": 3
+              },
+              "models": [
+                {
+                  "id": "ready-model",
+                  "name": "Ready Model",
+                  "category": "训练模型",
+                  "status": "ready",
+                  "path": "./models/Ready-Model",
+                  "absolute_path": "C:\\portable\\models\\Ready-Model",
+                  "detail": "路径和文件结构可被训练器读取。",
+                  "download_url": "https://huggingface.co/example/Ready-Model",
+                  "special": false
+                },
+                {
+                  "id": "missing-model",
+                  "name": "Missing Model",
+                  "category": "模型组件",
+                  "status": "missing",
+                  "path": "./models/Missing-Model",
+                  "absolute_path": "C:\\portable\\models\\Missing-Model",
+                  "detail": "未安装。请下载后放到 ./models/Missing-Model",
+                  "download_url": "https://huggingface.co/example/Missing-Model",
+                  "special": true
+                },
+                {
+                  "id": "incomplete-model",
+                  "name": "Incomplete Model",
+                  "category": "模型组件",
+                  "status": "incomplete",
+                  "path": "./models/Incomplete-Model",
+                  "absolute_path": "C:\\portable\\models\\Incomplete-Model",
+                  "detail": "缺少 config.json",
+                  "download_url": "https://huggingface.co/example/Incomplete-Model",
+                  "special": true
+                }
+              ]
+            }
+            """;
+
+        var report = ToolkitStatusParser.ParseModelScan(json);
+
+        Assert.Equal(@"C:\portable\models", report.ModelsRoot);
+        Assert.Equal(3, report.Summary.Total);
+        Assert.Equal(3, report.Models.Count);
+        Assert.Equal("缺失", report.Models[1].StatusLabel);
+        Assert.True(report.Models[1].CanDownload, "missing model should expose its official source");
+        Assert.True(report.Models[2].CanDownload, "incomplete model should expose its official source");
+        Assert.True(!report.Models[0].CanDownload, "ready model should not show a download action");
         return Task.CompletedTask;
     }
 
@@ -590,6 +666,50 @@ internal static class Program
         Assert.Equal("服务已停止", viewModel.ServiceStatus);
     }
 
+    private static async Task TestViewModelModelManagement()
+    {
+        var missing = new ModelStatusItem(
+            "missing-model",
+            "Missing Model",
+            "模型组件",
+            "missing",
+            "./models/Missing-Model",
+            @"C:\portable\ai-toolkit\models\Missing-Model",
+            "未安装。请下载后放到 ./models/Missing-Model",
+            "https://huggingface.co/example/Missing-Model",
+            true
+        );
+        var backend = new FakeLauncherBackend
+        {
+            ModelReport = new ModelScanReport(
+                @"C:\portable\ai-toolkit\models",
+                @"C:\portable\ai-toolkit\portable_models.json",
+                new ModelScanSummary(0, 0, 1, 0, 1),
+                new[] { missing }
+            ),
+        };
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+
+        await viewModel.ScanModelsAsync();
+
+        Assert.Equal(1, viewModel.Models.Count);
+        Assert.True(
+            viewModel.ModelSummaryText.Contains("未安装 1", StringComparison.Ordinal),
+            "model summary should expose the missing count"
+        );
+        Assert.Equal(backend.ModelReport.ModelsRoot, viewModel.ModelsRoot);
+        Assert.True(
+            viewModel.OpenModelDownloadCommand.CanExecute(missing),
+            "missing model download button should be enabled"
+        );
+
+        viewModel.OpenModelDownloadCommand.Execute(missing);
+        Assert.Equal(missing.DownloadUrl, backend.LastOpenedUrl);
+
+        viewModel.OpenModelsDirectoryCommand.Execute(null);
+        Assert.True(backend.ModelsDirectoryOpened, "models directory should be opened on request");
+    }
+
     private static async Task TestBrowserLaunchDoesNotBlockUi()
     {
         var backend = new FakeLauncherBackend { BlockOpenUi = true };
@@ -674,6 +794,24 @@ internal static class Program
                 );
                 var window = new MainWindow(viewModel);
                 window.Show();
+                var modelGrid = window.FindName("ModelGrid") as System.Windows.Controls.DataGrid;
+                Assert.True(modelGrid is not null, "model management page must expose its model grid");
+                var modelsNav = window.FindName("ModelsNav") as System.Windows.Controls.RadioButton;
+                Assert.True(modelsNav is not null, "model management page must be reachable from the main navigation");
+                viewModel.Models.Add(
+                    new ModelStatusItem(
+                        "missing-model",
+                        "Missing Model",
+                        "模型组件",
+                        "missing",
+                        "./models/Missing-Model",
+                        @"C:\portable\ai-toolkit\models\Missing-Model",
+                        "未安装。请下载后放到 ./models/Missing-Model",
+                        "https://huggingface.co/example/Missing-Model",
+                        true
+                    )
+                );
+                modelsNav!.IsChecked = true;
                 var toolTipStyle = app.TryFindResource(typeof(System.Windows.Controls.ToolTip)) as System.Windows.Style;
                 Assert.True(toolTipStyle is not null, "the application must define a ToolTip style");
                 var toolTip = new System.Windows.Controls.ToolTip
@@ -715,6 +853,12 @@ internal static class Program
                 );
                 window.Measure(new System.Windows.Size(1180, 780));
                 window.Arrange(new System.Windows.Rect(0, 0, 1180, 780));
+                window.UpdateLayout();
+                Assert.True(modelGrid!.IsVisible, "model grid must be visible on the model page");
+                Assert.True(
+                    modelGrid.ActualWidth > 800 && modelGrid.ActualHeight > 300,
+                    "model grid must retain usable dimensions at the default window size"
+                );
                 Console.WriteLine(WpfSmokeMarker);
                 Console.Out.Flush();
                 window.Hide();
@@ -900,6 +1044,17 @@ internal static class Program
 
         public bool BlockOpenUi { get; set; }
 
+        public ModelScanReport ModelReport { get; set; } = new(
+            @"C:\portable\ai-toolkit\models",
+            @"C:\portable\ai-toolkit\portable_models.json",
+            new ModelScanSummary(0, 0, 0, 0, 0),
+            Array.Empty<ModelStatusItem>()
+        );
+
+        public string? LastOpenedUrl { get; private set; }
+
+        public bool ModelsDirectoryOpened { get; private set; }
+
         public TaskCompletionSource<bool> OpenUiStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -946,6 +1101,14 @@ internal static class Program
             );
         }
 
+        public Task<ModelScanReport> ScanModelsAsync(
+            Action<ManagerEvent> onEvent,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.FromResult(ModelReport);
+        }
+
         public Task<ManagerRunResult> RunActionAsync(
             ManagerAction action,
             bool force,
@@ -970,6 +1133,16 @@ internal static class Program
             {
                 _openUiRelease.Wait(TimeSpan.FromSeconds(10));
             }
+        }
+
+        public void OpenModelsDirectory()
+        {
+            ModelsDirectoryOpened = true;
+        }
+
+        public void OpenUrl(string url)
+        {
+            LastOpenedUrl = url;
         }
 
         public void ReleaseOpenUi()

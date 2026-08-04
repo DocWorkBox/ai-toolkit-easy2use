@@ -9,7 +9,7 @@ from ._mixin import OstrisModelMixin
 class ZImageTransformer2DModel(DiffusersZImageTransformer2DModel, OstrisModelMixin):
     aitk_subfolder = "transformer"
     # repo to pull the config from when loading a single-file checkpoint
-    aitk_config_repo = "Tongyi-MAI/Z-Image-Turbo"
+    aitk_config_repo = "./models/Z-Image-Turbo"
 
     @classmethod
     def get_quantization_block_names(cls):

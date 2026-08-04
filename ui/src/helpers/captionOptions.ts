@@ -54,15 +54,15 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Ace Step',
         group: 'music',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['ACE-Step/acestep-transcriber', defaultNameOrPath],
-            'config.process[0].caption.model_name_or_path2': ['ACE-Step/acestep-captioner', undefined],
+            'config.process[0].caption.model_name_or_path': ['./models/acestep-transcriber', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path2': ['./models/acestep-captioner', undefined],
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
         },
         name_or_path_options: [
-            { value: 'ACE-Step/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
+            { value: './models/acestep-transcriber', label: './models/acestep-transcriber' },
         ],
         name_or_path2_options: [
-            { value: 'ACE-Step/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
+            { value: './models/acestep-captioner', label: './models/acestep-captioner' },
         ],
         additionalSections: [
             'caption.model_name_or_path2',
@@ -86,11 +86,11 @@ export const captionerTypes: CaptionOption[] = [
 
         },
         name_or_path_options: [
-            { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
+            { value: './models/Qwen3-VL-2B-Instruct', label: './models/Qwen3-VL-2B-Instruct' },
+            { value: './models/Qwen3-VL-4B-Instruct', label: './models/Qwen3-VL-4B-Instruct' },
             { value: './models/Qwen3-VL-8B-Instruct', label: './models/Qwen3-VL-8B-Instruct' },
             { value: './models/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: './models/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
-            { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
+            { value: './models/Qwen3-VL-30B-A3B-Instruct', label: './models/Qwen3-VL-30B-A3B-Instruct' },
             { value: './models/Qwen3.6-27B', label: './models/Qwen3.6-27B' },
             { value: './models/Huihui-Qwen3.6-27B-abliterated', label: './models/Huihui-Qwen3.6-27B-abliterated' },
         ],
@@ -153,10 +153,10 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.max_new_tokens': [4096, undefined],
         },
         name_or_path_options: [
-            { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
+            { value: './models/Qwen3-VL-2B-Instruct', label: './models/Qwen3-VL-2B-Instruct' },
+            { value: './models/Qwen3-VL-4B-Instruct', label: './models/Qwen3-VL-4B-Instruct' },
             { value: './models/Qwen3-VL-8B-Instruct', label: './models/Qwen3-VL-8B-Instruct' },
-            { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
+            { value: './models/Qwen3-VL-30B-A3B-Instruct', label: './models/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [
             'caption.caption_prompt',

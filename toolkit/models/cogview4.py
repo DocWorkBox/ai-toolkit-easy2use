@@ -87,7 +87,7 @@ class CogView4(BaseModel):
 
     def load_model(self):
         dtype = self.torch_dtype
-        base_model_path = "THUDM/CogView4-6B"
+        base_model_path = "./models/CogView4-6B"
         model_path = self.model_config.name_or_path
 
         self.print_and_status_update("Loading CogView4 model")

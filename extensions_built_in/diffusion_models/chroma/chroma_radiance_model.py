@@ -23,7 +23,6 @@ from .src.radiance import Chroma, chroma_params
 from safetensors.torch import load_file, save_file
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.FakeVAE import FakeVAE
-import huggingface_hub
 
 if TYPE_CHECKING:
     from toolkit.data_transfer_object.data_loader import DataLoaderBatchDTO
@@ -102,51 +101,17 @@ class ChromaRadianceModel(BaseModel):
         # will be updated if we detect a existing checkpoint in training folder
         model_path = self.model_config.name_or_path
         
-        if model_path == "lodestones/Chroma":
-            print("Looking for latest Chroma checkpoint")
-            # get the latest checkpoint
-            files_list = huggingface_hub.list_repo_files(model_path)
-            print(files_list)
-            latest_version = 28 # current latest version at time of writing
-            while True:
-                if f"chroma-unlocked-v{latest_version}.safetensors" not in files_list:
-                    latest_version -= 1
-                    break
-                else:
-                    latest_version += 1
-            print(f"Using latest Chroma version: v{latest_version}")
-            
-            # make sure we have it
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=model_path,
-                filename=f"chroma-unlocked-v{latest_version}.safetensors",
-            )
-        elif model_path.startswith("lodestones/Chroma/v"):
-            # get the version number
-            version = model_path.split("/")[-1].split("v")[-1]
-            print(f"Using Chroma version: v{version}")
-            # make sure we have it
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id='lodestones/Chroma',
-                filename=f"chroma-unlocked-v{version}.safetensors",
-            )
-        elif model_path.startswith("lodestones/Chroma1-"):
-            # will have a file in the repo that is Chroma1-whatever.safetensors
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=model_path,
-                filename=f"{model_path.split('/')[-1]}.safetensors",
-            )
-        
+        if os.path.isfile(model_path):
+            print(f"Using local model: {model_path}")
         else:
-            # check if the model path is a local file
-            if os.path.exists(model_path):
-                print(f"Using local model: {model_path}")
-            else:
-                raise ValueError(f"Model path {model_path} does not exist")
+            raise ValueError(
+                f"Chroma checkpoint {model_path} does not exist. "
+                "Use the local .safetensors path shown by the portable model manager."
+            )
         
         # extras_path = 'black-forest-labs/FLUX.1-schnell'
         # schnell model is gated now, use flex instead
-        extras_path = 'ostris/Flex.1-alpha'
+        extras_path = './models/Flex.1-alpha'
 
         self.print_and_status_update("Loading transformer")
         

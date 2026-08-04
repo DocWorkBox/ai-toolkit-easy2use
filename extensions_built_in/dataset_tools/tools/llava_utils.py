@@ -27,7 +27,7 @@ class LLaVAImageProcessor:
     def load_model(self):
         from llava.model import LlavaLlamaForCausalLM
 
-        model_path = "4bit/llava-v1.5-13b-3GB"
+        model_path = "./models/llava-v1.5-13b-3GB"
         # kwargs = {"device_map": "auto"}
         kwargs = {"device_map": self.device}
         kwargs['load_in_4bit'] = True

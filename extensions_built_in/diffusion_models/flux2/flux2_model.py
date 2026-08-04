@@ -46,7 +46,7 @@ scheduler_config = {
     "use_dynamic_shifting": True,
 }
 
-MISTRAL_PATH = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+MISTRAL_PATH = "./models/Mistral-Small-3.1-24B-Instruct-2503"
 FLUX2_VAE_FILENAME = "ae.safetensors"
 FLUX2_TRANSFORMER_FILENAME = "flux2-dev.safetensors"
 
@@ -56,7 +56,7 @@ HF_TOKEN = os.getenv("HF_TOKEN", None)
 class Flux2Model(BaseModel):
     arch = "flux2"
     flux2_te_type: str = "mistral"  # "mistral" or "qwen"
-    flux2_vae_path: str = None
+    flux2_vae_path: str = "./models/flux2_vae/ae.safetensors"
     flux2_te_filename: str = FLUX2_TRANSFORMER_FILENAME
     flux2_is_guidance_distilled: bool = True
 
@@ -181,6 +181,10 @@ class Flux2Model(BaseModel):
             transformer_path = os.path.join(transformer_path, self.flux2_te_filename)
 
         if not os.path.exists(transformer_path) or os.path.isdir(transformer_path):
+            if model_path.replace("\\", "/").startswith("./models/"):
+                raise FileNotFoundError(
+                    f"FLUX.2 transformer is missing. Expected {os.path.join(model_path, self.flux2_te_filename)}"
+                )
             # assume it is from the hub
             transformer_path = huggingface_hub.hf_hub_download(
                 repo_id=model_path,
@@ -236,6 +240,8 @@ class Flux2Model(BaseModel):
             vae_path = self.flux2_vae_path
 
         if vae_path is None or not os.path.exists(vae_path):
+            if vae_path is not None and vae_path.replace("\\", "/").startswith("./models/"):
+                raise FileNotFoundError(f"FLUX.2 VAE is missing. Expected {vae_path}")
             vae_filename = FLUX2_VAE_FILENAME
             if vae_path is not None:
                 # see if it is a filename for huggingface hub

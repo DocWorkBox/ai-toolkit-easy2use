@@ -17,7 +17,7 @@ class FuyuImageProcessor:
 
     def load_model(self):
         from transformers import FuyuProcessor, FuyuForCausalLM
-        model_path = "adept/fuyu-8b"
+        model_path = "./models/fuyu-8b"
         kwargs = {"device_map": self.device}
         kwargs['load_in_4bit'] = True
         kwargs['quantization_config'] = BitsAndBytesConfig(

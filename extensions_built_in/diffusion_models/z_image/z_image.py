@@ -47,7 +47,7 @@ scheduler_config = {
 
 # repo to pull the vae / text encoder / tokenizer / config from when loading a
 # single-file checkpoint
-SINGLE_FILE_EXTRAS_REPO = "Tongyi-MAI/Z-Image-Turbo"
+SINGLE_FILE_EXTRAS_REPO = "./models/Z-Image-Turbo"
 
 
 class ZImageModel(BaseModel):

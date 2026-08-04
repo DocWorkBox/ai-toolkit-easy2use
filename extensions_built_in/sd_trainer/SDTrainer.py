@@ -234,10 +234,10 @@ class SDTrainer(BaseSDTrainProcess):
             flush()
         if self.train_config.train_turbo and self.train_config.show_turbo_outputs:
             if self.model_config.is_xl:
-                self.taesd = AutoencoderTiny.from_pretrained("madebyollin/taesdxl",
+                self.taesd = AutoencoderTiny.from_pretrained("./models/taesdxl",
                                                              torch_dtype=get_torch_dtype(self.train_config.dtype))
             else:
-                self.taesd = AutoencoderTiny.from_pretrained("madebyollin/taesd",
+                self.taesd = AutoencoderTiny.from_pretrained("./models/taesd",
                                                              torch_dtype=get_torch_dtype(self.train_config.dtype))
             self.taesd.to(dtype=get_torch_dtype(self.train_config.dtype), device=self.device_torch)
             self.taesd.eval()
