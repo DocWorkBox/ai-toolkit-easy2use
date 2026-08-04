@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def test_compshare_ideogram4_uses_local_model_paths():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     ideogram_source = Path("extensions_built_in/diffusion_models/ideogram4/ideogram4.py").read_text(
         encoding="utf-8"
     )
@@ -15,7 +15,7 @@ def test_compshare_ideogram4_uses_local_model_paths():
 
 
 def test_compshare_model_paths_do_not_use_aigate_dataset_roots():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     flux2_klein_source = Path(
         "extensions_built_in/diffusion_models/flux2/flux2_klein_model.py"
     ).read_text(encoding="utf-8")
@@ -32,7 +32,7 @@ def test_compshare_model_paths_do_not_use_aigate_dataset_roots():
 
 
 def test_compshare_boogu_keeps_repo_defaults():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
 
     assert (
         "'config.process[0].model.name_or_path': "
@@ -45,7 +45,7 @@ def test_compshare_boogu_keeps_repo_defaults():
 
 
 def test_compshare_krea2_uses_local_model_paths():
-    options_source = Path("ui/src/app/jobs/new/options.ts").read_text(encoding="utf-8")
+    options_source = Path("ui/src/app/jobs/new/options.tsx").read_text(encoding="utf-8")
     simple_job_source = Path("ui/src/app/jobs/new/SimpleJob.tsx").read_text(encoding="utf-8")
     krea2_source = Path("extensions_built_in/diffusion_models/krea2/krea2.py").read_text(
         encoding="utf-8"

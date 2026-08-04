@@ -7,7 +7,6 @@ from optimum.quanto.tensor import Optimizer, qtype, qtypes
 from torchao.quantization.quant_api import (
     quantize_ as torchao_quantize_,
     Float8WeightOnlyConfig,
-    UIntXWeightOnlyConfig,
     Int8WeightOnlyConfig
 )
 from optimum.quanto import freeze
@@ -42,13 +41,9 @@ Q_MODULES = [
 
 torchao_qtypes = {
     # "int4": Int4WeightOnlyConfig(),
-    "uint2": UIntXWeightOnlyConfig(torch.uint2),
-    "uint3": UIntXWeightOnlyConfig(torch.uint3),
-    "uint4": UIntXWeightOnlyConfig(torch.uint4),
-    "uint5": UIntXWeightOnlyConfig(torch.uint5),
-    "uint6": UIntXWeightOnlyConfig(torch.uint6),
-    "uint7": UIntXWeightOnlyConfig(torch.uint7),
-    "uint8": UIntXWeightOnlyConfig(torch.uint8),
+    # uint2..uint8 are handled by the UIntXQuantizer ostris backend
+    # (toolkit/util/uintx_quant.py), a bit-exact reproduction of torchao 0.10.0's
+    # UIntXWeightOnlyConfig, so ARAs stay byte-identical after torchao upgrades
     "int8": Int8WeightOnlyConfig(),
     "float8": Float8WeightOnlyConfig(),
 }
@@ -181,7 +176,16 @@ def quantize(
         try:
             # check if m is QLinear or QConv2d
             if m.__class__.__name__ in Q_MODULES:
-                continue
+                # OstrisLinear may still be RE-quantized into a different
+                # ostris qtype (same qtype is a per-layer no-op); every other
+                # already-quantized module type is always left alone, which
+                # also keeps quanto/torchao from double-quantizing
+                # pre-quantized checkpoints
+                if not (
+                    isinstance(weights, ostristype)
+                    and m.__class__.__name__ == "OstrisLinear"
+                ):
+                    continue
             if (
                 isinstance(weights, aotype)
                 and not isinstance(m, torch.nn.Linear)
@@ -198,7 +202,10 @@ def quantize(
                 continue
             orig_device = None
             if quantize_device is not None and next(m.children(), None) is None:
+                # OstrisLinear layers being re-quantized hold buffers, not params
                 param = next(m.parameters(recurse=False), None)
+                if param is None:
+                    param = next(m.buffers(recurse=False), None)
                 if param is not None:
                     orig_device = param.device
                     m.to(quantize_device)
@@ -224,6 +231,34 @@ def quantize(
         except Exception as e:
             print(f"Failed to quantize {name}: {e}")
             # raise e
+
+
+def _has_quantizable_linear(module: torch.nn.Module, weights, exclude=None) -> bool:
+    """Whether quantizing ``module`` with ``weights`` would change anything.
+
+    False when every non-excluded linear is already quantized with the same
+    ostris qtype (or cannot be quantized at all) — the pre-quantized-checkpoint
+    case, where the whole block can be skipped without the device round-trip.
+    ``exclude`` patterns are matched against module names relative to
+    ``module`` (use leading wildcards for patterns aimed at inner layers)."""
+    if not isinstance(weights, ostristype):
+        return True
+    for name, m in module.named_modules():
+        if not isinstance(m, torch.nn.Linear):
+            continue
+        if exclude is not None and any(fnmatch(name, pattern) for pattern in exclude):
+            continue
+        if isinstance(m, OstrisLinear):
+            if getattr(
+                m.ostris_quantizer, "qtype", None
+            ) != weights.quantizer.qtype and weights.quantizer.can_quantize(m):
+                return True
+            continue
+        if m.__class__.__name__ in Q_MODULES:
+            continue
+        if weights.quantizer.can_quantize(m):
+            return True
+    return False
 
 
 def quantize_model(
@@ -410,15 +445,28 @@ def quantize_model(
         base_model.print_and_status_update(
             f" - quantizing {len(all_blocks)} transformer blocks"
         )
+        already_quantized = 0
         for block in tqdm(all_blocks):
+            if not _has_quantizable_linear(block, quantization_type, exclude_modules):
+                # pre-quantized checkpoint with a matching qtype: nothing in
+                # this block would change — skip the device round-trip and the
+                # dtype cast entirely so the load stays byte-identical
+                already_quantized += 1
+                continue
             block.to(base_model.device_torch, dtype=base_model.torch_dtype, non_blocking=True)
-            quantize(block, weights=quantization_type)
+            # exclude patterns with a leading wildcard (e.g. "*adaln_proj*")
+            # also apply inside blocks, where names are block-relative
+            quantize(block, weights=quantization_type, exclude=exclude_modules)
             freeze(block)
             # NOT non_blocking: an async D2H allocates the cpu destination in pinned
             # memory, which the caching host allocator keeps forever (with power-of-2
             # bucket rounding on top) — that silently retained a model-sized chunk of
             # host ram after the weights moved back to the gpu for training
             block.to("cpu")
+        if already_quantized:
+            base_model.print_and_status_update(
+                f" - {already_quantized} blocks already quantized with a matching qtype; left untouched"
+            )
 
         # todo, on extras find a universal way to quantize them on device and move them back to their original
         # device without having to move the transformer blocks to the device first

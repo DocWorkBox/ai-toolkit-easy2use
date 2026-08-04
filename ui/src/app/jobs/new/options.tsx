@@ -1,3 +1,5 @@
+import React from 'react';
+import Link from 'next/link';
 import { GroupedSelectOption, SelectOption, JobConfig } from '@/types';
 import { defaultSliderConfig } from './jobConfig';
 import { defaultAudioSampleConfig, defaultSampleConfig, defaultIdeogramSamplesConfig } from '@/helpers/defaultSamples';
@@ -61,6 +63,7 @@ export interface ModelArch {
   accuracyRecoveryAdapters?: { [key: string]: string };
   sampleTags?: SampleTags;
   gateUrl?: string;
+  modelNotes?: React.ReactNode;
 }
 
 const defaultNameOrPath = '';
@@ -732,6 +735,76 @@ export const modelArchs: ModelArch[] = [
     additionalSections: ['model.low_vram', 'model.layer_offloading'],
   },
   {
+    name: 'minimax_h3',
+    label: 'MiniMax-H3',
+    group: 'video',
+    isVideoModel: true,
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      'config.process[0].model.name_or_path': ['Comfy-Org/MiniMax-H3', defaultNameOrPath],
+      // the Comfy-Org weights are pre-quantized (int8 convrot DiT, nvfp4 TE); these
+      // qtypes match the checkpoints exactly, so the load is unchanged. Picking a
+      // different qtype re-quantizes layer by layer into that format.
+      'config.process[0].model.quantize': [true, false],
+      'config.process[0].model.qtype': ['convrot8', 'qfloat8'],
+      'config.process[0].model.quantize_te': [true, false],
+      'config.process[0].model.qtype_te': ['nvfp4', 'qfloat8'],
+      'config.process[0].model.low_vram': [true, false],
+      'config.process[0].sample.sampler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.noise_scheduler': ['flowmatch', 'flowmatch'],
+      'config.process[0].train.cache_text_embeddings': [true, false],
+      'config.process[0].network.linear': [16, defaultLinearRank],
+      'config.process[0].network.linear_alpha': [16, defaultLinearRank],
+      'config.process[0].sample.num_frames': [107, 1],
+      'config.process[0].sample.fps': [24, 1],
+      'config.process[0].sample.width': [768, 1024],
+      'config.process[0].sample.height': [768, 1024],
+      'config.process[0].sample.guidance_scale': [1, 4],
+      'config.process[0].sample.sample_steps': [28, 25],
+      'config.process[0].train.audio_loss_multiplier': [1.0, undefined],
+      'config.process[0].train.timestep_type': ['shift', 'sigmoid'],
+      'config.process[0].datasets[x].do_i2v': [false, undefined],
+      'config.process[0].datasets[x].do_audio': [true, undefined],
+      'config.process[0].datasets[x].cache_latents_to_disk': [true, false],
+      'config.process[0].datasets[x].fps': [24, undefined],
+      'config.process[0].datasets[x].num_frames': [39, undefined],
+      'config.process[0].datasets[x].auto_frame_count': [true, undefined],
+    },
+    disableSections: ['network.conv'],
+    additionalSections: ['sample.ctrl_img', 'datasets.num_frames', 'model.layer_offloading', 'model.low_vram', 'datasets.do_audio', 'datasets.audio_normalize', 'datasets.audio_preserve_pitch', 'datasets.do_i2v', 'train.audio_loss_multiplier', 'datasets.auto_frame_count'],
+    modelNotes: (
+      <div className="space-y-2">
+        <p>
+          权重从设置中的{' '}
+          <Link href="/settings" className="text-blue-400 hover:underline">
+            模型目录路径
+          </Link>{' '}
+          加载。首次加载时，缺少的文件会从 <code>Comfy-Org/MiniMax-H3</code> 下载到该目录，总计约 43GB。使用的文件如下：
+        </p>
+        <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
+          <code>{`<MODELS_PATH>/
+├── diffusion_models/
+│   └── minimax_h3_fl2va_pruned_int8_convrot.safetensors
+├── text_encoders/
+│   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+└── vae/
+    ├── minimax_h3_video_vae_fp16.safetensors
+    └── minimax_h3_audio_vae_fp32.safetensors`}</code>
+        </pre>
+        <p>
+          检查点已经预量化，可直接加载：int8 ConvRot DiT（约 21GB）和 nvfp4 Qwen3-VL 文本编码器（约 16GB）。
+          默认量化类型 <code>convrot8</code> / <code>nvfp4</code> 与文件完全匹配，因此加载时不会重新量化。
+          选择其他量化类型时，会逐层把预量化权重转换为目标格式。
+        </p>
+        <p>
+          支持文生视频和首帧图生视频（控制图 / I2V 数据集），并可联合训练音频。该模型已做 guidance 蒸馏，
+          guidance scale 应保持为 1。视频固定为 24 fps，帧数会向下对齐到 17n+5（5、22、39、56、...、107，
+          124 帧约为 5 秒）。图像数据集（num_frames 为 1）按单帧训练，采样时 num_frames 为 1 会输出单张图像。
+        </p>
+      </div>
+    ),
+  },
+  {
     name: 'ltx2',
     label: 'LTX-2',
     group: 'video',
@@ -1357,6 +1430,7 @@ export const quantizationOptions: SelectOption[] = [
   { value: 'float8', label: 'float8' },
   { value: 'convrot8', label: '8bit convrot' },
   { value: 'convrot4', label: '4bit convrot (nvfp4)' },
+  { value: 'nvfp4', label: 'nvfp4 (4bit weight only)' },
   { value: 'convrotint7', label: '7bit convrot' },
   { value: 'convrotint6', label: '6bit convrot' },
   { value: 'convrotint5', label: '5bit convrot' },

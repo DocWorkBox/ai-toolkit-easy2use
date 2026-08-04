@@ -42,7 +42,7 @@ from toolkit.train_tools import get_torch_dtype, apply_noise_offset
 from einops import rearrange, repeat
 import torch
 from toolkit.pipelines import CustomStableDiffusionXLPipeline, CustomStableDiffusionPipeline, \
-    StableDiffusionKDiffusionXLPipeline, StableDiffusionXLRefinerPipeline, FluxWithCFGPipeline, \
+    StableDiffusionXLRefinerPipeline, FluxWithCFGPipeline, \
     FluxAdvancedControlPipeline
 from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline, T2IAdapter, DDPMScheduler, \
     StableDiffusionXLAdapterPipeline, StableDiffusionAdapterPipeline, DiffusionPipeline, PixArtTransformer2DModel, \
@@ -234,6 +234,9 @@ class StableDiffusion:
 
         # if a mask is passed, do the loss with the mask. May be set false for models that use a mask for other reasons.
         self.do_masked_loss = True
+
+        # if the model outputs an x0 prediction (clean latent)
+        self.x0_pred = False
 
     # properties for old arch for backwards compatibility
     @property
@@ -1209,10 +1212,7 @@ class StableDiffusion:
                 except:
                     pass
 
-            if sampler.startswith("sample_") and self.is_xl:
-                # using kdiffusion
-                Pipe = StableDiffusionKDiffusionXLPipeline
-            elif self.is_xl:
+            if self.is_xl:
                 Pipe = StableDiffusionXLPipeline
             elif self.is_v3:
                 Pipe = StableDiffusion3Pipeline
@@ -1344,9 +1344,6 @@ class StableDiffusion:
             flush()
             # disable progress bar
             pipeline.set_progress_bar_config(disable=True)
-
-            if sampler.startswith("sample_"):
-                pipeline.set_scheduler(sampler)
 
         refiner_pipeline = None
         if self.refiner_unet:

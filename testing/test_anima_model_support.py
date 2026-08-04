@@ -5,7 +5,7 @@ import pytest
 
 ANIMA_SOURCE = Path("extensions_built_in/diffusion_models/anima/anima.py")
 ANIMA_LEGACY_SOURCE = Path("extensions_built_in/diffusion_models/anima/anima_model.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.ts")
+OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
 REQUIREMENTS_SOURCE = Path("requirements_base.txt")
 PROMPT_UTILS_SOURCE = Path("toolkit/prompt_utils.py")
 

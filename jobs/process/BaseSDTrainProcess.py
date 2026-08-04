@@ -794,6 +794,9 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 use_feedback=self.train_config.ema_config.use_feedback,
                 param_multiplier=self.train_config.ema_config.param_multiplier,
             )
+            # expose to the model: models that run an EMA-teacher forward during training
+            # (e.g. wan21_pixel self_flow) read it from here
+            self.sd.ema = self.ema
 
     def before_dataset_load(self):
         pass
@@ -1403,7 +1406,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 if self.train_config.random_noise_shift > 0.0:
                     # get random noise -1 to 1
                     noise_shift = torch.randn(
-                        batch_size, latents.shape[1], 1, 1,
+                        s,
                         device=noise.device,
                         dtype=noise.dtype
                     ) * self.train_config.random_noise_shift
@@ -2020,7 +2023,12 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 # we cannot merge in if quantized or offloading. note: torchao quantized weights can
                 # still be force merged at save time for the merge-and-reset method (see save logic),
                 # but we keep can_merge_in False here so sampling never merges in/out.
-                if self.model_config.quantize or self.model_config.layer_offloading:
+                # models loaded from pre-quantized checkpoints (e.g. comfy convrot/nvfp4
+                # imports) never set model_config.quantize, so detect their layers too
+                model_is_prequantized = any(
+                    getattr(m, 'is_ostris_quantized', False) for m in unet.modules()
+                ) if unet is not None else False
+                if self.model_config.quantize or self.model_config.layer_offloading or model_is_prequantized:
                     # todo find a way around this
                     self.network.can_merge_in = False
 

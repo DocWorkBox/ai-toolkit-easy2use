@@ -710,12 +710,15 @@ class ModelConfig:
             self.qtype = "float8"
         if self.layer_offloading and self.qtype_te == "qfloat8":
             self.qtype_te = "float8"
-
-        # Mac mps only works with torachao uint
+        # MPS has no fp8 dtype, so qfloat8 has to become an 8 bit integer format.
+        # convrot8, not torchao int8: measured on an M3 against bf16, convrot8
+        # trains at 0.79x and holds 1.04 GB of resident weight where torchao int8
+        # trains at 0.52x and holds 1.21 GB, and convrot8 quantizes in 19ms
+        # against 2.8s. See scripts/test_quantizations.py --device mps.
         if torch.backends.mps.is_available() and self.qtype == "qfloat8":
-            self.qtype = "int8"
+            self.qtype = "convrot8"
         if torch.backends.mps.is_available() and self.qtype_te == "qfloat8":
-            self.qtype_te = "int8"
+            self.qtype_te = "convrot8"
 
         # 0 is off and 1.0 is 100% of the layers
         self.layer_offloading_transformer_percent = kwargs.get("layer_offloading_transformer_percent", 1.0)
@@ -1024,6 +1027,8 @@ class DatasetConfig:
 
         self.num_workers: int = kwargs.get('num_workers', 2)
         self.prefetch_factor: int = kwargs.get('prefetch_factor', 2)
+        # threads used to prep (decode/resize) items ahead of the VAE while caching latents
+        self.cache_latents_num_workers: int = kwargs.get('cache_latents_num_workers', min(6, os.cpu_count() or 1))
         self.extra_values: List[float] = kwargs.get('extra_values', [])
         self.square_crop: bool = kwargs.get('square_crop', False)
         # apply same augmentations to control images. Usually want this true unless special case
@@ -1059,8 +1064,7 @@ class DatasetConfig:
 
         # if true, will use a fask method to get image sizes. This can result in errors. Do not use unless you know what you are doing
         self.fast_image_size: bool = kwargs.get('fast_image_size', False)
-
-        self.do_i2v: bool = kwargs.get('do_i2v', True)  # do image to video on models that are both t2i and i2v capable
+        self.do_i2v: bool = kwargs.get('do_i2v', False)  # do image to video on models that are both t2i and i2v capable
         self.do_audio: bool = kwargs.get('do_audio', False) # load audio from video files for models that support it
         self.audio_preserve_pitch: bool = kwargs.get('audio_preserve_pitch', False) # preserve pitch when stretching audio to fit num_frames
         self.audio_normalize: bool = kwargs.get('audio_normalize', False) # normalize audio volume levels when loading
