@@ -43,6 +43,15 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'config.process[0].model.assistant_lora_path': {
+    title: '训练适配器路径',
+    description: (
+      <>
+        用于辅助训练的 LoRA 适配器文件路径。适配器会在训练过程中保持冻结，用来调整基础模型的训练分布，
+        不会写入最终训练得到的 LoRA；生成采样预览时也会自动关闭。
+      </>
+    ),
+  },
   'config.process[0].model.arch': {
     title: '模型架构',
     description: (
