@@ -446,6 +446,22 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'train.do_guidance_loss': {
+    title: '对比引导损失',
+    description: (
+      <>
+        使用条件预测与无条件预测之间的差异来增强训练目标，帮助引导蒸馏模型避免在训练过程中失去引导能力。
+      </>
+    ),
+  },
+  'train.guidance_loss_target': {
+    title: '引导损失目标',
+    description: (
+      <>
+        设置对比引导损失的目标引导强度，用于控制条件预测相对于无条件预测的放大程度。
+      </>
+    ),
+  },
 };
 
 export const getDoc = (key: string | null | undefined): ConfigDoc | null => {
