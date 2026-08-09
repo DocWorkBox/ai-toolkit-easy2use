@@ -771,7 +771,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].datasets[x].num_frames': [39, undefined],
       'config.process[0].datasets[x].auto_frame_count': [true, undefined],
       'config.process[0].model.assistant_lora_path': [
-        '/datasets/studio/huggingface/models/minimax_h3_training_adapter/minimax_h3_training_adapter_alpha.safetensors',
+        '/datasets/ComfyUI/models/loras/minimax_h3_training_adapter_alpha.safetensors',
         undefined,
       ],
     },

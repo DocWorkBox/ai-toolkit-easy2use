@@ -49,10 +49,7 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
-    adapter_path = (
-        "/datasets/studio/huggingface/models/minimax_h3_training_adapter/"
-        "minimax_h3_training_adapter_alpha.safetensors"
-    )
+    adapter_path = "/datasets/ComfyUI/models/loras/minimax_h3_training_adapter_alpha.safetensors"
     assert adapter_path in options
     assert "'config.process[0].train.do_guidance_loss': [true, undefined]" not in options
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
