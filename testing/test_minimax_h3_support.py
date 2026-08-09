@@ -50,7 +50,7 @@ def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help(
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
     adapter_path = (
-        "/model/ModelScope/ostris/minimax_h3_training_adapter/"
+        "/model/HuggingFace/ostris/minimax_h3_training_adapter/"
         "minimax_h3_training_adapter_alpha.safetensors"
     )
     assert adapter_path in options
