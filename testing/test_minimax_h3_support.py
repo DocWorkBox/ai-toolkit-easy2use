@@ -5,6 +5,8 @@ REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MODEL_SOURCE = Path("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
 OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
+DOCS_SOURCE = Path("ui/src/docs.tsx")
+VERSION_SOURCE = Path("version.py")
 SETTINGS_SOURCE = Path("ui/src/app/settings/page.tsx")
 UI_PATHS_SOURCE = Path("ui/src/paths.ts")
 CRON_PATHS_SOURCE = Path("ui/cron/paths.ts")
@@ -69,6 +71,21 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
     assert "Model notes" not in simple_job
+
+
+def test_minimax_h3_training_adapter_uses_portable_default_and_localized_help():
+    options = OPTIONS_SOURCE.read_text(encoding="utf-8")
+    docs = DOCS_SOURCE.read_text(encoding="utf-8")
+    version = VERSION_SOURCE.read_text(encoding="utf-8")
+
+    adapter_path = "./models/minimax_h3_training_adapter/minimax_h3_training_adapter_alpha.safetensors"
+    assert adapter_path in options
+    assert "ostris/minimax_h3_training_adapter/" not in options
+    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" not in options
+    assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
+    assert "'config.process[0].model.assistant_lora_path': {" in docs
+    assert "训练适配器路径" in docs
+    assert 'VERSION = "1.18.1"' in version
 
 
 def test_main_uses_the_project_models_folder_by_default():

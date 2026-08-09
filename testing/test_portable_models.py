@@ -112,6 +112,12 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
     assert metadata["minimax-h3-text-encoder-config"]["required_all"] == [
         "config.json"
     ]
+    adapter = by_id["minimax-h3-training-adapter"]
+    assert adapter["family"] == "MiniMax-H3"
+    assert adapter["path"] == (
+        "./models/minimax_h3_training_adapter/"
+        "minimax_h3_training_adapter_alpha.safetensors"
+    )
 
 
 def test_minimax_h3_is_the_only_remote_training_default():

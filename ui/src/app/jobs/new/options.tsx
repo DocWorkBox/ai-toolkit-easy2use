@@ -755,6 +755,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.cache_text_embeddings': [true, false],
       'config.process[0].network.linear': [16, defaultLinearRank],
       'config.process[0].network.linear_alpha': [16, defaultLinearRank],
+      'config.process[0].network.network_kwargs.ignore_if_contains': [['adaln_proj'], []],
       'config.process[0].sample.num_frames': [107, 1],
       'config.process[0].sample.fps': [24, 1],
       'config.process[0].sample.width': [768, 1024],
@@ -769,9 +770,13 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].datasets[x].fps': [24, undefined],
       'config.process[0].datasets[x].num_frames': [39, undefined],
       'config.process[0].datasets[x].auto_frame_count': [true, undefined],
+      'config.process[0].model.assistant_lora_path': [
+        './models/minimax_h3_training_adapter/minimax_h3_training_adapter_alpha.safetensors',
+        undefined,
+      ],
     },
     disableSections: ['network.conv'],
-    additionalSections: ['sample.ctrl_img', 'datasets.num_frames', 'model.layer_offloading', 'model.low_vram', 'datasets.do_audio', 'datasets.audio_normalize', 'datasets.audio_preserve_pitch', 'datasets.do_i2v', 'train.audio_loss_multiplier', 'datasets.auto_frame_count'],
+    additionalSections: ['sample.ctrl_img', 'datasets.num_frames', 'model.layer_offloading', 'model.low_vram', 'datasets.do_audio', 'datasets.audio_normalize', 'datasets.audio_preserve_pitch', 'datasets.do_i2v', 'train.audio_loss_multiplier', 'datasets.auto_frame_count', 'model.assistant_lora_path'],
     modelNotes: (
       <div className="space-y-2">
         <p>

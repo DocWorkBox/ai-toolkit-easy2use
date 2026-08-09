@@ -19,6 +19,11 @@ def test_protable_branch_keeps_local_model_defaults():
     assert "'./models/Krea-2-Raw'" in options
     assert "'./models/Krea-2-Turbo'" in options
     assert "'./models/krea2_turbo_training_adapter/" in options
+    assert (
+        "'./models/minimax_h3_training_adapter/"
+        "minimax_h3_training_adapter_alpha.safetensors'"
+    ) in options
+    assert "'ostris/minimax_h3_training_adapter/" not in options
     assert "'./models/Qwen3-VL-8B-Instruct'" in captioners
     assert "'./models/Qwen3.6-27B'" in captioners
     assert 'default="./models/Qwen3-VL-8B-Instruct"' in upsampler
