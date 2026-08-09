@@ -43,6 +43,15 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'config.process[0].model.assistant_lora_path': {
+    title: '训练适配器路径',
+    description: (
+      <>
+        用于辅助训练的 LoRA 适配器文件路径。适配器会在训练过程中保持冻结，用来调整基础模型的训练分布，
+        不会写入最终训练得到的 LoRA；生成采样预览时也会自动关闭。
+      </>
+    ),
+  },
   'config.process[0].model.arch': {
     title: '模型架构',
     description: (
@@ -443,6 +452,22 @@ const docs: { [key: string]: ConfigDoc } = {
       <>
         为支持的模型开启控制图 KV 缓存。开启后训练出来的 LoRA 推理时也需要开启，关闭训练的 LoRA 推理时也应关闭。
         这个选项不会改变训练速度；推理时控制图只需要处理一次，而不是每一步都重新处理，因此推理会明显加速。
+      </>
+    ),
+  },
+  'train.do_guidance_loss': {
+    title: '对比引导损失',
+    description: (
+      <>
+        使用条件预测与无条件预测之间的差异来增强训练目标，帮助引导蒸馏模型避免在训练过程中失去引导能力。
+      </>
+    ),
+  },
+  'train.guidance_loss_target': {
+    title: '引导损失目标',
+    description: (
+      <>
+        设置对比引导损失的目标引导强度，用于控制条件预测相对于无条件预测的放大程度。
       </>
     ),
   },
