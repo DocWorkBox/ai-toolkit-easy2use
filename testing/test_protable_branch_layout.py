@@ -46,3 +46,10 @@ def test_protable_branch_contains_portable_launch_assets():
     assert (ROOT / "start.bat").is_file()
     assert (ROOT / "scripts/portable/nvidia_smi.cmd").is_file()
     assert (ROOT / "scripts/portable/run_portable_supervisor.ps1").is_file()
+
+
+def test_protable_ui_build_does_not_require_google_fonts():
+    layout = _read("ui/src/app/layout.tsx")
+
+    assert "next/font/google" not in layout
+    assert "Inter(" not in layout
