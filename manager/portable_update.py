@@ -155,33 +155,40 @@ def _create_archive_from_git(archive_path, temp_dir):
     checkout = Path(temp_dir) / "checkout"
     repository_url = "https://github.com/%s.git" % REPOSITORY
     util.info("Fetching portable code with Git...")
-    clone = subprocess.run(
-        [
-            git,
-            "-c",
-            "http.sslBackend=schannel",
-            "clone",
-            "--depth",
-            "1",
-            "--branch",
-            BRANCH,
-            "--single-branch",
-            "--no-tags",
-            repository_url,
-            str(checkout),
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-        env=util.clean_env(),
-    )
+    clone_command = [
+        git,
+        "-c",
+        "http.sslBackend=schannel",
+        "-c",
+        "http.version=HTTP/1.1",
+        "-c",
+        "http.lowSpeedLimit=1024",
+        "-c",
+        "http.lowSpeedTime=60",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        BRANCH,
+        "--single-branch",
+        "--no-tags",
+        repository_url,
+        str(checkout),
+    ]
+    clone = _run_captured(clone_command, timeout=300)
     if clone.returncode != 0:
         detail = clone.stderr.decode("utf-8", errors="replace").strip()
         util.warn("Git fetch failed; retrying with the GitHub archive endpoint. %s" % detail)
         return None
 
     head = subprocess.run(
-        [git, "-C", str(checkout), "rev-parse", "HEAD"],
+        [
+            git,
+            "-C",
+            str(checkout),
+            "rev-parse",
+            "HEAD",
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -214,6 +221,31 @@ def _create_archive_from_git(archive_path, temp_dir):
         util.warn("Could not create the portable archive; retrying GitHub. %s" % detail)
         return None
     return commit
+
+
+def _run_captured(command, timeout):
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=util.clean_env(),
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        if process.poll() is None:
+            process.kill()
+        stdout, stderr = process.communicate()
+        stderr += b"\nGit operation timed out."
+        return subprocess.CompletedProcess(command, 124, stdout, stderr)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def apply_archive(archive_path, commit, repo_root=util.REPO_ROOT):

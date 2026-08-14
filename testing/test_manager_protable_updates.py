@@ -91,6 +91,36 @@ def test_portable_update_can_build_archive_from_temporary_git_checkout(
     assert portable_update.read_state(tmp_path)["commit"] == fetched_commit
 
 
+def test_git_archive_fetch_forces_http1_and_low_speed_timeout(monkeypatch, tmp_path):
+    clone_commands = []
+    commit = "abcdef1234567890"
+    archive_path = tmp_path / "portable.zip"
+    monkeypatch.setattr(portable_update.gitwin, "find_git", lambda: "git")
+
+    def run_clone(command, timeout):
+        clone_commands.append((command, timeout))
+        return portable_update.subprocess.CompletedProcess(command, 0, b"", b"")
+
+    def run_local_git(command, **_kwargs):
+        if "rev-parse" in command:
+            return portable_update.subprocess.CompletedProcess(
+                command, 0, (commit + "\n").encode("ascii"), b""
+            )
+        output_arg = next(value for value in command if value.startswith("--output="))
+        Path(output_arg.split("=", 1)[1]).write_bytes(b"zip")
+        return portable_update.subprocess.CompletedProcess(command, 0, b"", b"")
+
+    monkeypatch.setattr(portable_update, "_run_captured", run_clone)
+    monkeypatch.setattr(portable_update.subprocess, "run", run_local_git)
+
+    assert portable_update._create_archive_from_git(archive_path, tmp_path) == commit
+    command, timeout = clone_commands[0]
+    assert "http.version=HTTP/1.1" in command
+    assert "http.lowSpeedLimit=1024" in command
+    assert "http.lowSpeedTime=60" in command
+    assert timeout == 300
+
+
 def test_archive_update_preserves_user_data_and_stages_launcher(tmp_path):
     protected = {
         "runtime/python/python.exe": "runtime",
