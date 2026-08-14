@@ -33,6 +33,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
+    assert "name: 'minimax_h3_ref2va'" in options
     assert "'Comfy-Org/MiniMax-H3'" in options
     assert "'config.process[0].datasets[x].do_audio': [true, undefined]" in options
     assert "'config.process[0].datasets[x].do_i2v': [false, undefined]" in options
@@ -41,6 +42,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "模型目录路径" in settings
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
+    assert "Reference-to-video" not in options
     assert "Model notes" not in simple_job
 
 
@@ -49,13 +51,22 @@ def test_minimax_h3_training_adapter_uses_main_defaults_and_localized_help():
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
-    adapter_path = "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_alpha.safetensors"
+    adapter_path = "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors"
     assert adapter_path in options
-    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" not in options
+    assert "label: '蒸馏保持方式'" in options
+    assert "label: '对比引导（默认）'" in options
+    assert "label: '训练适配器'" in options
+    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" in options
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.1"' in version
+    assert 'VERSION = "1.18.2"' in version
+
+
+def test_ltx25_uses_official_repo_on_main():
+    options = OPTIONS_SOURCE.read_text(encoding="utf-8")
+
+    assert "'Lightricks/LTX-2.5'" in options
 
 
 def test_main_uses_the_project_models_folder_by_default():
