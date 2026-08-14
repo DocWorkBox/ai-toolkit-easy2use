@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import tempfile
 import urllib.request
 import uuid
@@ -198,12 +199,46 @@ def _fetch_remote_commit():
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             payload = json.load(response)
-    except Exception as error:
-        raise PortableUpdateError("Could not query origin/%s: %s" % (BRANCH, error))
+    except Exception as urllib_error:
+        try:
+            payload = _fetch_json_with_curl(url)
+        except (OSError, ValueError, PortableUpdateError) as curl_error:
+            raise PortableUpdateError(
+                "Could not query origin/%s: %s; curl fallback failed: %s"
+                % (BRANCH, urllib_error, curl_error)
+            )
     commit = payload.get("sha") if isinstance(payload, dict) else None
     if not isinstance(commit, str) or len(commit) < 12:
         raise PortableUpdateError("GitHub returned an invalid protable commit.")
     return commit
+
+
+def _fetch_json_with_curl(url):
+    curl = shutil.which("curl")
+    if not curl:
+        raise PortableUpdateError("curl is not available")
+    result = subprocess.run(
+        [
+            curl,
+            "-fsSL",
+            "--retry",
+            "3",
+            "--max-time",
+            "30",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "User-Agent: %s" % util.USER_AGENT,
+            url,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        message = result.stderr.decode("utf-8", errors="replace").strip()
+        raise PortableUpdateError(message or "curl exited with code %d" % result.returncode)
+    return json.loads(result.stdout.decode("utf-8"))
 
 
 def _extract_verified(archive_path, destination):

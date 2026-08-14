@@ -44,6 +44,20 @@ def test_remote_status_compares_saved_protable_commit(monkeypatch, tmp_path):
     assert current["behind"] == 0
 
 
+def test_remote_commit_uses_curl_when_python_ssl_fails(monkeypatch):
+    def fail_urlopen(*_args, **_kwargs):
+        raise OSError("SSL unexpected EOF")
+
+    monkeypatch.setattr(portable_update.urllib.request, "urlopen", fail_urlopen)
+    monkeypatch.setattr(
+        portable_update,
+        "_fetch_json_with_curl",
+        lambda _url: {"sha": "abcdef1234567890"},
+    )
+
+    assert portable_update._fetch_remote_commit() == "abcdef1234567890"
+
+
 def test_archive_update_preserves_user_data_and_stages_launcher(tmp_path):
     protected = {
         "runtime/python/python.exe": "runtime",
