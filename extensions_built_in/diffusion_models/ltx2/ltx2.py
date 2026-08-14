@@ -20,7 +20,7 @@ from toolkit.accelerator import unwrap_model
 from optimum.quanto import freeze
 from toolkit.util.quantize import quantize, get_qtype, quantize_model
 from toolkit.memory_management import MemoryManager
-from toolkit.paths import MODELS_PATH
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from safetensors.torch import load_file
 from PIL import Image
 import huggingface_hub
@@ -1412,10 +1412,13 @@ class LTX25Model(LTX2Model):
 
     def _load_gemma4_tokenizer(self, te_path: str, te_state_dict: dict):
         """The comfy file embeds the tokenizer and its configs as uint8
-        tensors; extract them next to the file once and load from there."""
+        tensors; extract them into the persistent toolkit cache once."""
         from transformers import AutoTokenizer
 
-        assets_dir = os.path.splitext(te_path)[0] + "_hf_assets"
+        te_name = os.path.splitext(os.path.basename(te_path))[0]
+        assets_dir = os.path.join(
+            TOOLKIT_ROOT, ".cache", "ltx2.5", f"{te_name}_hf_assets"
+        )
         assets = {
             "tokenizer.json": "tokenizer_json",
             "tokenizer_config.json": "hf_asset__tokenizer_config.json",
@@ -1427,8 +1430,14 @@ class LTX25Model(LTX2Model):
             blob = te_state_dict.get(tensor_key, None)
             if blob is None or os.path.exists(out_path):
                 continue
-            with open(out_path, "wb") as f:
-                f.write(bytes(blob.cpu().numpy().tobytes()))
+            tmp_path = f"{out_path}.{os.getpid()}.tmp"
+            try:
+                with open(tmp_path, "wb") as f:
+                    f.write(bytes(blob.cpu().numpy().tobytes()))
+                os.replace(tmp_path, out_path)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
         # the embedded tokenizer.json has an empty post-processor (ComfyUI
         # prepends BOS in its own wrapper); restore the standard Gemma
         # behavior so blank prompts still yield a token
