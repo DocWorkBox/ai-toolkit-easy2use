@@ -23,7 +23,7 @@ def test_api_captioner_settings_are_persisted_and_default_to_conservative_concur
     assert 'self.api_concurrency = max(1, int(kwargs.get("api_concurrency", 8) or 8))' in base_captioner_source
 
 
-def test_main_qwen_repo_options_do_not_leak_into_api_captioner():
+def test_portable_qwen_model_options_do_not_leak_into_api_captioner():
     options_source = Path("ui/src/helpers/captionOptions.ts").read_text(encoding="utf-8")
     qwen_section = options_source.split("name: 'Qwen3VLCaptioner'", 1)[1].split(
         "name: 'RemoteAPICaptioner'", 1
@@ -32,10 +32,10 @@ def test_main_qwen_repo_options_do_not_leak_into_api_captioner():
         "name: 'Ideogram4Captioner'", 1
     )[0]
     model_options = [
-        "Qwen/Qwen3-VL-8B-Instruct",
-        "Qwen/Qwen3.6-27B",
-        "huihui-ai/Huihui-Qwen3.6-27B-abliterated",
-        "huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated",
+        "./models/Qwen3-VL-8B-Instruct",
+        "./models/Qwen3.6-27B",
+        "./models/Huihui-Qwen3.6-27B-abliterated",
+        "./models/Huihui-Qwen3-VL-8B-Instruct-abliterated",
     ]
 
     for model_option in model_options:

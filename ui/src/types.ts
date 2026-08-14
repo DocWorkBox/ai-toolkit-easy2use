@@ -306,6 +306,9 @@ export interface CaptionProcessConfig {
     api_concurrency?: number;
     caption_extension?: string;
     thinking?: boolean;
+    batch_size?: number;
+    layer_offloading?: boolean;
+    layer_offloading_percent?: number;
   }
 }
 

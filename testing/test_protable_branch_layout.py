@@ -21,11 +21,17 @@ def test_protable_branch_keeps_local_model_defaults():
     assert "'./models/krea2_turbo_training_adapter/" in options
     assert (
         "'./models/minimax_h3_training_adapter/"
-        "minimax_h3_training_adapter_alpha.safetensors'"
+        "minimax_h3_training_adapter_v1.safetensors'"
     ) in options
     assert "'ostris/minimax_h3_training_adapter/" not in options
     assert "'./models/Qwen3-VL-8B-Instruct'" in captioners
     assert "'./models/Qwen3.6-27B'" in captioners
+    assert "'./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors'" in captioners
+    assert (
+        "'./models/diffusion_models/"
+        "ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors'"
+        in options
+    )
     assert 'default="./models/Qwen3-VL-8B-Instruct"' in upsampler
 
     assert "'./models/Boogu-Image-0.1-Base'" in options

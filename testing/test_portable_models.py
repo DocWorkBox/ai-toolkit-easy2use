@@ -42,6 +42,18 @@ def test_catalog_defines_special_component_layouts():
     assert by_id["flux2-klein-4b-text-encoder"]["path"] == "./models/Qwen3-4B"
     assert by_id["flux2-klein-9b-text-encoder"]["path"] == "./models/Qwen3-8B"
     assert by_id["ltx2-text-encoder"]["path"] == "./models/gemma-3-12b-it-qat-q4_0-unquantized"
+    assert by_id["ltx25-transformer"]["path"] == (
+        "diffusion_models/ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors"
+    )
+    assert by_id["ltx25-text-encoder"]["path"] == (
+        "text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors"
+    )
+    assert by_id["ltx25-video-vae"]["path"] == (
+        "vae/ltx-2.5-video-vae-conv-bf16.safetensors"
+    )
+    assert by_id["ltx25-audio-vae"]["path"] == (
+        "vae/ltx-2.5-audio-vae-bf16.safetensors"
+    )
     assert by_id["wan-umt5"]["path"] == "./models/umt5_xxl_encoder"
     assert by_id["wan-vae"]["path"] == "./models/wan2.1-vae"
     assert by_id["qwen-image"]["path"] == "./models/Qwen-Image"
@@ -59,6 +71,7 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
 
     minimax_weight_ids = {
         "minimax-h3-fl2va",
+        "minimax-h3-ref2va",
         "minimax-h3-text-encoder",
         "minimax-h3-video-vae",
         "minimax-h3-audio-vae",
@@ -70,6 +83,7 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
         item["path"] for item in minimax_weights
     } == {
         "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
         "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
         "vae/minimax_h3_video_vae_fp16.safetensors",
         "vae/minimax_h3_audio_vae_fp32.safetensors",
@@ -118,6 +132,41 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
         "./models/minimax_h3_training_adapter/"
         "minimax_h3_training_adapter_alpha.safetensors"
     )
+    adapter_v1 = by_id["minimax-h3-training-adapter-v1"]
+    assert adapter_v1["family"] == "MiniMax-H3"
+    assert adapter_v1["path"] == (
+        "./models/minimax_h3_training_adapter/"
+        "minimax_h3_training_adapter_v1.safetensors"
+    )
+
+
+def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
+    by_id = {item["id"]: item for item in _catalog()["models"]}
+
+    checkpoint_paths = {
+        by_id["qwen3-omni-instruct"]["path"],
+        by_id["qwen3-omni-thinking"]["path"],
+        by_id["qwen3-omni-thinking-abliterated"]["path"],
+    }
+    assert checkpoint_paths == {
+        "./models/text_encoders/qwen3_omni_30b_a3b_instruct_thinker_convrot8.safetensors",
+        "./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors",
+        "./models/text_encoders/huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors",
+    }
+    assert {
+        by_id["qwen3-omni-instruct-metadata"]["path"],
+        by_id["qwen3-omni-thinking-metadata"]["path"],
+    } == {
+        "./models/Qwen3-Omni-30B-A3B-Instruct",
+        "./models/Qwen3-Omni-30B-A3B-Thinking",
+    }
+    assert {
+        by_id["qwen3-omni-instruct"]["family"],
+        by_id["qwen3-omni-thinking"]["family"],
+        by_id["qwen3-omni-thinking-abliterated"]["family"],
+        by_id["qwen3-omni-instruct-metadata"]["family"],
+        by_id["qwen3-omni-thinking-metadata"]["family"],
+    } == {"Qwen3-Omni"}
 
 
 def test_minimax_h3_is_the_only_remote_training_default():
@@ -127,9 +176,9 @@ def test_minimax_h3_is_the_only_remote_training_default():
         options,
     )
 
-    assert [value for value in values if not value.startswith("./models/")] == [
-        "Comfy-Org/MiniMax-H3"
-    ]
+    remote_values = [value for value in values if not value.startswith("./models/")]
+    assert remote_values
+    assert set(remote_values) == {"Comfy-Org/MiniMax-H3"}
 
     minimax = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
     assert 'COMFY_REPO = "Comfy-Org/MiniMax-H3"' in minimax
@@ -151,6 +200,8 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert "ACE-Step/acestep-" not in caption_options
     assert "ACE-Step/acestep-" not in caption_job
     assert "Qwen/Qwen3-VL-" not in caption_options
+    assert "ai-toolkit/Qwen3-Omni-" not in caption_options
+    assert "./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors" in caption_job
     assert "name_or_path: './models/Flex.1-alpha'" in job_config
     assert 'MISTRAL_PATH = "./models/Mistral-Small-3.1-24B-Instruct-2503"' in flux2
     assert 'flux2_vae_path: str = "./models/flux2_vae/ae.safetensors"' in flux2
@@ -165,8 +216,24 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert 'QWEN3_VL_PATH = "./models/Qwen3-VL-8B-Instruct"' in ideogram
 
 
+def test_qwen3_omni_uses_local_checkpoint_and_processor_metadata():
+    source = _read("extensions_built_in/captioner/Qwen3OmniCaptioner.py")
+
+    assert '"base_repo": "./models/Qwen3-Omni-30B-A3B-Instruct"' in source
+    assert '"base_repo": "./models/Qwen3-Omni-30B-A3B-Thinking"' in source
+    assert 'if name_or_path.lower().endswith(".safetensors"):' in source
+    assert "Qwen3-Omni checkpoint not found" in source
+    assert "Qwen3-Omni processor metadata is incomplete" in source
+    assert "AutoProcessor.from_pretrained(base_repo, local_files_only=True)" in source
+
+
 def test_catalog_covers_every_portable_model_literal():
-    catalog_paths = {item["path"].rstrip("/") for item in _catalog()["models"]}
+    catalog_paths = set()
+    for item in _catalog()["models"]:
+        catalog_path = item["path"].rstrip("/")
+        catalog_paths.add(catalog_path)
+        if item.get("root") == "configured_models":
+            catalog_paths.add("./models/" + catalog_path)
     source_roots = [ROOT / "extensions_built_in", ROOT / "toolkit", ROOT / "ui" / "src"]
     model_literals = set()
 
@@ -178,9 +245,11 @@ def test_catalog_covers_every_portable_model_literal():
                 if line.lstrip().startswith(("#", "//")):
                     continue
                 model_literals.update(
-                    value.rstrip("/")
-                    for value in re.findall(r"[\"'](\./models/[^\"']+)[\"']", line)
-                    if value != "./models/" and not value.endswith("/dummy-ltx2")
+                        value.rstrip("/")
+                        for value in re.findall(r"[\"'](\./models/[^\"']+)[\"']", line)
+                        if value != "./models/"
+                        and "{" not in value
+                        and not value.endswith("/dummy-ltx2")
                 )
 
     uncovered = sorted(

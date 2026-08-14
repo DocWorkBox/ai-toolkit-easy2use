@@ -5,12 +5,14 @@ import {
   FormGroup,
   NumberInput,
   SelectInput,
+  SliderInput,
   TextAreaInput,
   TextInput,
 } from '@/components/formInputs';
 import { CaptionJobConfig } from '@/types';
 import { handleCaptionerTypeChange } from '@/helpers/captionJobConfig';
 import {
+  batchSizeOptions,
   captionerTypes,
   defaultQtype,
   groupedCaptionerTypes,
@@ -224,6 +226,8 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
       setApiTestMessage(`测试失败：${details}`);
     }
   };
+  const captionPrompts = selectedCaptionOption?.captionPrompts || {};
+  const promptPresetNames = Object.keys(captionPrompts);
   const minNewTokens = selectedCaptionOption?.minNewTokens ?? 0;
   const newTokensOptions = maxNewTokensOptions.filter(option => parseInt(option.value) >= minNewTokens);
 
@@ -474,6 +478,21 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               />
             </div>
           )}
+          {additionalSections.includes('caption.batch_size') && (
+            <div className="mt-4">
+              <SelectInput
+                label="批大小"
+                value={`${jobConfig.config.process[0].caption.batch_size || ''}`}
+                onChange={value => {
+                  const intVal = parseInt(value);
+                  if (!isNaN(intVal)) {
+                    setJobConfig(intVal, 'config.process[0].caption.batch_size');
+                  }
+                }}
+                options={batchSizeOptions}
+              />
+            </div>
+          )}
         </div>
         <div>
           <FormGroup label="选项">
@@ -530,11 +549,55 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
                 onChange={value => setJobConfig(value, 'config.process[0].caption.thinking')}
               />
             )}
+            {additionalSections.includes('caption.layer_offloading') && (
+              <>
+                <Checkbox
+                  label="层级卸载"
+                  checked={jobConfig.config.process[0].caption.layer_offloading || false}
+                  onChange={value => setJobConfig(value, 'config.process[0].caption.layer_offloading')}
+                />
+                {jobConfig.config.process[0].caption.layer_offloading && (
+                  <div className="pt-2">
+                    <SliderInput
+                      label="卸载比例"
+                      value={Math.round((jobConfig.config.process[0].caption.layer_offloading_percent ?? 1) * 100)}
+                      onChange={value =>
+                        setJobConfig(value * 0.01, 'config.process[0].caption.layer_offloading_percent')
+                      }
+                      min={0}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
+                )}
+              </>
+            )}
           </FormGroup>
         </div>
       </div>
       {additionalSections.includes('caption.caption_prompt') && (
         <div className="mt-4">
+          {promptPresetNames.length > 1 && (
+            <div className="mb-4">
+              <SelectInput
+                label="提示词预设"
+                value={
+                  promptPresetNames.find(
+                    name => captionPrompts[name] === jobConfig.config.process[0].caption.caption_prompt,
+                  ) || ''
+                }
+                onChange={value => {
+                  if (captionPrompts[value] !== undefined) {
+                    setJobConfig(captionPrompts[value], 'config.process[0].caption.caption_prompt');
+                  }
+                }}
+                options={[
+                  { value: '', label: '- 自定义 -' },
+                  ...promptPresetNames.map(name => ({ value: name, label: name })),
+                ]}
+              />
+            </div>
+          )}
           <TextAreaInput
             label="打标提示词"
             value={jobConfig.config.process[0].caption.caption_prompt || ''}
