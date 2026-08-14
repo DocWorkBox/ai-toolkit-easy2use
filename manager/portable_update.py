@@ -12,7 +12,7 @@ import uuid
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from . import util
+from . import gitwin, util
 
 
 REPOSITORY = "DocWorkBox/ai-toolkit-easy2use"
@@ -131,8 +131,12 @@ def update_from_remote(repo_root=util.REPO_ROOT, dry_run=False):
     cache_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="download-", dir=str(cache_dir)) as temp:
         archive_path = Path(temp) / "protable.zip"
-        url = "https://github.com/%s/archive/%s.zip" % (REPOSITORY, commit)
-        util.download(url, str(archive_path), label="portable code")
+        git_commit = _create_archive_from_git(archive_path, temp)
+        if git_commit is not None:
+            commit = git_commit
+        else:
+            url = "https://github.com/%s/archive/%s.zip" % (REPOSITORY, commit)
+            util.download(url, str(archive_path), label="portable code")
         result = apply_archive(archive_path, commit, repo_root=repo_root)
     util.ok("Portable code updated to %s." % commit[:12])
     if result["launcher_staged"]:
@@ -141,6 +145,75 @@ def update_from_remote(repo_root=util.REPO_ROOT, dry_run=False):
             "AI Toolkit Launcher starts."
         )
     return result
+
+
+def _create_archive_from_git(archive_path, temp_dir):
+    git = gitwin.find_git()
+    if not git:
+        return None
+
+    checkout = Path(temp_dir) / "checkout"
+    repository_url = "https://github.com/%s.git" % REPOSITORY
+    util.info("Fetching portable code with Git...")
+    clone = subprocess.run(
+        [
+            git,
+            "-c",
+            "http.sslBackend=schannel",
+            "clone",
+            "--depth",
+            "1",
+            "--branch",
+            BRANCH,
+            "--single-branch",
+            "--no-tags",
+            repository_url,
+            str(checkout),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=util.clean_env(),
+    )
+    if clone.returncode != 0:
+        detail = clone.stderr.decode("utf-8", errors="replace").strip()
+        util.warn("Git fetch failed; retrying with the GitHub archive endpoint. %s" % detail)
+        return None
+
+    head = subprocess.run(
+        [git, "-C", str(checkout), "rev-parse", "HEAD"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=util.clean_env(),
+    )
+    commit = head.stdout.decode("ascii", errors="ignore").strip()
+    if head.returncode != 0 or len(commit) < 12:
+        util.warn("Could not read the fetched portable commit; retrying the archive endpoint.")
+        return None
+
+    prefix = "ai-toolkit-easy2use-%s/" % commit
+    archived = subprocess.run(
+        [
+            git,
+            "-C",
+            str(checkout),
+            "archive",
+            "--format=zip",
+            "--prefix=%s" % prefix,
+            "--output=%s" % Path(archive_path).resolve(),
+            "HEAD",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        env=util.clean_env(),
+    )
+    if archived.returncode != 0 or not Path(archive_path).is_file():
+        detail = archived.stderr.decode("utf-8", errors="replace").strip()
+        util.warn("Could not create the portable archive; retrying GitHub. %s" % detail)
+        return None
+    return commit
 
 
 def apply_archive(archive_path, commit, repo_root=util.REPO_ROOT):
