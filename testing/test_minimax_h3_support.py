@@ -3,6 +3,7 @@ from pathlib import Path
 
 REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MODEL_SOURCE = Path("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
+LTX25_MODEL_SOURCE = Path("extensions_built_in/diffusion_models/ltx2/ltx2.py")
 OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 DOCS_SOURCE = Path("ui/src/docs.tsx")
@@ -33,7 +34,8 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
-    assert "'/model/ModelScope/Comfy-Org/MiniMax-H3'" in options
+    assert "name: 'minimax_h3_ref2va'" in options
+    assert options.count("'/model/ModelScope/Comfy-Org/MiniMax-H3'") == 2
     assert "'config.process[0].datasets[x].do_audio': [true, undefined]" in options
     assert "'config.process[0].datasets[x].do_i2v': [false, undefined]" in options
     assert "模型目录路径" in options
@@ -41,6 +43,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "模型目录路径" in settings
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
+    assert "Reference-to-video" not in options
     assert "Model notes" not in simple_job
 
 
@@ -51,14 +54,26 @@ def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help(
 
     adapter_path = (
         "/model/HuggingFace/ostris/minimax_h3_training_adapter/"
-        "minimax_h3_training_adapter_alpha.safetensors"
+        "minimax_h3_training_adapter_v1.safetensors"
     )
     assert adapter_path in options
-    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" not in options
+    assert "label: '蒸馏保持方式'" in options
+    assert "label: '对比引导（默认）'" in options
+    assert "label: '训练适配器'" in options
+    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" in options
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.1"' in version
+    assert 'VERSION = "1.18.2"' in version
+
+
+def test_ltx25_uses_compshare_modelscope_path():
+    options = OPTIONS_SOURCE.read_text(encoding="utf-8")
+    model = LTX25_MODEL_SOURCE.read_text(encoding="utf-8")
+
+    assert "'/model/ModelScope/Lightricks/LTX-2.5'" in options
+    assert "if name_or_path and os.path.isdir(name_or_path):" in model
+    assert "search_roots.append(name_or_path)" in model
 
 
 def test_compshare_uses_the_project_models_folder_by_default():
