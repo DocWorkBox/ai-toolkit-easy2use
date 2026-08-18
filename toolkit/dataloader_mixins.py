@@ -69,6 +69,7 @@ transforms_dict = {
 }
 
 img_ext_list = ['.jpg', '.jpeg', '.png', '.webp']
+video_ext_list = ['.mp4', '.avi', '.mov', '.webm', '.mkv', '.wmv', '.m4v', '.flv']
 
 
 def standardize_images(images):
@@ -1094,12 +1095,25 @@ class ControlFileItemDTOMixin:
             file_name_no_ext = os.path.splitext(os.path.basename(img_path))[0]
 
             found_control_images = []
+            found_control_videos = []
+            allow_video_controls = sd is not None and getattr(
+                sd, 'supports_video_control_images', False)
             for control_path in control_path_list:
                 for ext in img_ext_list:
                     if os.path.exists(os.path.join(control_path, file_name_no_ext + ext)):
                         found_control_images.append(os.path.join(control_path, file_name_no_ext + ext))
                         self.has_control_image = True
                         break
+                else:
+                    if allow_video_controls:
+                        for ext in video_ext_list:
+                            if os.path.exists(os.path.join(control_path, file_name_no_ext + ext)):
+                                found_control_videos.append(os.path.join(control_path, file_name_no_ext + ext))
+                                self.has_control_image = True
+                                break
+            # control VIDEO paths ride on the item; the model encodes and
+            # disk-caches them on first use (see minimax_h3 ref2va)
+            self.control_video_paths = found_control_videos or None
             self.control_path = found_control_images
             if len(self.control_path) == 0:
                 self.control_path = None
@@ -1134,6 +1148,9 @@ class ControlFileItemDTOMixin:
         control_path_list = self.get_new_control_paths()
         if not isinstance(control_path_list, list):
             control_path_list = [control_path_list]
+        # video-only controls leave control_path as None (their latents come
+        # from the ref-video cache, not this image loader)
+        control_path_list = [p for p in control_path_list if p is not None]
 
         for control_path in control_path_list:
             try:
@@ -2117,6 +2134,13 @@ class TextEmbeddingFileItemDTOMixin:
         # if we have a control image, cache the path
         if self.encode_control_in_text_embeddings and self.control_path is not None:
             item["control_path"] = self.control_path
+        if self.encode_control_in_text_embeddings and getattr(self, 'control_video_paths', None):
+            item["control_videos"] = sorted(self.control_video_paths)
+            # v2: reference-video vision blocks are no longer resampled by the
+            # processor (do_sample_frames=False); older video-ref embeds are
+            # misaligned with their presentation. Only items WITH control
+            # videos carry this key, so no other cache is touched.
+            item["control_videos_version"] = 2
         # first-frame vision conditioning changes the embedding content -> new cache key
         elif (
             getattr(self, "encode_first_frame_in_text_embeddings", False)
@@ -2290,10 +2314,15 @@ class TextEmbeddingCachingMixin:
                         self.sd.set_device_state_preset('cache_text_encoder')
                         did_move = True
 
-                    if file_item.encode_control_in_text_embeddings and file_item.control_path is not None:
+                    control_video_paths = getattr(file_item, 'control_video_paths', None) or []
+                    if file_item.encode_control_in_text_embeddings and (
+                        file_item.control_path is not None or len(control_video_paths) > 0
+                    ):
                         ctrl_img_list = []
                         control_path_list = file_item.control_path
-                        if not isinstance(file_item.control_path, list):
+                        if control_path_list is None:
+                            control_path_list = []
+                        elif not isinstance(control_path_list, list):
                             control_path_list = [control_path_list]
                         for i in range(len(control_path_list)):
                             try:
@@ -2309,6 +2338,14 @@ class TextEmbeddingCachingMixin:
                             except Exception as e:
                                 print_acc(f"Error: {e}")
                                 print_acc(f"Error loading control image: {control_path_list[i]}")
+                        # control VIDEOS ride into the presentation by path (models
+                        # with supports_video_control_images turn them into
+                        # timestamped vision blocks); images first, then videos.
+                        # The model needs the dataset config to treat the clip
+                        # exactly like its latent rows (frame count / trim)
+                        ctrl_img_list.extend(control_video_paths)
+                        if len(control_video_paths) > 0:
+                            self.sd._ref_video_dataset_config = self.dataset_config
 
                         if len(ctrl_img_list) == 0:
                             ctrl_img = None
