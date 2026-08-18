@@ -138,6 +138,12 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
         "./models/minimax_h3_training_adapter/"
         "minimax_h3_training_adapter_v1.safetensors"
     )
+    ref2va_adapter_v1 = by_id["minimax-h3-ref2va-training-adapter-v1"]
+    assert ref2va_adapter_v1["family"] == "MiniMax-H3"
+    assert ref2va_adapter_v1["path"] == (
+        "./models/minimax_h3_training_adapter/"
+        "minimax_h3_ref2va_training_adapter_v1.safetensors"
+    )
 
 
 def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
