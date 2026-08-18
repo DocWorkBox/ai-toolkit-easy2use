@@ -52,15 +52,30 @@ def test_minimax_h3_training_adapter_uses_main_defaults_and_localized_help():
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
     adapter_path = "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors"
-    assert adapter_path in options
+    ref2va_adapter_path = (
+        "ostris/minimax_h3_training_adapter/"
+        "minimax_h3_ref2va_training_adapter_v1.safetensors"
+    )
+    assert options.count(adapter_path) == 3
+    assert options.count(ref2va_adapter_path) == 3
+    assert "/datasets/" not in options
+    assert "/model/" not in options
     assert "label: '蒸馏保持方式'" in options
-    assert "label: '对比引导（默认）'" in options
+    assert "label: '对比引导'" in options
     assert "label: '训练适配器'" in options
+    assert "label: '对比引导 + 训练适配器（默认）'" in options
     assert "'config.process[0].train.do_guidance_loss': [true, undefined]" in options
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.2"' in version
+    assert 'VERSION = "1.18.3"' in version
+
+
+def test_minimax_h3_ref2va_supports_video_references():
+    model = MODEL_SOURCE.read_text(encoding="utf-8")
+
+    assert "self.supports_video_control_images = True" in model
+    assert "load_ref_video_latent" in model
 
 
 def test_ltx25_uses_official_repo_on_main():

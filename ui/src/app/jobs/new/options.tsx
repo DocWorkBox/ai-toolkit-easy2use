@@ -78,62 +78,6 @@ export interface ModelArch {
 const defaultNameOrPath = '';
 const defaultLinearRank = 32;
 
-// used by the MiniMax-H3 fl2va arch (ref2va is contrastive-guidance only)
-const minimaxH3DistillationHandling = {
-  label: '蒸馏保持方式',
-  options: [
-    { value: 'cg', label: '对比引导（默认）' },
-    { value: 'ta', label: '训练适配器' },
-    { value: 'both', label: '对比引导 + 训练适配器' },
-  ],
-  getValue: (config: JobConfig) => {
-    const assistantLoraPath = config?.config?.process?.[0]?.model?.assistant_lora_path;
-    const hasAssistantLoraPath = assistantLoraPath && assistantLoraPath.trim() !== '';
-    const hasContrastiveGuidance = config?.config?.process?.[0]?.train?.do_guidance_loss;
-    if (hasAssistantLoraPath && hasContrastiveGuidance) {
-      return 'both';
-    }
-    if (hasAssistantLoraPath) {
-      return 'ta';
-    }
-    return 'cg';
-  },
-  onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
-    if (value === 'cg') {
-      setJobConfig(true, 'config.process[0].train.do_guidance_loss');
-      setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
-      if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
-        setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
-      }
-    } else if (value === 'ta') {
-      setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
-      setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
-      setJobConfig(
-        'ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors',
-        'config.process[0].model.assistant_lora_path',
-      );
-    } else if (value === 'both') {
-      setJobConfig(true, 'config.process[0].train.do_guidance_loss');
-      setJobConfig(
-        'ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors',
-        'config.process[0].model.assistant_lora_path',
-      );
-      if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
-        setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
-      }
-    }
-  },
-  doc: {
-    title: 'MiniMax-H3 蒸馏保持方式',
-    description: (
-      <div>
-        MiniMax H3 是经过引导蒸馏的模型，直接训练可能破坏蒸馏效果。训练适配器速度更快，但长时间训练仍可能退化；
-        对比引导速度较慢，但稳定性更好。也可以同时启用两者。
-      </div>
-    ),
-  },
-};
-
 export const modelArchs: ModelArch[] = [
   {
     name: 'flux',
@@ -835,6 +779,10 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.cache_text_embeddings': [true, false],
       'config.process[0].train.do_guidance_loss': [true, undefined],
       'config.process[0].train.guidance_loss_target': [3.5, undefined],
+      'config.process[0].model.assistant_lora_path': [
+        'ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors',
+        undefined,
+      ],
       'config.process[0].network.linear': [16, defaultLinearRank],
       'config.process[0].network.linear_alpha': [16, defaultLinearRank],
       'config.process[0].network.network_kwargs.ignore_if_contains': [['adaln_proj'], []],
@@ -867,7 +815,62 @@ export const modelArchs: ModelArch[] = [
       'datasets.auto_frame_count',
       'model.assistant_lora_path',
     ],
-    customModelSelectOptions: [minimaxH3DistillationHandling],
+    customModelSelectOptions: [
+      {
+        label: '蒸馏保持方式',
+        options: [
+          { value: 'cg', label: '对比引导' },
+          { value: 'ta', label: '训练适配器' },
+          { value: 'both', label: '对比引导 + 训练适配器（默认）' },
+        ],
+        getValue: (config: JobConfig) => {
+          const assistantLoraPath = config?.config?.process?.[0]?.model?.assistant_lora_path;
+          const hasAssistantLoraPath = assistantLoraPath && assistantLoraPath.trim() !== '';
+          const hasContrastiveGuidance = config?.config?.process?.[0]?.train?.do_guidance_loss;
+          if (hasAssistantLoraPath && hasContrastiveGuidance) {
+            return 'both';
+          }
+          if (hasAssistantLoraPath) {
+            return 'ta';
+          }
+          return 'cg';
+        },
+        onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
+          if (value === 'cg') {
+            setJobConfig(true, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
+            if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
+              setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
+            }
+          } else if (value === 'ta') {
+            setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
+            setJobConfig(
+              'ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors',
+              'config.process[0].model.assistant_lora_path',
+            );
+          } else if (value === 'both') {
+            setJobConfig(true, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(
+              'ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors',
+              'config.process[0].model.assistant_lora_path',
+            );
+            if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
+              setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
+            }
+          }
+        },
+        doc: {
+          title: 'MiniMax-H3 蒸馏保持方式',
+          description: (
+            <div>
+              MiniMax-H3 是经过引导蒸馏的模型，直接训练会逐渐破坏蒸馏效果。可通过对比引导或训练适配器来保持蒸馏能力：
+              训练适配器速度更快，但长时间训练仍可能退化；对比引导速度较慢，但通常更稳定。默认同时启用两者。
+            </div>
+          ),
+        },
+      },
+    ],
     modelNotes: (
       <div className="space-y-2">
         <p>
@@ -919,6 +922,10 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.cache_text_embeddings': [true, false],
       'config.process[0].train.do_guidance_loss': [true, undefined],
       'config.process[0].train.guidance_loss_target': [3.5, undefined],
+      'config.process[0].model.assistant_lora_path': [
+        'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
+        undefined,
+      ],
       'config.process[0].network.linear': [16, defaultLinearRank],
       'config.process[0].network.linear_alpha': [16, defaultLinearRank],
       'config.process[0].network.network_kwargs.ignore_if_contains': [['adaln_proj'], []],
@@ -948,13 +955,70 @@ export const modelArchs: ModelArch[] = [
       'datasets.audio_preserve_pitch',
       'train.audio_loss_multiplier',
       'datasets.auto_frame_count',
+      'model.assistant_lora_path',
+    ],
+    customModelSelectOptions: [
+      {
+        label: '蒸馏保持方式',
+        options: [
+          { value: 'cg', label: '对比引导' },
+          { value: 'ta', label: '训练适配器' },
+          { value: 'both', label: '对比引导 + 训练适配器（默认）' },
+        ],
+        getValue: (config: JobConfig) => {
+          const assistantLoraPath = config?.config?.process?.[0]?.model?.assistant_lora_path;
+          const hasAssistantLoraPath = assistantLoraPath && assistantLoraPath.trim() !== '';
+          const hasContrastiveGuidance = config?.config?.process?.[0]?.train?.do_guidance_loss;
+          if (hasAssistantLoraPath && hasContrastiveGuidance) {
+            return 'both';
+          }
+          if (hasAssistantLoraPath) {
+            return 'ta';
+          }
+          return 'cg';
+        },
+        onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
+          if (value === 'cg') {
+            setJobConfig(true, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
+            if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
+              setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
+            }
+          } else if (value === 'ta') {
+            setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
+            setJobConfig(
+              'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
+              'config.process[0].model.assistant_lora_path',
+            );
+          } else if (value === 'both') {
+            setJobConfig(true, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(
+              'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
+              'config.process[0].model.assistant_lora_path',
+            );
+            if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
+              setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
+            }
+          }
+        },
+        doc: {
+          title: 'MiniMax-H3 蒸馏保持方式',
+          description: (
+            <div>
+              MiniMax-H3 是经过引导蒸馏的模型，直接训练会逐渐破坏蒸馏效果。可通过对比引导或训练适配器来保持蒸馏能力：
+              训练适配器速度更快，但长时间训练仍可能退化；对比引导速度较慢，但通常更稳定。默认同时启用两者。
+            </div>
+          ),
+        },
+      },
     ],
     modelNotes: (
       <div className="space-y-2">
         <p>
-          参考图生视频：控制图会作为主体或风格参考，而不是首帧。每张参考图保持自身宽高比，并按目标像素面积缩放，
-          作为独立参考块加入序列，同时以 <code>&lt;Picture i&gt;</code> 视觉块送入 Qwen3-VL 条件编码器。
-          训练时从数据集控制图路径读取，采样时使用采样控制图。目前仅支持图片参考，不支持参考视频或音频。
+          参考图或参考视频会作为主体、风格条件，而不是首帧。参考内容保持自身宽高比：图片只会缩小，不会放大；
+          宽高比一致的视频参考会匹配目标尺寸。每个参考作为独立块加入序列，并以 <code>&lt;Picture i&gt;</code>
+          视觉块送入 Qwen3-VL 条件编码器。训练时从数据集控制路径读取，采样时使用采样控制输入；目前不支持音频参考。
         </p>
         <p>
           权重与 MiniMax-H3 相同，从设置中的{' '}
