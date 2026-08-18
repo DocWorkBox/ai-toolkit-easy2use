@@ -63,7 +63,7 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.2"' in version
+    assert 'VERSION = "1.18.3"' in version
 
 
 def test_minimax_h3_ref2va_supports_video_references():
