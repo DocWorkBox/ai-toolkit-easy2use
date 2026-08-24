@@ -59,6 +59,7 @@ def test_minimax_h3_loads_original_metadata_from_project_models_folder():
 def test_minimax_h3_ui_defaults_and_notes_are_localized():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     simple_job = SIMPLE_JOB_SOURCE.read_text(encoding="utf-8")
+    docs = DOCS_SOURCE.read_text(encoding="utf-8")
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
@@ -72,7 +73,16 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
     assert "Reference-to-video" not in options
+    assert "label: '参考图呈现方式'" in options
+    assert "label: '静态视频片段'" in options
+    assert "Image Reference Presentation" not in options
     assert "Model notes" not in simple_job
+    assert 'label="批次大小"' in simple_job
+    assert 'docKey="datasets.batch_size"' in simple_job
+    assert 'label="音频损失倍率"' in simple_job
+    assert "Audio Loss Multiplier" not in simple_job
+    assert "'train.audio_loss_multiplier':" in docs
+    assert "'datasets.batch_size':" in docs
 
 
 def test_minimax_h3_training_adapter_uses_portable_default_and_localized_help():
@@ -98,7 +108,7 @@ def test_minimax_h3_training_adapter_uses_portable_default_and_localized_help():
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.3"' in version
+    assert 'VERSION = "1.18.4"' in version
 
 
 def test_minimax_h3_ref2va_supports_video_references():
@@ -106,6 +116,16 @@ def test_minimax_h3_ref2va_supports_video_references():
 
     assert "self.supports_video_control_images = True" in model
     assert "load_ref_video_latent" in model
+
+
+def test_minimax_h3_remote_adapters_download_to_toolkit_models_folder():
+    model = MODEL_SOURCE.read_text(encoding="utf-8")
+
+    assert "from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT" in model
+    assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in model
+    assert "found = self._find_file_recursive(adapter_root, filename)" in model
+    assert "local_dir=adapter_root" in model
+    assert "LEGACY_REF2VA_TRAINING_ADAPTER_PATH" not in model
 
 
 def test_ltx25_uses_portable_transformer_path():

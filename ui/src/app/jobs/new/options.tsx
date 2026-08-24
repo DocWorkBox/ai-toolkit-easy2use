@@ -1009,13 +1009,54 @@ export const modelArchs: ModelArch[] = [
           ),
         },
       },
+      {
+        label: '参考图呈现方式',
+        options: [
+          { value: 'picture', label: '图片（默认）' },
+          { value: 'video', label: '静态视频片段' },
+        ],
+        getValue: (config: JobConfig) => {
+          return config?.config?.process?.[0]?.model?.model_kwargs?.image_refs_as_video ? 'video' : 'picture';
+        },
+        onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
+          const kwargs = { ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}) };
+          if (value === 'video') {
+            kwargs.image_refs_as_video = true;
+          } else {
+            delete kwargs.image_refs_as_video;
+            delete kwargs.image_ref_video_frames;
+          }
+          setJobConfig(kwargs, 'config.process[0].model.model_kwargs');
+        },
+        doc: {
+          title: 'MiniMax-H3 参考图呈现方式',
+          description: (
+            <div className="space-y-2">
+              <p>
+                决定如何向模型呈现静态参考图，包括数据集控制图和采样控制图。参考视频始终使用视频路径。
+              </p>
+              <p>
+                <strong>图片</strong>：使用原生 ref2va 方案，以单帧参考块呈现，并作为{' '}
+                <code>&lt;Picture i&gt;</code> 块送入 Qwen3-VL；图片只会缩小，不会放大。
+              </p>
+              <p>
+                <strong>静态视频片段</strong>：将图片保持 5 帧（2 个潜空间帧），并完全按参考视频路径处理，包括按目标像素面积匹配尺寸、
+                多帧参考块和带时间戳的 <code>&lt;Video k&gt;</code> 呈现方式。适合使用图片参考训练、但使用视频参考采样的场景，
+                使 LoRA 学到实际采样时使用的路径。每张参考图会增加少量序列行。可通过{' '}
+                <code>model_kwargs.image_ref_video_frames</code> 调整帧数（须符合 17n+5）；修改后会重新缓存文本嵌入。
+              </p>
+            </div>
+          ),
+        },
+      },
     ],
     modelNotes: (
       <div className="space-y-2">
         <p>
-          参考图或参考视频会作为主体、风格条件，而不是首帧。参考内容保持自身宽高比：图片只会缩小，不会放大；
-          宽高比一致的视频参考会匹配目标尺寸。每个参考作为独立块加入序列，并以 <code>&lt;Picture i&gt;</code>
-          视觉块送入 Qwen3-VL 条件编码器。训练时从数据集控制路径读取，采样时使用采样控制输入；目前不支持音频参考。
+          参考图或参考视频会作为主体、风格条件，而不是首帧。参考内容保持自身宽高比，并按目标像素面积匹配尺寸：图片只会缩小，
+          不会放大；宽高比一致的视频参考会匹配目标尺寸。每个参考作为独立块加入序列，并以{' '}
+          <code>&lt;Picture i&gt;</code>（图片）或带时间戳的 <code>&lt;Video k&gt;</code>（视频）视觉块送入 Qwen3-VL
+          条件编码器。训练时从数据集控制路径读取，采样时使用采样控制输入，且始终作为参考内容。通过“参考图呈现方式”可将静态图片按短视频片段路径处理。
         </p>
         <p>
           权重与 MiniMax-H3 相同，从设置中的{' '}
