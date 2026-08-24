@@ -43,7 +43,11 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
     assert "Reference-to-video" not in options
+    assert "label: '参考图呈现方式'" in options
+    assert "label: '静态视频片段'" in options
+    assert "Image Reference Presentation" not in options
     assert "Model notes" not in simple_job
+    assert 'label="批次大小"' in simple_job
 
 
 def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
@@ -66,7 +70,7 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.3"' in version
+    assert 'VERSION = "1.18.4"' in version
 
 
 def test_minimax_h3_ref2va_supports_video_references():
