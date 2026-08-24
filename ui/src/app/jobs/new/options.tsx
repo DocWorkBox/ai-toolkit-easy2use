@@ -923,7 +923,7 @@ export const modelArchs: ModelArch[] = [
       'config.process[0].train.do_guidance_loss': [true, undefined],
       'config.process[0].train.guidance_loss_target': [3.5, undefined],
       'config.process[0].model.assistant_lora_path': [
-        '/datasets/ComfyUI/models/loras/minimax_h3_ref2va_training_adapter_v1.safetensors',
+        'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
         undefined,
       ],
       'config.process[0].network.linear': [16, defaultLinearRank],
@@ -988,13 +988,13 @@ export const modelArchs: ModelArch[] = [
             setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
             setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
             setJobConfig(
-              '/datasets/ComfyUI/models/loras/minimax_h3_ref2va_training_adapter_v1.safetensors',
+              'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
               'config.process[0].model.assistant_lora_path',
             );
           } else if (value === 'both') {
             setJobConfig(true, 'config.process[0].train.do_guidance_loss');
             setJobConfig(
-              '/datasets/ComfyUI/models/loras/minimax_h3_ref2va_training_adapter_v1.safetensors',
+              'ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors',
               'config.process[0].model.assistant_lora_path',
             );
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {

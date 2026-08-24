@@ -52,7 +52,7 @@ from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.memory_management import MemoryManager
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
-from toolkit.paths import MODELS_PATH
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.util.comfy_quant_import import import_comfy_quantized_layers
 from toolkit.util.ostris_quant import OstrisLinear
 from toolkit.samplers.custom_flowmatch_sampler import (
@@ -113,6 +113,14 @@ COMFY_FILES = {
 }
 # tokenizer/processor/text-encoder config come from the original repo (tiny files)
 ORIGINAL_REPO = "/datasets/studio/huggingface/models/MiniMax-H3"
+REF2VA_TRAINING_ADAPTER_REPO_PATH = (
+    "ostris/minimax_h3_training_adapter/"
+    "minimax_h3_ref2va_training_adapter_v1.safetensors"
+)
+LEGACY_REF2VA_TRAINING_ADAPTER_PATH = (
+    "/datasets/ComfyUI/models/loras/"
+    "minimax_h3_ref2va_training_adapter_v1.safetensors"
+)
 
 
 def new_save_image_function(
@@ -305,21 +313,24 @@ class MinimaxH3Model(BaseModel):
         deliberately NOT merged into the base weights — the transformer is
         pre-quantized, and a merge would resample every int8 scale.
 
-        Path resolution: a local path is used as-is; otherwise the loras
-        folder under MODELS_PATH is searched recursively for the filename;
-        otherwise a ``user/repo/file.safetensors`` hub path downloads into
-        MODELS_PATH/loras/training_adapters/.
+        Path resolution: a local path is used as-is; otherwise the toolkit's
+        persistent adapter folder is searched for the filename; otherwise a
+        ``user/repo/file.safetensors`` hub path downloads into
+        <TOOLKIT_ROOT>/models/loras/training_adapters/.
         """
         from toolkit.config_modules import NetworkConfig
         from toolkit.lora_special import LoRASpecialNetwork
 
         self.print_and_status_update("Loading assistant LoRA")
         lora_path = self.model_config.assistant_lora_path
+        if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:
+            lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH
         if not os.path.exists(lora_path):
             filename = os.path.basename(lora_path)
-            found = self._find_file_recursive(
-                os.path.join(MODELS_PATH, "loras"), filename
+            adapter_root = os.path.join(
+                TOOLKIT_ROOT, "models", "loras", "training_adapters"
             )
+            found = self._find_file_recursive(adapter_root, filename)
             if found is not None:
                 lora_path = found
             else:
@@ -327,18 +338,17 @@ class MinimaxH3Model(BaseModel):
                 if len(lora_splits) != 3:
                     raise ValueError(
                         f"Assistant LoRA path {lora_path} is not a local path, a "
-                        f"file under {os.path.join(MODELS_PATH, 'loras')}, or a "
+                        f"file under {adapter_root}, or a "
                         "'user/repo/file.safetensors' hub path."
                     )
                 import huggingface_hub
 
-                target_dir = os.path.join(MODELS_PATH, "loras", "training_adapters")
-                os.makedirs(target_dir, exist_ok=True)
+                os.makedirs(adapter_root, exist_ok=True)
                 try:
                     lora_path = huggingface_hub.hf_hub_download(
                         repo_id="/".join(lora_splits[:2]),
                         filename=lora_splits[2],
-                        local_dir=target_dir,
+                        local_dir=adapter_root,
                     )
                 except Exception as e:
                     raise ValueError(

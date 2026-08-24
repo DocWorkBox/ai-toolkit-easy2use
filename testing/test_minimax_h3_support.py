@@ -52,9 +52,12 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
     adapter_path = "/datasets/ComfyUI/models/loras/minimax_h3_training_adapter_v1.safetensors"
-    ref2va_adapter_path = "/datasets/ComfyUI/models/loras/minimax_h3_ref2va_training_adapter_v1.safetensors"
-    assert adapter_path in options
-    assert ref2va_adapter_path in options
+    ref2va_adapter_path = (
+        "ostris/minimax_h3_training_adapter/"
+        "minimax_h3_ref2va_training_adapter_v1.safetensors"
+    )
+    assert options.count(adapter_path) == 3
+    assert options.count(ref2va_adapter_path) == 3
     assert "label: '蒸馏保持方式'" in options
     assert "label: '对比引导'" in options
     assert "label: '训练适配器'" in options
@@ -71,6 +74,18 @@ def test_minimax_h3_ref2va_supports_video_references():
 
     assert "self.supports_video_control_images = True" in model
     assert "load_ref_video_latent" in model
+
+
+def test_minimax_h3_remote_adapters_use_writable_toolkit_models_folder():
+    model = MODEL_SOURCE.read_text(encoding="utf-8")
+
+    assert "from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT" in model
+    assert 'LEGACY_REF2VA_TRAINING_ADAPTER_PATH' in model
+    assert 'if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:' in model
+    assert 'lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH' in model
+    assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in model
+    assert "found = self._find_file_recursive(adapter_root, filename)" in model
+    assert "local_dir=adapter_root" in model
 
 
 def test_aigate_comfy_models_path_is_the_effective_ui_default():
