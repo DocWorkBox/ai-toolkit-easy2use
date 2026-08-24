@@ -30,6 +30,7 @@ def test_minimax_h3_is_registered_with_custom_training_components():
 def test_minimax_h3_ui_defaults_and_notes_are_localized():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     simple_job = SIMPLE_JOB_SOURCE.read_text(encoding="utf-8")
+    docs = DOCS_SOURCE.read_text(encoding="utf-8")
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
     assert "name: 'minimax_h3'" in options
@@ -48,6 +49,11 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "Image Reference Presentation" not in options
     assert "Model notes" not in simple_job
     assert 'label="批次大小"' in simple_job
+    assert 'docKey="datasets.batch_size"' in simple_job
+    assert 'label="音频损失倍率"' in simple_job
+    assert "Audio Loss Multiplier" not in simple_job
+    assert "'train.audio_loss_multiplier':" in docs
+    assert "'datasets.batch_size':" in docs
 
 
 def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():

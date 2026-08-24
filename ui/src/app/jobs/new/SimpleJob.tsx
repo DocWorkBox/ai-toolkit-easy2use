@@ -841,11 +841,11 @@ export default function SimpleJob({
                 />
                 {modelArch?.additionalSections?.includes('train.audio_loss_multiplier') && (
                   <NumberInput
-                    label="Audio Loss Multiplier"
+                    label="音频损失倍率"
                     className="pt-2"
                     value={jobConfig.config.process[0].train.audio_loss_multiplier ?? 1.0}
                     onChange={value => setJobConfig(value, 'config.process[0].train.audio_loss_multiplier')}
-                    placeholder="eg. 1.0"
+                    placeholder="例如 1.0"
                     docKey={'train.audio_loss_multiplier'}
                     min={0}
                   />
@@ -1303,6 +1303,7 @@ export default function SimpleJob({
                           setJobConfig(value == null ? undefined : value, `config.process[0].datasets[${i}].batch_size`)
                         }
                         placeholder={`${jobConfig.config.process[0].train.batch_size}`}
+                        docKey="datasets.batch_size"
                         min={1}
                         allowEmpty
                       />
