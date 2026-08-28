@@ -149,6 +149,14 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
 def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
     by_id = {item["id"]: item for item in _catalog()["models"]}
 
+    qwen25 = by_id["qwen25-omni-h3-prompt-rewriter"]
+    assert qwen25["family"] == "Qwen2.5-Omni"
+    assert qwen25["path"] == "./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
+    assert qwen25["download_url"] == (
+        "https://huggingface.co/"
+        "zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
+    )
+
     checkpoint_paths = {
         by_id["qwen3-omni-instruct"]["path"],
         by_id["qwen3-omni-thinking"]["path"],
@@ -207,6 +215,8 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert "ACE-Step/acestep-" not in caption_job
     assert "Qwen/Qwen3-VL-" not in caption_options
     assert "ai-toolkit/Qwen3-Omni-" not in caption_options
+    assert "zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter" not in caption_options
+    assert "./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter" in caption_options
     assert "./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors" in caption_job
     assert "name_or_path: './models/Flex.1-alpha'" in job_config
     assert 'MISTRAL_PATH = "./models/Mistral-Small-3.1-24B-Instruct-2503"' in flux2

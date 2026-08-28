@@ -26,6 +26,7 @@ def test_protable_branch_keeps_local_model_defaults():
     assert "'ostris/minimax_h3_training_adapter/" not in options
     assert "'./models/Qwen3-VL-8B-Instruct'" in captioners
     assert "'./models/Qwen3.6-27B'" in captioners
+    assert "'./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter'" in captioners
     assert "'./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors'" in captioners
     assert (
         "'./models/diffusion_models/"
