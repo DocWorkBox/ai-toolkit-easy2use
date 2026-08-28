@@ -17,6 +17,8 @@ def test_qwen25_omni_h3_builds_system_prompt_video_messages():
     assert '"role": "user"' in source
     assert '{"type": "video", "video": file_path}' in source
     assert "use_audio_in_video=use_audio" in source
+    assert "stop_strings=FOLLOWUP_STOP_STRINGS" in source
+    assert "eos_token_id=self.processor.tokenizer.eos_token_id" in source
 
 
 def test_qwen25_omni_h3_is_registered_and_uses_aigate_defaults():
@@ -42,3 +44,42 @@ def test_qwen25_omni_h3_is_registered_and_uses_aigate_defaults():
     assert "overall_soundscape:" in options_source
     assert "non_diegetic_music:" in options_source
     assert "You are a professional multimodal video analyst" in options_source
+
+
+def test_qwen25_omni_h3_discards_generated_followup_conversation():
+    from extensions_built_in.captioner.caption_output import (
+        extract_first_h3_caption,
+    )
+
+    raw = """integrated_multimodal_description:
+[Shot 1] A man sits at a desk.
+overall_soundscape:
+Quiet room tone.
+non_diegetic_music:
+N/A
+Assistant
+integrated_multimodal_description:
+[Shot 1] A duplicate answer.
+overall_soundscape:
+Duplicate ambience.
+non_diegetic_music:
+N/A
+Human: What is the audio track?
+请详细描述视频中人物的面部特征和表情变化。"""
+
+    assert extract_first_h3_caption(raw) == """integrated_multimodal_description:
+[Shot 1] A man sits at a desk.
+overall_soundscape:
+Quiet room tone.
+non_diegetic_music:
+N/A"""
+
+
+def test_qwen25_omni_h3_keeps_unstructured_output_for_diagnostics():
+    from extensions_built_in.captioner.caption_output import (
+        extract_first_h3_caption,
+    )
+
+    raw = "The model did not follow the requested output contract."
+
+    assert extract_first_h3_caption(raw) == raw

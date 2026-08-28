@@ -5,10 +5,19 @@ import torch
 from toolkit.basic import flush
 
 from .BaseCaptioner import BaseCaptioner
+from .caption_output import extract_first_h3_caption
 
 
 VIDEO_FPS = 2
 USER_INSTRUCTION = "Analyze the supplied video and its audio track."
+FOLLOWUP_STOP_STRINGS = [
+    "\nAssistant\n",
+    "\nHuman:",
+    "\nUser:",
+    "\nassistant\n",
+    "\nhuman:",
+    "\nuser:",
+]
 
 
 class Qwen2_5OmniH3Captioner(BaseCaptioner):
@@ -121,6 +130,10 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
                 **inputs,
                 use_audio_in_video=use_audio,
                 max_new_tokens=self.caption_config.max_new_tokens,
+                stop_strings=FOLLOWUP_STOP_STRINGS,
+                tokenizer=self.processor.tokenizer,
+                eos_token_id=self.processor.tokenizer.eos_token_id,
+                pad_token_id=self.processor.tokenizer.pad_token_id,
             )
             generated_ids = generated_ids[:, inputs["input_ids"].shape[1] :]
             caption = self.processor.batch_decode(
@@ -128,7 +141,7 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
             )[0]
-            return caption.strip()
+            return extract_first_h3_caption(caption)
         finally:
             if self.caption_config.low_vram:
                 self.model.to("cpu")
