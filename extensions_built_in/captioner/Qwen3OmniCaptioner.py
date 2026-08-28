@@ -60,6 +60,11 @@ CONVROT_MODELS = {
         "base_repo": "Qwen/Qwen3-Omni-30B-A3B-Thinking",
         "thinking": True,
     },
+    "/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated": {
+        "filename": "huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors",
+        "base_repo": "Qwen/Qwen3-Omni-30B-A3B-Thinking",
+        "thinking": True,
+    },
 }
 DEFAULT_CONVROT_MODEL = "ai-toolkit/Qwen3-Omni-30B-A3B-Instruct"
 

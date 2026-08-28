@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-MODEL_PATH = "zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
+MODEL_PATH = "/model/ModelScope/zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
 
 
 def test_qwen25_omni_h3_builds_system_prompt_video_messages():
@@ -23,7 +23,7 @@ def test_qwen25_omni_h3_builds_system_prompt_video_messages():
     assert "inject_h3_dialogue" in source
 
 
-def test_qwen25_omni_h3_is_registered_and_uses_compshare_repo_default():
+def test_qwen25_omni_h3_is_registered_and_uses_compshare_local_default():
     extension_source = Path("extensions_built_in/captioner/__init__.py").read_text(
         encoding="utf-8"
     )

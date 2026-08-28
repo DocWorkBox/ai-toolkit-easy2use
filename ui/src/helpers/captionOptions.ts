@@ -235,7 +235,7 @@ export const captionerTypes: CaptionOption[] = [
         group: 'image/video/sound',
         hasMultiLinePrompts: true,
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/model/ModelScope/zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsVideo, defaultExtensions],
             'config.process[0].caption.caption_prompt': [qwen25OmniH3CaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -261,7 +261,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Qwen3-Omni',
         group: 'image/video/sound',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['ai-toolkit/Qwen3-Omni-30B-A3B-Thinking', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', defaultNameOrPath],
             'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage], defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultVideoCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -272,7 +272,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'ai-toolkit/Qwen3-Omni-30B-A3B-Instruct', label: 'ai-toolkit/Qwen3-Omni-30B-A3B-Instruct' },
             { value: 'ai-toolkit/Qwen3-Omni-30B-A3B-Thinking', label: 'ai-toolkit/Qwen3-Omni-30B-A3B-Thinking' },
-            { value: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', label: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated' },
+            { value: '/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', label: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated' },
         ],
         captionPrompts: {
             '通用': defaultVideoCaptionPrompt,
