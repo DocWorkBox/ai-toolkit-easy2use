@@ -31,3 +31,14 @@ def test_qwen3_omni_uses_aigate_huihui_model_by_default():
     ) in section
     assert f"model_name_or_path: '{HUIHUI_MODEL_PATH}'" in config_source
     assert f'"{HUIHUI_MODEL_PATH}":' in backend_source
+
+
+def test_qwen3_omni_prefers_toolkit_local_base_assets():
+    backend_source = Path(
+        "extensions_built_in/captioner/Qwen3OmniCaptioner.py"
+    ).read_text(encoding="utf-8")
+
+    assert "def _resolve_base_assets(self, base_repo: str) -> str:" in backend_source
+    assert 'TOOLKIT_ROOT, "models", os.path.basename(base_repo)' in backend_source
+    assert "config = AutoConfig.from_pretrained(base_assets)" in backend_source
+    assert "self.processor = AutoProcessor.from_pretrained(base_assets)" in backend_source
