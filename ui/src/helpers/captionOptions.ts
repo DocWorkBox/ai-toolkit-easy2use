@@ -51,6 +51,52 @@ const defaultImageCaptionPrompt = buildCaptionPrompt(defaultCaptionPromptTemplat
 
 const defaultVideoCaptionPrompt = "Caption this video as if you were going to try to generate it with a video generator. Describe the visual content, how it moves and changes over time, and the camera work. Also describe the audio, including any speech, music, or sound effects, and transcribe spoken dialogue verbatim in quotes. Be decisive by stating things as they are. Do not say things like \"It appears that\" Or \"possibly\". No preamble. Just get to the point.";
 
+const qwen25OmniH3CaptionPrompt = `You are a professional multimodal video analyst and MiniMax-H3 reverse-prompt captioner.
+
+Analyze the supplied video and, when separately supplied, its audio track. Reconstruct the observed content as a production-ready MiniMax-H3 audio-video generation prompt that could reproduce the source video as closely as possible.
+
+Describe only evidence that is actually visible or audible. Do not invent identities, dialogue, objects, actions, camera movements, sound effects, music, text, or events that cannot be confirmed from the supplied media.
+
+Return exactly these three sections, once each and in this order:
+
+integrated_multimodal_description:
+overall_soundscape:
+non_diegetic_music:
+
+Write the three section names exactly as shown. Do not output explanations, Markdown, analysis, confidence scores, tags, generation parameters, or introductory text.
+
+Write the descriptions in English, except that dialogue, lyrics, signs, subtitles, interface text, and other visible text must remain in their original language.
+
+In integrated_multimodal_description:
+
+- Reconstruct the video in playback order.
+- Begin with the overall visual style, medium, image texture, lighting, color treatment, aspect-ratio composition, and apparent production type.
+- Divide the timeline into sequential shots using [Shot 1], [Shot 2], and so on.
+- Add approximate timestamps for cuts after the first shot, for example: [Shot 2] At 00:03.200.
+- For every shot, describe framing, composition, environment, subjects, clothing, facial appearance, position, pose, expression, action, interaction, object movement, lighting, visible effects, and state changes.
+- Describe camera behavior precisely: static camera, handheld movement, pan, tilt, dolly, tracking, orbit, zoom, crane movement, focus pull, or other observable movement.
+- Distinguish camera movement from subject movement.
+- Preserve the temporal order, action speed, shot duration, editing rhythm, and transitions.
+- Quote visible text exactly in English double quotation marks. Write [unclear] when it cannot be read reliably.
+- If audible dialogue or singing is supplied, assign stable speaker IDs such as (S1) and put only the spoken content inside <d>, for example: <d>[Chinese] 你好。</d>
+- Preserve dialogue exactly. Never complete or guess unclear speech.
+- Do not describe sound that is merely suggested by the visuals.
+
+In overall_soundscape:
+
+- Describe only audible ambience, physical action sounds, environmental sounds, mechanical sounds, and non-verbal human or animal sounds.
+- Do not repeat dialogue, singing, or music here.
+- If no audio track was supplied or the audio cannot be inspected, write N/A. Do not infer sound from the visuals.
+
+In non_diegetic_music:
+
+- Describe only audience-facing background music that is actually audible.
+- State instrumentation, tempo, rhythm, texture, and dynamic changes.
+- Music coming from an object or source inside the scene is diegetic and belongs in integrated_multimodal_description.
+- If no music is audible, or no audio track was supplied, write N/A.
+
+The final result must be sufficiently detailed to serve directly as a MiniMax-H3 generation prompt, while remaining strictly faithful to the supplied video and audio.`;
+
 // Captions videos as MiniMax T2VA training prompts, following the official
 // video prompt writing guide (MiniMaxAI/MiniMax-H3 docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md):
 // three fields, [Shot N] timeline with cut timestamps, controlled camera-motion
@@ -182,6 +228,26 @@ export const captionerTypes: CaptionOption[] = [
         ],
         supportsQuantization: false,
         supportsLowVram: false,
+    },
+    {
+        name: 'Qwen2_5OmniH3Captioner',
+        label: 'Qwen2.5-Omni H3 Prompt Rewriter',
+        group: 'video',
+        hasMultiLinePrompts: true,
+        defaults: {
+            'config.process[0].caption.model_name_or_path': ['/datasets/studio/huggingface/models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
+            'config.process[0].caption.extensions': [extensionsVideo, defaultExtensions],
+            'config.process[0].caption.caption_prompt': [qwen25OmniH3CaptionPrompt, undefined],
+            'config.process[0].caption.max_res': [512, undefined],
+            'config.process[0].caption.max_new_tokens': [4096, undefined],
+        },
+        additionalSections: [
+            'caption.caption_prompt',
+            'caption.max_res',
+            'caption.max_new_tokens',
+        ],
+        supportsQuantization: true,
+        supportsLowVram: true,
     },
     {
         name: 'Qwen3OmniCaptioner',
