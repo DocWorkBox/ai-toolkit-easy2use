@@ -232,7 +232,7 @@ export const captionerTypes: CaptionOption[] = [
     {
         name: 'Qwen2_5OmniH3Captioner',
         label: 'Qwen2.5-Omni H3 Prompt Rewriter',
-        group: 'video',
+        group: 'image/video/sound',
         hasMultiLinePrompts: true,
         defaults: {
             'config.process[0].caption.model_name_or_path': ['/datasets/studio/huggingface/models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
@@ -240,11 +240,18 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.caption_prompt': [qwen25OmniH3CaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
             'config.process[0].caption.max_new_tokens': [4096, undefined],
+            'config.process[0].caption.batch_size': [1, undefined],
+        },
+        captionPrompts: {
+            '通用': defaultVideoCaptionPrompt,
+            'MiniMax H3 音视频': qwen25OmniH3CaptionPrompt,
         },
         additionalSections: [
             'caption.caption_prompt',
             'caption.max_res',
             'caption.max_new_tokens',
+            'caption.batch_size',
+            'caption.layer_offloading',
         ],
         supportsQuantization: true,
         supportsLowVram: true,
@@ -269,8 +276,8 @@ export const captionerTypes: CaptionOption[] = [
         ],
         captionPrompts: {
             '通用': defaultVideoCaptionPrompt,
-            'MiniMax H4 视频': minimaxT2VCaptionPrompt,
-            'MiniMax H4 图片': minimaxImageCaptionPrompt,
+            'MiniMax H3 视频': minimaxT2VCaptionPrompt,
+            'MiniMax H3 图片': minimaxImageCaptionPrompt,
         },
         additionalSections: [
             'caption.caption_prompt',

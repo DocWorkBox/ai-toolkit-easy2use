@@ -41,14 +41,48 @@ def test_qwen25_omni_h3_is_registered_and_uses_aigate_defaults():
         "name: 'Qwen3OmniCaptioner'", 1
     )[0]
     assert MODEL_PATH in section
+    assert "group: 'image/video/sound'" in section
     assert "extensionsVideo" in section
     assert "extensionsImage" not in section
     assert "'config.process[0].caption.max_new_tokens': [4096" in section
+    assert "'config.process[0].caption.batch_size': [1" in section
     assert "qwen25OmniH3CaptionPrompt" in section
+    assert "'MiniMax H3 音视频': qwen25OmniH3CaptionPrompt" in section
+    assert "'通用': defaultVideoCaptionPrompt" in section
+    assert "'caption.batch_size'" in section
+    assert "'caption.layer_offloading'" in section
+    assert "'caption.thinking'" not in section
     assert "integrated_multimodal_description:" in options_source
     assert "overall_soundscape:" in options_source
     assert "non_diegetic_music:" in options_source
     assert "You are a professional multimodal video analyst" in options_source
+
+
+def test_qwen25_omni_h3_implements_batching_and_layer_offloading():
+    source = Path(
+        "extensions_built_in/captioner/Qwen2_5OmniH3Captioner.py"
+    ).read_text(encoding="utf-8")
+
+    assert "MemoryManager.attach(" in source
+    assert "offload_percent=self.caption_config.layer_offloading_percent" in source
+    assert "if self.caption_config.layer_offloading:" in source
+    assert (
+        "if self.caption_config.low_vram and not self.caption_config.layer_offloading:"
+        in source
+    )
+    assert "batch_size = max(1, int(self.caption_config.batch_size))" in source
+    assert "def _caption_batch" in source
+    assert "def run_caption_loop" in source
+
+
+def test_minimax_caption_presets_are_named_for_h3():
+    options_source = Path("ui/src/helpers/captionOptions.ts").read_text(
+        encoding="utf-8"
+    )
+
+    assert "MiniMax H4" not in options_source
+    assert "MiniMax H3 视频" in options_source
+    assert "MiniMax H3 图片" in options_source
 
 
 def test_qwen25_omni_h3_discards_generated_followup_conversation():

@@ -1,6 +1,8 @@
 from collections import OrderedDict
+import os
 
 import torch
+import tqdm
 
 from toolkit.basic import flush
 
@@ -69,7 +71,20 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             quantize(self.model, weights=get_qtype(self.caption_config.qtype))
             freeze(self.model)
             flush()
-        if self.caption_config.low_vram:
+        if self.caption_config.layer_offloading:
+            from toolkit.memory_management import MemoryManager
+
+            self.print_and_status_update(
+                " - layer offloading enabled: linears stream from system RAM"
+            )
+            MemoryManager.attach(
+                self.model,
+                self.device_torch,
+                offload_percent=self.caption_config.layer_offloading_percent,
+                ignore_modules=[self.model.lm_head],
+            )
+            self.model.to(self.device_torch)
+        if self.caption_config.low_vram and not self.caption_config.layer_offloading:
             self.model.to("cpu")
         flush()
 
@@ -142,7 +157,7 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             )
         return frames, audio
 
-    def _generate_text(self, inputs, use_audio_in_video: bool, max_new_tokens: int):
+    def _generate_texts(self, inputs, use_audio_in_video: bool, max_new_tokens: int):
         inputs = inputs.to(self.device_torch).to(self.torch_dtype)
         generated_ids = self.model.generate(
             **inputs,
@@ -154,21 +169,30 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             pad_token_id=self.processor.tokenizer.pad_token_id,
         )
         generated_ids = generated_ids[:, inputs["input_ids"].shape[1] :]
-        return self.processor.batch_decode(
-            generated_ids,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )[0].strip()
+        return [
+            text.strip()
+            for text in self.processor.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )
+        ]
+
+    def _generate_text(self, inputs, use_audio_in_video: bool, max_new_tokens: int):
+        return self._generate_texts(inputs, use_audio_in_video, max_new_tokens)[0]
 
     def _transcribe_audio(self, audio) -> str:
+        return self._transcribe_audio_batch([audio])[0]
+
+    def _transcribe_audio_batch(self, audio_items) -> list[str]:
         text = self.processor.tokenizer.apply_chat_template(
             self._build_transcription_messages(),
             tokenize=False,
             add_generation_prompt=True,
         )
         inputs = self.processor(
-            text=[text],
-            audio=[audio],
+            text=[text] * len(audio_items),
+            audio=audio_items,
             images=None,
             videos=None,
             return_tensors="pt",
@@ -176,52 +200,147 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             sampling_rate=16000,
             use_audio_in_video=False,
         )
-        raw_transcript = self._generate_text(
+        raw_transcripts = self._generate_texts(
             inputs,
             use_audio_in_video=False,
             max_new_tokens=max(128, min(1024, self.caption_config.max_new_tokens)),
         )
-        dialogue = extract_tagged_dialogue(raw_transcript)
-        if not dialogue and raw_transcript.strip().upper() != "N/A":
-            print(
-                "Qwen2.5-Omni detected possible speech but did not return tagged "
-                f"dialogue: {raw_transcript[:300]}"
-            )
-        return dialogue
+        dialogues = []
+        for raw_transcript in raw_transcripts:
+            dialogue = extract_tagged_dialogue(raw_transcript)
+            if not dialogue and raw_transcript.strip().upper() != "N/A":
+                print(
+                    "Qwen2.5-Omni detected possible speech but did not return tagged "
+                    f"dialogue: {raw_transcript[:300]}"
+                )
+            dialogues.append(dialogue)
+        return dialogues
 
-    def get_caption_for_file(self, file_path: str) -> str:
+    def _prepare_item(self, file_path: str) -> dict:
         frames, audio = self._load_media(file_path)
-        use_audio = audio is not None
-        if self.model.device == torch.device("cpu"):
-            self.model.to(self.device_torch)
-        try:
-            dialogue = self._transcribe_audio(audio) if use_audio else ""
-            # Render through the tokenizer because this captioner intentionally
-            # uses a task-specific system prompt and only generates text.
-            text = self.processor.tokenizer.apply_chat_template(
-                self._build_messages(file_path, dialogue),
+        return {"file": file_path, "frames": frames, "audio": audio}
+
+    def _caption_batch(self, items: list[dict]) -> list[str]:
+        use_audio = items[0]["audio"] is not None
+        if any((item["audio"] is not None) != use_audio for item in items):
+            raise ValueError("Qwen2.5-Omni batches must have matching audio modes")
+
+        dialogues = (
+            self._transcribe_audio_batch([item["audio"] for item in items])
+            if use_audio
+            else [""] * len(items)
+        )
+        texts = [
+            self.processor.tokenizer.apply_chat_template(
+                self._build_messages(item["file"], dialogue),
                 tokenize=False,
                 add_generation_prompt=True,
             )
-            inputs = self.processor(
-                text=[text],
-                audio=[audio] if use_audio else None,
-                videos=[frames],
-                return_tensors="pt",
-                padding=True,
-                use_audio_in_video=use_audio,
-                fps=VIDEO_FPS,
-                do_sample_frames=False,
-                size=self._size_kwargs(),
+            for item, dialogue in zip(items, dialogues)
+        ]
+        inputs = self.processor(
+            text=texts,
+            audio=[item["audio"] for item in items] if use_audio else None,
+            videos=[item["frames"] for item in items],
+            return_tensors="pt",
+            padding=True,
+            use_audio_in_video=use_audio,
+            fps=VIDEO_FPS,
+            do_sample_frames=False,
+            size=self._size_kwargs(),
+        )
+        captions = self._generate_texts(
+            inputs,
+            use_audio_in_video=use_audio,
+            max_new_tokens=self.caption_config.max_new_tokens,
+        )
+        return [
+            inject_h3_dialogue(extract_first_h3_caption(caption), dialogue)
+            for caption, dialogue in zip(captions, dialogues)
+        ]
+
+    def run_caption_loop(self):
+        batch_size = max(1, int(self.caption_config.batch_size))
+        buckets = {True: [], False: []}
+        progress = tqdm.tqdm(
+            total=len(self.file_paths), desc="Captioning files", unit="file"
+        )
+
+        def finish(item, caption=None, error=None):
+            if error is None:
+                if caption is not None:
+                    self.save_caption_for_file(item["file"], caption)
+                    self.caption_success_count += 1
+            else:
+                print(f"Error captioning file {item['file']}: {error}")
+                self.caption_failure_count += 1
+                self.caption_failures.append((item["file"], str(error)))
+            self.step_num += 1
+            self.update_step()
+            progress.update(1)
+
+        def process_items(items):
+            if not items:
+                return
+            use_low_vram_moves = (
+                self.caption_config.low_vram
+                and not self.caption_config.layer_offloading
             )
-            caption = self._generate_text(
-                inputs,
-                use_audio_in_video=use_audio,
-                max_new_tokens=self.caption_config.max_new_tokens,
-            )
-            caption = extract_first_h3_caption(caption)
-            return inject_h3_dialogue(caption, dialogue)
+            try:
+                if use_low_vram_moves:
+                    self.model.to(self.device_torch)
+                captions = self._caption_batch(items)
+                for item, caption in zip(items, captions):
+                    finish(item, caption=caption)
+            except Exception as batch_error:
+                if len(items) == 1:
+                    finish(items[0], error=batch_error)
+                    return
+                print(f"Batch failed ({batch_error}); retrying files individually")
+                for item in items:
+                    try:
+                        finish(item, caption=self._caption_batch([item])[0])
+                    except Exception as item_error:
+                        finish(item, error=item_error)
+            finally:
+                if use_low_vram_moves:
+                    self.model.to("cpu")
+                    flush()
+
+        try:
+            for index, file_path in enumerate(self.file_paths, start=1):
+                if self.is_ui_captioner:
+                    self.maybe_stop()
+                    if self.is_stopping:
+                        break
+                self.update_status(
+                    "running",
+                    f"正在准备 {index}/{len(self.file_paths)}：{os.path.basename(file_path)}",
+                )
+                try:
+                    item = self._prepare_item(file_path)
+                except Exception as error:
+                    finish({"file": file_path}, error=error)
+                    continue
+                bucket = buckets[item["audio"] is not None]
+                bucket.append(item)
+                if len(bucket) >= batch_size:
+                    process_items(bucket[:])
+                    bucket.clear()
+            for bucket in buckets.values():
+                process_items(bucket)
         finally:
-            if self.caption_config.low_vram:
+            progress.close()
+
+    def get_caption_for_file(self, file_path: str) -> str:
+        if (
+            not self.caption_config.layer_offloading
+            and self.model.device == torch.device("cpu")
+        ):
+            self.model.to(self.device_torch)
+        try:
+            return self._caption_batch([self._prepare_item(file_path)])[0]
+        finally:
+            if self.caption_config.low_vram and not self.caption_config.layer_offloading:
                 self.model.to("cpu")
                 flush()
