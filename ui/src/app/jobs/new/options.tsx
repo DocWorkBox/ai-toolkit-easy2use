@@ -822,6 +822,7 @@ export const modelArchs: ModelArch[] = [
           { value: 'cg', label: '对比引导' },
           { value: 'ta', label: '训练适配器' },
           { value: 'both', label: '对比引导 + 训练适配器（默认）' },
+          { value: 'none', label: '不使用' },
         ],
         getValue: (config: JobConfig) => {
           const assistantLoraPath = config?.config?.process?.[0]?.model?.assistant_lora_path;
@@ -833,7 +834,10 @@ export const modelArchs: ModelArch[] = [
           if (hasAssistantLoraPath) {
             return 'ta';
           }
-          return 'cg';
+          if (hasContrastiveGuidance) {
+            return 'cg';
+          }
+          return 'none';
         },
         onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
           if (value === 'cg') {
@@ -858,6 +862,10 @@ export const modelArchs: ModelArch[] = [
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
               setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
             }
+          } else if (value === 'none') {
+            setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
+            setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
           }
         },
         doc: {
@@ -964,8 +972,13 @@ export const modelArchs: ModelArch[] = [
           { value: 'cg', label: '对比引导' },
           { value: 'ta', label: '训练适配器' },
           { value: 'both', label: '对比引导 + 训练适配器（默认）' },
+          { value: 'dopsd', label: 'D-OPSD' },
+          { value: 'none', label: '不使用' },
         ],
         getValue: (config: JobConfig) => {
+          if (config?.config?.process?.[0]?.model?.model_kwargs?.dopsd) {
+            return 'dopsd';
+          }
           const assistantLoraPath = config?.config?.process?.[0]?.model?.assistant_lora_path;
           const hasAssistantLoraPath = assistantLoraPath && assistantLoraPath.trim() !== '';
           const hasContrastiveGuidance = config?.config?.process?.[0]?.train?.do_guidance_loss;
@@ -975,9 +988,19 @@ export const modelArchs: ModelArch[] = [
           if (hasAssistantLoraPath) {
             return 'ta';
           }
-          return 'cg';
+          if (hasContrastiveGuidance) {
+            return 'cg';
+          }
+          return 'none';
         },
         onChange: (value: string, config: JobConfig, setJobConfig: (value: any, key: string) => void) => {
+          const kwargs = { ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}) };
+          if (value === 'dopsd') {
+            kwargs.dopsd = true;
+          } else {
+            delete kwargs.dopsd;
+          }
+          setJobConfig(kwargs, 'config.process[0].model.model_kwargs');
           if (value === 'cg') {
             setJobConfig(true, 'config.process[0].train.do_guidance_loss');
             setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
@@ -1000,6 +1023,10 @@ export const modelArchs: ModelArch[] = [
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
               setJobConfig(3.5, 'config.process[0].train.guidance_loss_target');
             }
+          } else if (value === 'dopsd' || value === 'none') {
+            setJobConfig(undefined, 'config.process[0].train.do_guidance_loss');
+            setJobConfig(undefined, 'config.process[0].train.guidance_loss_target');
+            setJobConfig(undefined, 'config.process[0].model.assistant_lora_path');
           }
         },
         doc: {
@@ -1007,7 +1034,9 @@ export const modelArchs: ModelArch[] = [
           description: (
             <div>
               MiniMax-H3 是经过引导蒸馏的模型，直接训练会逐渐破坏蒸馏效果。可通过对比引导或训练适配器来保持蒸馏能力：
-              训练适配器速度更快，但长时间训练仍可能退化；对比引导速度较慢，但通常更稳定。默认同时启用两者。
+              训练适配器速度更快，但长时间训练仍可能退化；对比引导速度较慢，但通常更稳定。D-OPSD 使用自蒸馏：
+              无梯度教师分支将训练目标作为自身参考，其预测结果作为无参考学生分支的训练目标，把参考特征写入触发词；
+              未设置触发词时则写入打标文本。启用后会重新缓存包含像素张量的潜变量。
             </div>
           ),
         },

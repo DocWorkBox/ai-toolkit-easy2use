@@ -12,7 +12,7 @@ export const defaultCaptionJobConfig: CaptionJobConfig = {
         sqlite_db_path: './aitk_db.db',
         device: 'cuda',
         caption: {
-          model_name_or_path: 'ai-toolkit/Qwen3-Omni-30B-A3B-Thinking',
+          model_name_or_path: '/datasets/studio/huggingface/models/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated',
           dtype: 'bf16',
           quantize: true,
           qtype: 'convrot8',

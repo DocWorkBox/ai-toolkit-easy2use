@@ -72,6 +72,11 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     assert "label: '对比引导'" in options
     assert "label: '训练适配器'" in options
     assert "label: '对比引导 + 训练适配器（默认）'" in options
+    assert "{ value: 'dopsd', label: 'D-OPSD' }" in options
+    assert "{ value: 'none', label: '不使用' }" in options
+    assert "kwargs.dopsd = true" in options
+    assert "D-OPSD 使用自蒸馏" in options
+    assert "Distillation Handling Method" not in options
     assert "'config.process[0].train.do_guidance_loss': [true, undefined]" in options
     assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
@@ -84,6 +89,8 @@ def test_minimax_h3_ref2va_supports_video_references():
 
     assert "self.supports_video_control_images = True" in model
     assert "load_ref_video_latent" in model
+    assert 'self.dopsd = bool(self.model_config.model_kwargs.get("dopsd", False))' in model
+    assert "def _build_dopsd_teacher_condition" in model
 
 
 def test_minimax_h3_remote_adapters_use_writable_toolkit_models_folder():
