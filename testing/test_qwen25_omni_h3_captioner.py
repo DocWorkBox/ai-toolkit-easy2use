@@ -19,6 +19,8 @@ def test_qwen25_omni_h3_builds_system_prompt_video_messages():
     assert "use_audio_in_video=use_audio" in source
     assert "stop_strings=FOLLOWUP_STOP_STRINGS" in source
     assert "eos_token_id=self.processor.tokenizer.eos_token_id" in source
+    assert "transcribe every confirmed utterance verbatim" in source
+    assert "Do not answer in multiple turns" in source
 
 
 def test_qwen25_omni_h3_is_registered_and_uses_aigate_defaults():

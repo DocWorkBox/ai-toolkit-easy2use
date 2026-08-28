@@ -9,7 +9,15 @@ from .caption_output import extract_first_h3_caption
 
 
 VIDEO_FPS = 2
-USER_INSTRUCTION = "Analyze the supplied video and its audio track."
+USER_INSTRUCTION = (
+    "Inspect the complete video and audio track before answering. Return the "
+    "three required sections now. If dialogue or singing is audible, "
+    "transcribe every confirmed utterance verbatim in "
+    "integrated_multimodal_description "
+    "using stable speaker IDs and <d>[Language]...</d>. If no speech is audible, "
+    "do not invent any. Do not answer in multiple turns. Stop immediately after "
+    "the non_diegetic_music section."
+)
 FOLLOWUP_STOP_STRINGS = [
     "\nAssistant\n",
     "\nHuman:",
