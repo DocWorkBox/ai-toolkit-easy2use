@@ -9,7 +9,7 @@ from toolkit.basic import flush
 from .BaseCaptioner import BaseCaptioner
 from .caption_output import (
     extract_first_h3_caption,
-    extract_tagged_dialogue,
+    extract_transcribed_dialogue,
     inject_h3_dialogue,
 )
 
@@ -26,7 +26,11 @@ USER_INSTRUCTION = (
 )
 TRANSCRIPTION_SYSTEM_PROMPT = (
     "You are a precise speech transcription engine. Listen to the complete "
-    "audio. If there is no intelligible dialogue or singing, return exactly "
+    "audio, focusing especially on sung vocals mixed with instruments. "
+    "Transcribe every intelligible lyric as well as spoken dialogue. Use "
+    "[unclear] only for words masked by music or noise; do not omit an entire "
+    "vocal line because part of it is unclear. If there is no intelligible "
+    "dialogue or singing, return exactly "
     "N/A. Otherwise return only one line per speaker in the form "
     "(S1) <d>[Language] exact original words</d>. Preserve the original "
     "language. Do not translate, complete, or guess unclear speech."
@@ -124,7 +128,10 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
                     {"type": "audio", "audio": "audio"},
                     {
                         "type": "text",
-                        "text": "Transcribe all intelligible dialogue and lyrics now.",
+                        "text": (
+                            "Separate the vocal from the accompaniment and transcribe "
+                            "all intelligible dialogue and sung lyrics now."
+                        ),
                     },
                 ],
             },
@@ -206,12 +213,16 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             max_new_tokens=max(128, min(1024, self.caption_config.max_new_tokens)),
         )
         dialogues = []
-        for raw_transcript in raw_transcripts:
-            dialogue = extract_tagged_dialogue(raw_transcript)
+        for index, raw_transcript in enumerate(raw_transcripts, start=1):
+            print(
+                f"Qwen2.5-Omni raw audio transcription {index}: "
+                f"{raw_transcript[:1000]}"
+            )
+            dialogue = extract_transcribed_dialogue(raw_transcript)
             if not dialogue and raw_transcript.strip().upper() != "N/A":
                 print(
-                    "Qwen2.5-Omni detected possible speech but did not return tagged "
-                    f"dialogue: {raw_transcript[:300]}"
+                    "Qwen2.5-Omni did not return usable dialogue or lyrics: "
+                    f"{raw_transcript[:300]}"
                 )
             dialogues.append(dialogue)
         return dialogues

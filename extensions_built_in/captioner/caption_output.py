@@ -10,6 +10,13 @@ TAGGED_DIALOGUE_PATTERN = re.compile(
     r"(?:\(S\d+\)[ \t]*:?[ \t]*)?<d>\[[^\]\r\n]+\].*?</d>",
     flags=re.IGNORECASE | re.DOTALL,
 )
+NO_TRANSCRIPTION_PATTERN = re.compile(
+    r"(?:n\s*/?\s*a|none|no (?:intelligible )?"
+    r"(?:speech|dialogue|singing|lyrics|vocals?)"
+    r"(?:\s*(?:or|and)\s*(?:speech|dialogue|singing|lyrics|vocals?))*"
+    r"(?: (?:is|are) (?:audible|present|detected))?)[.!]?",
+    flags=re.IGNORECASE,
+)
 
 
 def _find_heading(text: str, heading: str, start: int = 0):
@@ -71,6 +78,37 @@ def _tagged_dialogue_blocks(text: str) -> list[str]:
 
 def extract_tagged_dialogue(text: str) -> str:
     return "\n".join(_tagged_dialogue_blocks(text))
+
+
+def extract_transcribed_dialogue(text: str) -> str:
+    """Normalize transcription-only output without discarding plain lyrics."""
+    tagged = extract_tagged_dialogue(text)
+    if tagged:
+        return tagged
+
+    text = re.sub(r"<\|(?:im_start|im_end)\|>", "", text).strip()
+    text = re.sub(
+        r"^(?:assistant|transcript(?:ion)?|lyrics?|dialogue|vocals?|singing)\s*:\s*",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
+    text = text.strip("` \t\r\n")
+    if not text or NO_TRANSCRIPTION_PATTERN.fullmatch(text):
+        return ""
+
+    speaker_match = re.match(r"\((S\d+)\)\s*:?[ \t]*", text, re.IGNORECASE)
+    speaker = speaker_match.group(1).upper() if speaker_match else "S1"
+    if speaker_match:
+        text = text[speaker_match.end() :].strip()
+
+    language_match = re.match(r"\[([^\]\r\n]+)\]\s*", text)
+    language = language_match.group(1).strip() if language_match else "Unknown"
+    if language_match:
+        text = text[language_match.end() :].strip()
+    if not text:
+        return ""
+    return f"({speaker}) <d>[{language}] {text}</d>"
 
 
 def _dialogue_key(block: str) -> str:

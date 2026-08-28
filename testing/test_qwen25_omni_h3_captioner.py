@@ -125,15 +125,42 @@ def test_qwen25_omni_h3_keeps_unstructured_output_for_diagnostics():
 
 
 def test_qwen25_omni_h3_extracts_tagged_dialogue_from_transcription():
-    from extensions_built_in.captioner.caption_output import extract_tagged_dialogue
+    from extensions_built_in.captioner.caption_output import extract_transcribed_dialogue
 
     raw = """Assistant
 (S1) <d>[Chinese] 目前是有一个硬伤啊。</d>
 (S2): <d>[English] I understand.</d>
 Human: Continue."""
 
-    assert extract_tagged_dialogue(raw) == """(S1) <d>[Chinese] 目前是有一个硬伤啊。</d>
+    assert extract_transcribed_dialogue(raw) == """(S1) <d>[Chinese] 目前是有一个硬伤啊。</d>
 (S2): <d>[English] I understand.</d>"""
+
+
+def test_qwen25_omni_h3_preserves_plain_sung_lyrics_from_transcription():
+    from extensions_built_in.captioner.caption_output import extract_transcribed_dialogue
+
+    raw = "Lyrics: I keep on running through the night"
+
+    assert extract_transcribed_dialogue(raw) == (
+        "(S1) <d>[Unknown] I keep on running through the night</d>"
+    )
+
+
+def test_qwen25_omni_h3_preserves_language_tagged_untagged_lyrics():
+    from extensions_built_in.captioner.caption_output import extract_transcribed_dialogue
+
+    raw = "[Chinese] 我会一直唱到天亮"
+
+    assert extract_transcribed_dialogue(raw) == (
+        "(S1) <d>[Chinese] 我会一直唱到天亮</d>"
+    )
+
+
+def test_qwen25_omni_h3_keeps_no_speech_result_empty():
+    from extensions_built_in.captioner.caption_output import extract_transcribed_dialogue
+
+    assert extract_transcribed_dialogue("N/A") == ""
+    assert extract_transcribed_dialogue("No intelligible speech or singing.") == ""
 
 
 def test_qwen25_omni_h3_injects_missing_dialogue_into_integrated_section():
