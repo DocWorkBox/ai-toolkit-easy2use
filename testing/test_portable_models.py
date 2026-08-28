@@ -29,7 +29,9 @@ def test_catalog_uses_local_paths_and_official_download_links():
             assert item["path"].startswith("./models/"), item
         assert "\\" not in item["path"], item
         assert item["kind"] in {"directory", "file"}, item
-        assert item["download_url"].startswith("https://huggingface.co/"), item
+        assert item["download_url"].startswith(
+            ("https://huggingface.co/", "https://modelscope.cn/models/")
+        ), item
 
 
 def test_catalog_defines_special_component_layouts():
@@ -153,7 +155,7 @@ def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
     assert qwen25["family"] == "Qwen2.5-Omni"
     assert qwen25["path"] == "./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
     assert qwen25["download_url"] == (
-        "https://huggingface.co/"
+        "https://modelscope.cn/models/"
         "zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter"
     )
 
