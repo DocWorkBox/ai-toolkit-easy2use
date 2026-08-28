@@ -545,12 +545,24 @@ class Qwen3OmniCaptioner(BaseCaptioner):
             repo_id=name_or_path, filename=filename, local_dir=te_dir
         )
 
+    def _resolve_base_assets(self, base_repo: str) -> str:
+        """Prefer config and processor assets stored under toolkit models."""
+        from toolkit.paths import TOOLKIT_ROOT
+
+        local_dir = os.path.join(
+            TOOLKIT_ROOT, "models", os.path.basename(base_repo)
+        )
+        if os.path.isfile(os.path.join(local_dir, "config.json")):
+            return local_dir
+        return base_repo
+
     def load_model(self):
         from accelerate import init_empty_weights
         from safetensors.torch import load_file
 
         ckpt_path = self._resolve_checkpoint()
         base_repo = self._model_info["base_repo"]
+        base_assets = self._resolve_base_assets(base_repo)
         self.is_thinking_model = self._model_info["thinking"]
         # thinking models reason by default; the template's enable_thinking=False
         # (an empty <think></think> block) suppresses it unless the user asked
@@ -559,7 +571,7 @@ class Qwen3OmniCaptioner(BaseCaptioner):
             f"Loading Qwen3-Omni thinker (convrot8, base {base_repo})"
         )
 
-        config = AutoConfig.from_pretrained(base_repo)
+        config = AutoConfig.from_pretrained(base_assets)
         with init_empty_weights(include_buffers=False):
             model = OstrisQwen3OmniThinker(config.thinker_config)
         model.eval()
@@ -653,7 +665,7 @@ class Qwen3OmniCaptioner(BaseCaptioner):
                 ignore_modules=ignore,
             )
         self.model.to(self.device_torch)
-        self.processor = AutoProcessor.from_pretrained(self._model_info["base_repo"])
+        self.processor = AutoProcessor.from_pretrained(base_assets)
         flush()
 
     @staticmethod
@@ -760,6 +772,13 @@ class Qwen3OmniCaptioner(BaseCaptioner):
         else:
             inputs = self._process_items(items)
         inputs = inputs.to(self.device_torch).to(self.torch_dtype)
+        # a generate that dies between static-cache creation and its first
+        # forward leaves model._cache with uninitialized layers; transformers
+        # then raises AttributeError reading cache.max_batch_size on every
+        # later call, masking the original error — drop the stale cache
+        stale_cache = getattr(self.model, "_cache", None)
+        if stale_cache is not None and not stale_cache.is_initialized:
+            del self.model._cache
         # under static cache, generate hands the forward a prepared 4D mask;
         # the true 2D padding mask is needed for the prefill rope index
         self.model._pad_mask_2d = inputs.get("attention_mask", None)
