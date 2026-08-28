@@ -6,6 +6,10 @@ H3_CAPTION_SECTIONS = (
     "overall_soundscape:",
     "non_diegetic_music:",
 )
+TAGGED_DIALOGUE_PATTERN = re.compile(
+    r"(?:\(S\d+\)[ \t]*:?[ \t]*)?<d>\[[^\]\r\n]+\].*?</d>",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 
 def _find_heading(text: str, heading: str, start: int = 0):
@@ -56,4 +60,49 @@ def extract_first_h3_caption(text: str) -> str:
     return "\n".join(
         f"{heading}\n{content}" if content else heading
         for heading, content in zip(H3_CAPTION_SECTIONS, contents)
+    )
+
+
+def _tagged_dialogue_blocks(text: str) -> list[str]:
+    return [
+        match.group(0).strip() for match in TAGGED_DIALOGUE_PATTERN.finditer(text)
+    ]
+
+
+def extract_tagged_dialogue(text: str) -> str:
+    return "\n".join(_tagged_dialogue_blocks(text))
+
+
+def _dialogue_key(block: str) -> str:
+    tagged = re.search(r"<d>.*?</d>", block, flags=re.IGNORECASE | re.DOTALL)
+    value = tagged.group(0) if tagged is not None else block
+    return re.sub(r"\s+", " ", value).strip().lower()
+
+
+def inject_h3_dialogue(caption: str, dialogue: str) -> str:
+    caption = caption.strip()
+    dialogue = dialogue.strip()
+    if not dialogue:
+        return caption
+
+    existing = {_dialogue_key(block) for block in _tagged_dialogue_blocks(caption)}
+    missing = [
+        block
+        for block in _tagged_dialogue_blocks(dialogue)
+        if _dialogue_key(block) not in existing
+    ]
+    if not missing:
+        return caption
+    dialogue = "\n".join(missing)
+
+    soundscape = _find_heading(caption, "overall_soundscape:")
+    if soundscape is None:
+        return caption
+
+    integrated = caption[: soundscape.start()].rstrip()
+    remainder = caption[soundscape.start() :].lstrip()
+    return (
+        f"{integrated}\n"
+        f"The audible dialogue is transcribed as follows:\n{dialogue}\n"
+        f"{remainder}"
     )
