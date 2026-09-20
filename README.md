@@ -18,7 +18,8 @@
 - 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image / Krea 2 / Mage-Flow 等
 - 编辑：Qwen-Image-Edit / Qwen-Image-Edit-2509 / Qwen-Image-Edit-2511 / HiDream E1 / FireRed-Image-Edit-1.1 / Mage-Flow Edit 预设
 - 视频：Wan 2.x / LTX-2 / LTX-2.3 / MiniMax-H3 等
-- 音频：ACE-Step 1.5 / ACE-Step 1.5 XL
+- 音频：ACE-Step 1.5 / ACE-Step 1.5 XL / YuE2
+- 多模态文本：Qwen2.5-Omni 训练，以及 Qwen3-Omni / Qwen2.5-Omni / MOSS 音视频打标
 - 实验性：Zeta-Chroma 等
 
 ## 环境要求
@@ -158,6 +159,11 @@ $env:AI_TOOLKIT_AUTH="your_token"; npm run build_and_start
 
 ## 近期已并入的重要上游能力
 
+- 新增插件化模型 UI 注册架构，内置模型可通过各扩展目录的 `ui.tsx` 注册训练和生成选项
+- 新增独立生成页面、推理引擎、LoRA 浏览 / 上传 / 动态挂载能力
+- 新增 YuE2 音乐训练、Qwen2.5-Omni 多模态文本训练和 MOSS 音乐打标支持
+- MiniMax-H3 新增 Ref2V、VSA 和参考图呈现方式等训练能力
+- 新增 AdamConvRot 优化器，同时保留 Automagic v3、Automagic 实验组和 Singularity
 - MiniMax-H3 T2V / I2V 训练支持
 - 新增跨平台环境 manager、Windows 无窗口启停和 NVIDIA Spark 构建支持
 - 视频 latent 多线程预处理、AV1/PyAV 解码回退和无音轨视频兼容

@@ -6,7 +6,10 @@ from .manager_modules import (
     LinearLayerMemoryManager,
     ConvLayerMemoryManager,
     OstrisLinearLayerMemoryManager,
+    EmbeddingLayerMemoryManager,
     _DEVICE_STATE,
+    _move_own_param,
+    _storage_device,
 )
 import random
 
@@ -54,13 +57,33 @@ class MemoryManager:
         self.unmanaged_modules: list[torch.nn.Module] = []
 
     def memory_managed_to(self, *args, **kwargs):
-        # first move all the unmanaged modules
-        for module in self.unmanaged_modules:
-            if isinstance(module, torch.Tensor):
-                # Parameters and bare tensor buffers cannot move this way
-                module.data = module.data.to(*args, **kwargs)
-            else:
-                module.to(*args, **kwargs)
+        # the manager owns placement: the resident (unmanaged/ignore) set must
+        # live on the compute device for forwards to work. Legacy parking
+        # gestures (.to("cpu") between phases) would strand it there — the
+        # swapped .device property keeps reporting the compute device, so no
+        # holder heal ever brings it back. Honor device moves only TO the
+        # compute device; skip the device part of anything else (dtype
+        # handling below is unaffected).
+        target_device = kwargs.get("device", None)
+        for arg in args:
+            if isinstance(arg, (torch.device, str)) and not isinstance(arg, torch.dtype):
+                try:
+                    target_device = torch.device(arg)
+                except (TypeError, RuntimeError):
+                    pass
+            elif isinstance(arg, torch.device):
+                target_device = arg
+        move_resident = target_device is not None and (
+            torch.device(target_device) == torch.device(self.process_device)
+        )
+        if target_device is None or move_resident:
+            # first move all the unmanaged modules
+            for module in self.unmanaged_modules:
+                if isinstance(module, torch.Tensor):
+                    # Parameters and bare tensor buffers cannot move this way
+                    module.data = module.data.to(*args, **kwargs)
+                else:
+                    module.to(*args, **kwargs)
         # check for a dtype argument
         dtype = None
         if "dtype" in kwargs:
@@ -92,12 +115,68 @@ class MemoryManager:
         module._mm_to = module.to
         module.to = module._memory_manager.memory_managed_to
 
-        # add ignore modules to unmanaged list
+        # a fully offloaded module's parameters all live on cpu, which makes
+        # ModelMixin.device (and pipelines deriving their execution device
+        # from it) report "cpu" and plant latents/timesteps there. Report the
+        # compute device instead via an in-place subclass (same class-swap
+        # pattern as OstrisLinear/adopt_component); detach() restores it.
+        try:
+            module._mm_orig_class = module.__class__
+            managed_cls = type(
+                module.__class__.__name__,
+                (module.__class__,),
+                {
+                    "device": property(
+                        lambda self: self._memory_manager.process_device,
+                        lambda self, value: self.__dict__.__setitem__(
+                            "_mm_device_shadow", value
+                        ),
+                    )
+                },
+            )
+            # transformers keys per-class registries (e.g. the hidden-states
+            # capture specs) by str(model.__class__); make the subclass
+            # stringify identically so those lookups still hit
+            managed_cls.__module__ = module.__class__.__module__
+            managed_cls.__qualname__ = module.__class__.__qualname__
+            module.__class__ = managed_cls
+        except TypeError:
+            # exotic class layouts (__slots__ etc.): keep the original class
+            module._mm_orig_class = None
+
+        # add ignore modules to unmanaged list; they must stay RESIDENT on the
+        # compute device (fp32 tables, pad tokens) — a model attached while
+        # parked on cpu would otherwise feed cpu tensors into gpu math
         for im in ignore_modules:
             module._memory_manager.unmanaged_modules.append(im)
+            try:
+                if isinstance(im, torch.Tensor):
+                    im.data = im.data.to(device)
+                elif isinstance(im, torch.nn.Module):
+                    im.to(device)
+            except Exception:
+                pass
 
-        # count ignore modules as processed
+        # count ignore modules as processed — including their whole subtree: an
+        # ignored module stays resident, so none of its children may get a
+        # layer manager (a managed child would pin its weight back to cpu
+        # behind the parent's back)
         modules_processed = [x for x in ignore_modules]
+        for im in ignore_modules:
+            if isinstance(im, torch.nn.Module):
+                modules_processed.extend(im.modules())
+
+        # weights tied to an embedding (lm_head <-> embed_tokens) must not be
+        # managed: pinning the linear's weight to cpu strands the (unmanaged)
+        # embedding that shares the same tensor
+        embedding_weight_ptrs = {
+            m.weight.data_ptr()
+            for m in module.modules()
+            if isinstance(m, torch.nn.Embedding)
+        }
+        # weights of embeddings that get MANAGED (cpu-resident bouncing): a
+        # linear sharing one of these must be managed too, not left resident
+        managed_embedding_ptrs = set()
         # attach to all modules
         for name, sub_module in module.named_modules():
             for child_name, child_module in sub_module.named_modules():
@@ -110,6 +189,14 @@ class MemoryManager:
                         # randomly skip some modules
                         if random.random() > offload_percent:
                             skip = True
+                    if (
+                        not getattr(child_module, "is_ostris_quantized", False)
+                        and isinstance(getattr(child_module, "weight", None), torch.Tensor)
+                        and child_module.weight.data_ptr() in embedding_weight_ptrs
+                        and child_module.weight.data_ptr()
+                        not in managed_embedding_ptrs
+                    ):
+                        skip = True
                     if skip:
                         module._memory_manager.unmanaged_modules.append(child_module)
                     else:
@@ -158,14 +245,62 @@ class MemoryManager:
                                 )
                             modules_processed.append(ara)
                     modules_processed.append(child_module)
+                elif (
+                    isinstance(child_module, torch.nn.Embedding)
+                    and child_module not in modules_processed
+                    and child_module.weight.numel()
+                    * child_module.weight.element_size()
+                    > 64 * 1024 * 1024
+                ):
+                    # (the cpu gather is autograd-transparent, so a trainable
+                    # embedding still gets grads — they just land on cpu)
+                    # large frozen vocab table: cpu-resident, rows gathered on
+                    # cpu (only the looked-up tokens cross the bus)
+                    EmbeddingLayerMemoryManager.attach(
+                        child_module, module._memory_manager
+                    )
+                    # a tied lm_head must bounce the (now cpu-resident) shared
+                    # weight rather than stay resident; record both the pre-
+                    # and post-move ptrs (a cpu->cpu move keeps the tensor)
+                    managed_embedding_ptrs.add(child_module.weight.data_ptr())
+                    embedding_weight_ptrs.add(child_module.weight.data_ptr())
+                    modules_processed.append(child_module)
                 elif child_module.__class__.__name__ in UNMANAGED_MODULES or any(
                     inc in child_module.__class__.__name__
                     for inc in UNMANAGED_MODULES_INCLUDES
                 ):
-                    # unmanaged
-                    module._memory_manager.unmanaged_modules.append(child_module)
+                    # unmanaged — but never re-list a module the nested walk
+                    # already managed (a managed Embedding landing here would
+                    # get hauled back to the gpu by memory_managed_to), and
+                    # don't append duplicates
+                    if (
+                        child_module not in modules_processed
+                        and not hasattr(child_module, "_layer_memory_manager")
+                        and child_module
+                        not in module._memory_manager.unmanaged_modules
+                    ):
+                        module._memory_manager.unmanaged_modules.append(child_module)
                 else:
                     continue
+
+        # everything NOT managed is the resident set and must live on the
+        # compute device. A model attached while parked on cpu (the offload
+        # load flow) otherwise keeps its rotary buffers / norms / conv towers
+        # on cpu and the first forward explodes on a device mismatch. Managed
+        # layers (pinned-cpu weights, cpu-resident bouncing embeddings) are
+        # skipped via their _layer_memory_manager.
+        for sub in module.modules():
+            if hasattr(sub, "_layer_memory_manager"):
+                continue
+            # quantized tensor subclasses (torchao) ignore `p.data = ...` -- an unmanaged
+            # quantized linear (offload_percent < 1) would stay on cpu; _move_own_param
+            # swaps the Parameter in that case
+            for name, p in list(sub.named_parameters(recurse=False)):
+                if p is not None and _storage_device(p) != device:
+                    _move_own_param(sub, name, p, device)
+            for name, b in sub._buffers.items():
+                if b is not None and b.device != device:
+                    sub._buffers[name] = b.to(device)
 
     @classmethod
     def detach(cls, module: torch.nn.Module):
@@ -178,6 +313,10 @@ class MemoryManager:
         """
         if not hasattr(module, "_memory_manager"):
             return
+
+        if getattr(module, "_mm_orig_class", None) is not None:
+            module.__class__ = module._mm_orig_class
+            del module._mm_orig_class
 
         for unmanaged in module._memory_manager.unmanaged_modules:
             try:

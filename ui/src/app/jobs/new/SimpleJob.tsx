@@ -1,14 +1,13 @@
 'use client';
 import { useMemo } from 'react';
 import {
-  modelArchs,
   ModelArch,
-  groupedModelOptions,
   quantizationOptions,
   defaultQtype,
   jobTypeOptions,
   SampleTags,
 } from './options';
+import { useModelArchs } from '@/extensions/modelArchs';
 import { defaultCompileOptions, defaultDatasetConfig } from './jobConfig';
 import { GroupedSelectOption, JobConfig, SelectOption } from '@/types';
 import { objectCopy, tagsToObj, objToTags } from '@/utils/basic';
@@ -61,9 +60,10 @@ export default function SimpleJob({
   datasetOptions,
   isLoading,
 }: Props) {
+  const { archs: modelArchs, groupedModelOptions } = useModelArchs();
   const modelArch = useMemo(() => {
     return modelArchs.find(a => a.name === jobConfig.config.process[0].model.arch) as ModelArch;
-  }, [jobConfig.config.process[0].model.arch]);
+  }, [modelArchs, jobConfig.config.process[0].model.arch]);
 
   const jobType = useMemo(() => {
     return jobTypeOptions.find(j => j.value === jobConfig.config.process[0].type);
@@ -82,6 +82,7 @@ export default function SimpleJob({
 
   const isVideoModel = !!(modelArch?.group === 'video');
   const isAudioModel = !!(modelArch?.group === 'audio');
+  const isLlmModel = !!(modelArch?.group === 'llm');
 
   const taggedSampleArr: Record<string, any>[] | null = useMemo(() => {
     if (!modelArch) return null;
@@ -280,7 +281,7 @@ export default function SimpleJob({
               value={jobConfig.config.process[0].model.arch}
               docKey="config.process[0].model.arch"
               onChange={value => {
-                handleModelArchChange(jobConfig.config.process[0].model.arch, value, jobConfig, setJobConfig);
+                handleModelArchChange(modelArchs, jobConfig.config.process[0].model.arch, value, jobConfig, setJobConfig);
               }}
               options={groupedModelOptions}
             />
@@ -297,6 +298,18 @@ export default function SimpleJob({
               placeholder=""
               required
             />
+            {modelArch?.additionalSections?.includes('model.model_kwargs.instruction') && (
+              <TextAreaInput
+                label="LLM 提示词"
+                className="pt-2"
+                rows={2}
+                docKey="model.model_kwargs.instruction"
+                value={jobConfig.config.process[0].model.model_kwargs?.instruction ?? ''}
+                onChange={value => setJobConfig(value, 'config.process[0].model.model_kwargs.instruction')}
+                placeholder="请详细描述此内容。"
+                required
+              />
+            )}
             {modelArch?.additionalSections?.includes('model.assistant_lora_path') && (
               <TextInput
                 label="训练适配器路径"
@@ -313,7 +326,7 @@ export default function SimpleJob({
             )}
             {modelArch?.additionalSections?.includes('model.unconditional_lora_path') && (
               <TextInput
-                label="Unconditional Adapter Path"
+                label="无条件适配器路径"
                 value={jobConfig.config.process[0].model.unconditional_lora_path ?? ''}
                 docKey="config.process[0].model.unconditional_lora_path"
                 onChange={(value: string | undefined) => {
@@ -497,7 +510,7 @@ export default function SimpleJob({
                 }}
                 options={transformerQuantizationOptions}
               />
-              {!disableSections.includes('model.quantize_te') && (
+              {!disableSections.includes('model.quantize_te') && !isLlmModel && (
                 <SelectInput
                   label="文本编码器"
                   value={jobConfig.config.process[0].model.quantize_te ? jobConfig.config.process[0].model.qtype_te : ''}
@@ -731,6 +744,7 @@ export default function SimpleJob({
                     { value: 'automagicexperiment', label: 'Automagic Experiment' },
                     { value: 'singularity', label: 'Singularity' },
                     { value: 'singularity_group', label: 'Singularity (group LR)' },
+                    { value: 'adamconvrot', label: 'AdamConvRot' },
                     { value: 'prodigyopt', label: 'Prodigy' },
                     { value: 'prodigy8bit', label: 'Prodigy8Bit' },
                   ]}
@@ -757,6 +771,7 @@ export default function SimpleJob({
                   docKey="train.optimizer_params.weight_decay"
                 />
               </div>
+              {!isLlmModel && (
               <div>
                 {disableSections.includes('train.timestep_type') ? null : (
                   <SelectInput
@@ -851,6 +866,7 @@ export default function SimpleJob({
                   />
                 )}
               </div>
+              )}
               <div>
                 <FormGroup label="EMA（指数移动平均）">
                   <Checkbox

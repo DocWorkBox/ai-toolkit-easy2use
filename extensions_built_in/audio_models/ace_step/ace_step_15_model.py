@@ -11,9 +11,7 @@ from toolkit.prompt_utils import PromptEmbeds, concat_prompt_embeds
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
-from toolkit.util.quantize import get_qtype, quantize, quantize_model
 
-from optimum.quanto import freeze
 from .src.model import (
     AceStep15,
     OobleckVAE,
@@ -112,22 +110,10 @@ class AceStep15Model(BaseAudioModel):
         load_device = device
         if self.model_config.low_vram:
             load_device = "cpu"
-
+            
         models = load_models(model_path, device=load_device, dtype=dtype)
 
         self.model = models["model"]
-
-        if self.model_config.quantize:
-            self.print_and_status_update("Quantizing Transformer")
-            # quantize_model(self, self.model.decoder)
-            quantize(self.model, weights=get_qtype(self.model_config.qtype))
-            freeze(self.model)
-            flush()
-
-        if self.model_config.low_vram:
-            self.print_and_status_update("Moving transformer to CPU")
-            self.model.to("cpu")
-
 
         if (
             self.model_config.layer_offloading
@@ -135,22 +121,24 @@ class AceStep15Model(BaseAudioModel):
         ):
             raise NotImplementedError("Layer offloading not yet implemented for AceStep15Model")
 
+        # quantize + offload + placement, all driven by model_config
+        self.model.aitk_post_load(**self.component_load_kwargs("transformer"))
+        flush()
+
         self.text_encoder = models["text_encoder"]
 
-        if self.model_config.quantize_te:
-            self.print_and_status_update("Quantizing Text Encoder")
-            quantize(self.text_encoder, weights=get_qtype(self.model_config.qtype_te))
-            freeze(self.text_encoder)
-            flush()
-
+        # quantize + offload + placement, all driven by model_config
+        self.text_encoder.aitk_post_load(**self.component_load_kwargs("te"))
+        flush()
+        
         self.vae = models["vae"]
-
+        
         # move back to device
         self.model.to(device)
         self.text_encoder.to(device)
         self.vae.to(device)
         self.tokenizer = models["tokenizer"]
-
+        
         self.pipeline = AceStep15Pipeline(
             transformer=self.model,
             vae=self.vae,
@@ -166,7 +154,7 @@ class AceStep15Model(BaseAudioModel):
             prompts = [prompt]
         else:
             prompts = prompt
-
+        
         if self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
         # we need the encoder from the model
@@ -236,7 +224,7 @@ class AceStep15Model(BaseAudioModel):
 
     def get_transformer_block_names(self) -> Optional[List[str]]:
         return ["layers"]
-
+    
     def get_generation_pipeline(self):
         return self.pipeline
 
@@ -276,6 +264,7 @@ class AceStep15Model(BaseAudioModel):
             time_sig=time_sig,
             language=language,
             guidance_scale=gen_config.guidance_scale,
+            step_callback=lambda i, n, latents: self._emit_sample_step(latents, i, n),
         )
         return output
 
@@ -312,12 +301,12 @@ class AceStep15Model(BaseAudioModel):
             context=context.detach(),
         )
         return pred
-
+    
     def get_loss_target(self, *args, **kwargs):
         noise = kwargs.get("noise")
         batch = kwargs.get("batch")
         return (noise - batch.latents).detach()
-
+    
     def encode_audio(self, audio_tensor: torch.Tensor, device=None, dtype=None):
         if device is None:
             device = self.device_torch
