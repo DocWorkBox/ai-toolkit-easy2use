@@ -3,7 +3,7 @@ from pathlib import Path
 
 REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MAGEFLOW_SOURCE = Path("extensions_built_in/diffusion_models/mageflow/mageflow.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
+OPTIONS_SOURCE = Path("extensions_built_in/diffusion_models/ui.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 
 
@@ -17,17 +17,17 @@ def test_mageflow_models_are_registered_once():
     assert registry.count("    AnimaModel,") == 1
 
 
-def test_mageflow_uses_bundled_implementation_and_official_repos():
+def test_mageflow_uses_bundled_implementation_and_portable_paths():
     source = MAGEFLOW_SOURCE.read_text(encoding="utf-8")
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
     assert "from .src.transformer import MageFlow, MageFlowParams" in source
     assert "from .src.vae import MageVAE" in source
     assert "from .src.pipeline import MageFlowPipeline" in source
-    assert "name: 'mageflow'" in options
-    assert "name: 'mageflow_edit'" in options
-    assert "microsoft/Mage-Flow-Base" in options
-    assert "microsoft/Mage-Flow-Edit-Base" in options
+    assert 'name: "mageflow"' in options
+    assert 'name: "mageflow_edit"' in options
+    assert "./models/Mage-Flow-Base" in options
+    assert "./models/Mage-Flow-Edit-Base" in options
 
 
 def test_gated_model_help_is_localized():

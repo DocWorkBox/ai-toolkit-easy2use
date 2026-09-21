@@ -354,6 +354,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 logger=self.logger,
                 num_frames=sample_item.num_frames,
                 fps=sample_item.fps,
+                duration=sample_item.duration,
                 ctrl_img=sample_item.ctrl_img,
                 ctrl_idx=sample_item.ctrl_idx,
                 ctrl_img_1=sample_item.ctrl_img_1,
@@ -746,7 +747,8 @@ class BaseSDTrainProcess(BaseTrainProcess):
         self.accelerator.even_batches=False
         
         # # prepare all the models stuff for accelerator (hopefully we dont miss any)
-        self.sd.vae = self.accelerator.prepare(self.sd.vae)
+        if self.sd.vae is not None:
+            self.sd.vae = self.accelerator.prepare(self.sd.vae)
         if self.sd.unet is not None:
             self.sd.unet = self.accelerator.prepare(self.sd.unet)
             # todo always tdo it?
@@ -799,6 +801,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 params,
                 decay=self.train_config.ema_config.ema_decay,
                 use_feedback=self.train_config.ema_config.use_feedback,
+                feedback_rate=self.train_config.ema_config.feedback_rate,
                 param_multiplier=self.train_config.ema_config.param_multiplier,
             )
             # expose to the model: models that run an EMA-teacher forward during training
@@ -1132,7 +1135,8 @@ class BaseSDTrainProcess(BaseTrainProcess):
                 is_reg = any(batch.get_is_reg_list())
                 if batch.tensor is not None:
                     imgs = batch.tensor
-                    imgs = imgs.to(self.device_torch, dtype=dtype)
+                    # waveforms stay fp32 into the audio encoder
+                    imgs = imgs.to(self.device_torch, dtype=torch.float32 if getattr(self.sd, 'is_audio_model', False) else dtype)
                     # dont adjust for regs.
                     if self.train_config.img_multiplier is not None and not is_reg:
                         # do it ad contrast
@@ -1168,34 +1172,11 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     latents = self.sd.encode_images(imgs)
                     batch.latents = latents
 
-                if self.train_config.standardize_latents:
-                    if self.sd.is_xl or self.sd.is_vega or self.sd.is_ssd:
-                        target_mean_list = [-0.1075, 0.0231, -0.0135, 0.2164]
-                        target_std_list = [0.8979, 0.7505, 0.9150, 0.7451]
-                    else:
-                        target_mean_list = [0.2949, -0.3188, 0.0807, 0.1929]
-                        target_std_list = [0.8560, 0.9629, 0.7778, 0.6719]
-
-                    latents_channel_mean = latents.mean(dim=(2, 3), keepdim=True)
-                    latents_channel_std = latents.std(dim=(2, 3), keepdim=True)
-                    latents = (latents - latents_channel_mean) / latents_channel_std
-                    target_mean = torch.tensor(target_mean_list, device=self.device_torch, dtype=dtype)
-                    target_std = torch.tensor(target_std_list, device=self.device_torch, dtype=dtype)
-                    # expand them to match dim
-                    target_mean = target_mean.unsqueeze(0).unsqueeze(2).unsqueeze(3)
-                    target_std = target_std.unsqueeze(0).unsqueeze(2).unsqueeze(3)
-
-                    latents = latents * target_std + target_mean
-                    batch.latents = latents
-
-                    # show_latents(latents, self.sd.vae, 'latents')
-
-
                 if batch.unconditional_tensor is not None and batch.unconditional_latents is None:
                     unconditional_imgs = batch.unconditional_tensor
                     unconditional_imgs = unconditional_imgs.to(self.device_torch, dtype=dtype)
                     unconditional_latents = self.sd.encode_images(unconditional_imgs)
-                    batch.unconditional_latents = unconditional_latents * self.train_config.latent_multiplier
+                    batch.unconditional_latents = unconditional_latents
 
                 unaugmented_latents = None
                 if self.train_config.loss_target == 'differential_noise':
@@ -1353,6 +1334,11 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     timestep_indices = timestep_indices.long()
                 else:
                     raise ValueError(f"Unknown content_or_style {content_or_style}")
+
+                if self.train_config.first_timestep_chance > 0.0:
+                    # index 0 is full noise; per-sample chance to force it
+                    force_first = torch.rand((batch_size,), device=timestep_indices.device) < self.train_config.first_timestep_chance
+                    timestep_indices = torch.where(force_first, torch.zeros_like(timestep_indices), timestep_indices)
             with self.timer('convert_timestep_indices_to_timesteps'):
                 # convert the timestep_indices to a timestep
                 timesteps = self.sd.noise_scheduler.timesteps[timestep_indices.long()]
@@ -1426,32 +1412,23 @@ class BaseSDTrainProcess(BaseTrainProcess):
                     noise = noise * noise_multiplier
             with self.timer('make_noisy_latents'):
 
-                latent_multiplier = self.train_config.latent_multiplier
-
                 # handle adaptive scaling mased on std
                 if self.train_config.adaptive_scaling_factor:
                     std = latents.std(dim=(2, 3), keepdim=True)
-                    normalizer = 1 / (std + 1e-6)
-                    latent_multiplier = normalizer
+                    latents = latents * (1 / (std + 1e-6))
 
-                latents = latents * latent_multiplier
-                
                 if self.train_config.do_blank_stabilization:
                     # zero out latents with blank prompts
                     blank_latent = torch.zeros_like(latents)
                     for i, prompt in enumerate(conditioned_prompts):
                         if prompt.strip() == '':
                             latents[i] = blank_latent[i]
-                
+
                 batch.latents = latents
 
                 # normalize latents to a mean of 0 and an std of 1
                 # mean_zero_latents = latents - latents.mean()
                 # latents = mean_zero_latents / mean_zero_latents.std()
-
-                if batch.unconditional_latents is not None:
-                    batch.unconditional_latents = batch.unconditional_latents * self.train_config.latent_multiplier
-
 
                 noisy_latents = self.sd.add_noise(latents, noise, timesteps)
 
@@ -1852,7 +1829,8 @@ class BaseSDTrainProcess(BaseTrainProcess):
         noise_scheduler = self.sd.noise_scheduler
 
         if self.train_config.xformers:
-            vae.enable_xformers_memory_efficient_attention()
+            if vae is not None:
+                vae.enable_xformers_memory_efficient_attention()
             unet.enable_xformers_memory_efficient_attention()
             if isinstance(text_encoder, list):
                 for te in text_encoder:
@@ -1928,15 +1906,16 @@ class BaseSDTrainProcess(BaseTrainProcess):
             for te in text_encoder:
                 te.requires_grad_(False)
                 te.eval()
-        else:
+        elif text_encoder is not None:
             text_encoder.requires_grad_(False)
             text_encoder.eval()
         unet.to(self.device_torch, dtype=dtype)
         unet.requires_grad_(False)
         unet.eval()
-        vae = vae.to(torch.device('cpu'), dtype=dtype)
-        vae.requires_grad_(False)
-        vae.eval()
+        if vae is not None:
+            vae = vae.to(torch.device('cpu'), dtype=dtype)
+            vae.requires_grad_(False)
+            vae.eval()
         if self.train_config.learnable_snr_gos:
             self.snr_gos = LearnableSNRGamma(
                 self.sd.noise_scheduler, device=self.device_torch

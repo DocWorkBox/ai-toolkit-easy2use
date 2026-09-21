@@ -5,7 +5,7 @@ import pytest
 
 ANIMA_SOURCE = Path("extensions_built_in/diffusion_models/anima/anima.py")
 ANIMA_LEGACY_SOURCE = Path("extensions_built_in/diffusion_models/anima/anima_model.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
+OPTIONS_SOURCE = Path("extensions_built_in/diffusion_models/ui.tsx")
 REQUIREMENTS_SOURCE = Path("requirements_base.txt")
 PROMPT_UTILS_SOURCE = Path("toolkit/prompt_utils.py")
 
@@ -24,20 +24,20 @@ def test_anima_model_class_is_registered():
     assert model_class.arch == "anima"
 
 
-def test_anima_ui_uses_upstream_preset_with_repo_path():
+def test_anima_ui_uses_upstream_preset_with_portable_path():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
-    assert options.count("name: 'anima'") == 1
+    assert options.count('name: "anima"') == 1
     assert (
-        "'circlestone-labs/Anima-Base-v1.0-Diffusers', defaultNameOrPath"
+        '"./models/Anima-Base-v1.0-Diffusers",'
         in options
     )
     assert "/datasets/studio/huggingface/models/Anima-Base-v1.0-Diffusers" not in options
     assert "/model/ModelScope/circlestone-labs/Anima-Base-v1.0-Diffusers" not in options
-    assert "'config.process[0].model.quantize': [false, false]" in options
-    assert "'config.process[0].model.qtype': ['', 'qfloat8']" in options
-    assert "'config.process[0].model.qtype_te': ['', 'qfloat8']" in options
-    assert "'config.process[0].train.timestep_type': ['weighted', 'sigmoid']" in options
+    assert '"config.process[0].model.quantize": [false, false]' in options
+    assert '"config.process[0].model.qtype": ["", "qfloat8"]' in options
+    assert '"config.process[0].model.qtype_te": ["", "qfloat8"]' in options
+    assert '"config.process[0].train.timestep_type": ["weighted", "sigmoid"]' in options
 
 
 def test_anima_uses_upstream_modular_pipeline():
@@ -50,7 +50,7 @@ def test_anima_uses_upstream_modular_pipeline():
     assert "AnimaTextConditioner" in source
     assert "AnimaEmbedsToImageBlocks" in source
     assert "AnimaAutoBlocks().init_pipeline" in source
-    assert "pipe.load_components(**load_kwargs)" in source
+    assert "pipe.update_components(" in source
     assert "return 16 * 2" in source
     assert '"shift": 3.0' in source
 

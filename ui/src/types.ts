@@ -205,8 +205,6 @@ export interface ModelConfig {
   quantize_kwargs?: QuantizeKwargsConfig;
   arch: string;
   low_vram: boolean;
-  vae_path?: string;
-  model_paths?: { [key: string]: string };
   model_kwargs: { [key: string]: any };
   layer_offloading?: boolean;
   layer_offloading_transformer_percent?: number;
@@ -231,6 +229,7 @@ export interface SampleItem {
   sample_steps?: number;
   fps?: number;
   num_frames?: number;
+  duration?: number;
   ctrl_img?: string | null;
   ctrl_idx?: number;
   network_multiplier?: number;
@@ -254,6 +253,7 @@ export interface SampleConfig {
   sample_steps: number;
   num_frames: number;
   fps: number;
+  duration?: number;
 }
 
 export interface LoggingConfig {
@@ -303,6 +303,21 @@ export interface JobConfig {
   meta: MetaConfig;
 }
 
+// A LoRA published on the hub, offered for a specific model option. `path` is a
+// 'org/repo/path_to/file.safetensors' reference; the backend looks for it under
+// the models folder first and downloads it into MODELS_PATH/loras if missing.
+export interface CloudLora {
+  path: string;
+  name: string;
+  description?: string;
+}
+
+export interface CaptionLora {
+  path: string;
+  name: string;
+  strength: number;
+}
+
 export interface CaptionProcessConfig {
   type: string;
   sqlite_db_path?: string;
@@ -310,11 +325,6 @@ export interface CaptionProcessConfig {
   caption: {
     model_name_or_path: string;
     model_name_or_path2?: string;
-    api_base_url?: string;
-    api_key?: string;
-    api_protocol?: 'openai' | 'anthropic';
-    prompt_template?: string;
-    target_lang?: string;
     dtype: string;
     quantize: boolean;
     qtype: string;
@@ -327,12 +337,15 @@ export interface CaptionProcessConfig {
     max_res?: number;
     max_new_tokens?: number;
     fixed_caption?: string;
-    api_concurrency?: number;
+    caption_format?: string;
+    extract_vocals_before_transcribe?: boolean;
+    keep_timestamps?: boolean;
     caption_extension?: string;
     thinking?: boolean;
     batch_size?: number;
     layer_offloading?: boolean;
     layer_offloading_percent?: number;
+    loras?: CaptionLora[];
   }
 }
 

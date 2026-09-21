@@ -10,33 +10,40 @@ def _read(relative_path):
 
 def test_protable_branch_keeps_local_model_defaults():
     krea = _read("extensions_built_in/diffusion_models/krea2/krea2.py")
-    options = _read("ui/src/app/jobs/new/options.tsx")
+    model_ui = "\n".join(
+        _read(path)
+        for path in (
+            "extensions_built_in/diffusion_models/ui.tsx",
+            "extensions_built_in/audio_models/ui.tsx",
+            "extensions_built_in/llm_models/ui.tsx",
+            "extensions_built_in/flex2/ui.tsx",
+        )
+    )
     captioners = _read("ui/src/helpers/captionOptions.ts")
     upsampler = _read("ui_scripts/upsample_ideogram4_caption.py")
 
     assert 'QWEN3_VL_PATH = "./models/Qwen3-VL-4B-Instruct"' in krea
     assert 'QWEN_IMAGE_VAE_PATH = "./models/Qwen-Image"' in krea
-    assert "'./models/Krea-2-Raw'" in options
-    assert "'./models/Krea-2-Turbo'" in options
-    assert "'./models/krea2_turbo_training_adapter/" in options
+    assert '"./models/Krea-2-Raw"' in model_ui
+    assert '"./models/Krea-2-Turbo"' in model_ui
+    assert '"./models/krea2_turbo_training_adapter/' in model_ui
     assert (
-        "'./models/minimax_h3_training_adapter/"
-        "minimax_h3_training_adapter_v1.safetensors'"
-    ) in options
-    assert "'ostris/minimax_h3_training_adapter/" not in options
+        '"./models/minimax_h3_training_adapter/'
+        'minimax_h3_training_adapter_v1.safetensors"'
+    ) in model_ui
     assert "'./models/Qwen3-VL-8B-Instruct'" in captioners
     assert "'./models/Qwen3.6-27B'" in captioners
     assert "'./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter'" in captioners
     assert "'./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors'" in captioners
     assert (
-        "'./models/diffusion_models/"
-        "ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors'"
-        in options
+        '"./models/diffusion_models/'
+        'ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors"'
+        in model_ui
     )
     assert 'default="./models/Qwen3-VL-8B-Instruct"' in upsampler
 
-    assert "'./models/Boogu-Image-0.1-Base'" in options
-    assert "'./models/Boogu-Image-0.1-Edit'" in options
+    assert '"./models/Boogu-Image-0.1-Base"' in model_ui
+    assert '"./models/Boogu-Image-0.1-Edit"' in model_ui
 
 
 def test_protable_branch_contains_portable_launch_assets():

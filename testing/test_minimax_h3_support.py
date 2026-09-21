@@ -3,7 +3,7 @@ from pathlib import Path
 
 REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MODEL_SOURCE = Path("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
+OPTIONS_SOURCE = Path("extensions_built_in/diffusion_models/ui.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 DOCS_SOURCE = Path("ui/src/docs.tsx")
 VERSION_SOURCE = Path("version.py")
@@ -62,19 +62,19 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     settings = SETTINGS_SOURCE.read_text(encoding="utf-8")
 
-    assert "name: 'minimax_h3'" in options
-    assert "name: 'minimax_h3_ref2va'" in options
-    assert "'Comfy-Org/MiniMax-H3'" in options
-    assert "'config.process[0].datasets[x].do_audio': [true, undefined]" in options
-    assert "'config.process[0].datasets[x].do_i2v': [false, undefined]" in options
+    assert 'name: "minimax_h3"' in options
+    assert 'name: "minimax_h3_ref2va"' in options
+    assert '"Comfy-Org/MiniMax-H3"' in options
+    assert '"config.process[0].datasets[x].do_audio": [true, undefined]' in options
+    assert '"config.process[0].datasets[x].do_i2v": [false, undefined]' in options
     assert "模型目录路径" in options
     assert "模型说明" in simple_job
     assert "模型目录路径" in settings
     assert "输入模型目录路径" in settings
     assert "Models Folder Path" not in options
     assert "Reference-to-video" not in options
-    assert "label: '参考图呈现方式'" in options
-    assert "label: '静态视频片段'" in options
+    assert 'label: "参考图呈现方式"' in options
+    assert 'label: "静态视频片段"' in options
     assert "Image Reference Presentation" not in options
     assert "Model notes" not in simple_job
     assert 'label="批次大小"' in simple_job
@@ -100,20 +100,20 @@ def test_minimax_h3_training_adapter_uses_portable_default_and_localized_help():
     assert "ostris/minimax_h3_training_adapter/" not in options
     assert "/datasets/" not in options
     assert "/model/" not in options
-    assert "label: '蒸馏保持方式'" in options
-    assert "label: '对比引导'" in options
-    assert "label: '训练适配器'" in options
-    assert "label: '对比引导 + 训练适配器（默认）'" in options
-    assert "{ value: 'dopsd', label: 'D-OPSD' }" in options
-    assert "{ value: 'none', label: '不使用' }" in options
+    assert 'label: "蒸馏保持方式"' in options
+    assert 'label: "对比引导"' in options
+    assert 'label: "训练适配器"' in options
+    assert 'label: "对比引导 + 训练适配器（默认）"' in options
+    assert '{ value: "dopsd", label: "D-OPSD" }' in options
+    assert '{ value: "none", label: "不启用" }' in options
     assert "kwargs.dopsd = true" in options
     assert "D-OPSD 使用自蒸馏" in options
     assert "Distillation Handling Method" not in options
-    assert "'config.process[0].train.do_guidance_loss': [true, undefined]" in options
-    assert "'config.process[0].train.guidance_loss_target': [4.0, undefined]" not in options
+    assert '"config.process[0].train.do_guidance_loss": [true, undefined]' in options
+    assert '"config.process[0].train.guidance_loss_target": [4.0, undefined]' not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.5"' in version
+    assert 'VERSION = "1.18.6"' in version
 
 
 def test_minimax_h3_ref2va_supports_video_references():
@@ -130,7 +130,7 @@ def test_minimax_h3_remote_adapters_download_to_toolkit_models_folder():
 
     assert "from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT" in model
     assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in model
-    assert "found = self._find_file_recursive(adapter_root, filename)" in model
+    assert "found = find_file_recursive(adapter_root, filename)" in model
     assert "local_dir=adapter_root" in model
     assert "LEGACY_REF2VA_TRAINING_ADAPTER_PATH" not in model
 
@@ -139,11 +139,11 @@ def test_ltx25_uses_portable_transformer_path():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
     assert (
-        "'./models/diffusion_models/"
-        "ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors'"
+        '"./models/diffusion_models/'
+        'ltx-2.5-22b-dev-transformer-comfy-int8-convrot.safetensors"'
         in options
     )
-    assert "'Lightricks/LTX-2.5'" not in options
+    assert '"Lightricks/LTX-2.5"' not in options
 
 
 def test_main_uses_the_project_models_folder_by_default():

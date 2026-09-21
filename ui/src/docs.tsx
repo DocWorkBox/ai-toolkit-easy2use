@@ -473,6 +473,15 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'model.model_kwargs.instruction': {
+    title: 'LLM 提示词',
+    description: (
+      <>
+        训练时对每条数据发送给模型的用户指令，样本的打标文本会作为模型需要学习的回答。
+        使用训练后的 LoRA 时应沿用相同措辞；采样提示词留空时也会使用这里的内容。
+      </>
+    ),
+  },
   'train.do_guidance_loss': {
     title: '对比引导损失',
     description: (

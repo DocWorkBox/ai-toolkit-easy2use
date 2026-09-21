@@ -5,6 +5,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "portable_models.json"
+MODEL_UI_PATHS = (
+    "extensions_built_in/diffusion_models/ui.tsx",
+    "extensions_built_in/audio_models/ui.tsx",
+    "extensions_built_in/llm_models/ui.tsx",
+    "extensions_built_in/flex2/ui.tsx",
+)
 
 
 def _read(relative_path):
@@ -13,6 +19,10 @@ def _read(relative_path):
 
 def _catalog():
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+def _model_ui():
+    return "\n".join(_read(path) for path in MODEL_UI_PATHS)
 
 
 def test_catalog_uses_local_paths_and_official_download_links():
@@ -185,10 +195,43 @@ def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
     } == {"Qwen3-Omni"}
 
 
+def test_catalog_covers_new_main_models_and_components():
+    by_id = {item["id"]: item for item in _catalog()["models"]}
+
+    assert by_id["qwen-image-21-transformer"]["path"] == (
+        "./models/diffusion_models/qwen_image_2.1_int8_convrot.safetensors"
+    )
+    assert {
+        by_id["qwen-image-21-config"]["family"],
+        by_id["qwen-image-21-text-encoder"]["family"],
+        by_id["qwen-image-21-vae"]["family"],
+    } == {"Qwen Image 2.1"}
+    assert by_id["yue2-checkpoint"]["path"] == (
+        "./models/checkpoints/yue2_3b_int8_convrot.safetensors"
+    )
+    assert by_id["yue2-mert"]["path"] == "./models/MERT-v2-FullSong"
+    assert by_id["yue2-semantic-tokenizer"]["path"] == (
+        "./models/yue2-mothersuperior-realaudio-tokenizer-v4"
+    )
+    assert by_id["yue2-sheetsage-config"]["path"] == "./models/SheetSage2"
+    assert by_id["yue2-sheetsage-weights"]["path"] == (
+        "./models/audio_encoders/sheetsage2_bf16.safetensors"
+    )
+    assert by_id["qwen25-omni-checkpoint"]["path"] == (
+        "./models/text_encoders/qwen2_5_omni_7b_convrot8.safetensors"
+    )
+    assert by_id["qwen25-omni-7b-metadata"]["path"] == (
+        "./models/Qwen2.5-Omni-7B"
+    )
+    assert by_id["moss-music-captioner"]["path"] == (
+        "./models/MOSS-Music-8B-Instruct"
+    )
+
+
 def test_minimax_h3_is_the_only_remote_training_default():
-    options = _read("ui/src/app/jobs/new/options.tsx")
+    options = _model_ui()
     values = re.findall(
-        r"'config\.process\[0\]\.model\.(?:name_or_path|extras_name_or_path|assistant_lora_path|unconditional_lora_path)'\s*:\s*\[\s*'([^']+)'",
+        r"[\"']config\.process\[0\]\.model\.(?:name_or_path|extras_name_or_path|assistant_lora_path|unconditional_lora_path)[\"']\s*:\s*\[\s*[\"']([^\"']+)[\"']",
         options,
     )
 
@@ -204,14 +247,18 @@ def test_minimax_h3_is_the_only_remote_training_default():
 def test_caption_and_runtime_component_defaults_are_local():
     caption_options = _read("ui/src/helpers/captionOptions.ts")
     caption_job = _read("ui/src/helpers/captionJobConfig.ts")
-    job_config = _read("ui/src/app/jobs/new/jobConfig.ts")
+    model_ui = _model_ui()
     flux2 = _read("extensions_built_in/diffusion_models/flux2/flux2_model.py")
     klein = _read("extensions_built_in/diffusion_models/flux2/flux2_klein_model.py")
     ltx2 = _read("extensions_built_in/diffusion_models/ltx2/ltx2.py")
     wan = _read("toolkit/models/wan21/wan21.py")
     wan22 = _read("extensions_built_in/diffusion_models/wan22/wan22_14b_model.py")
     qwen_image = _read("extensions_built_in/diffusion_models/qwen_image/qwen_image.py")
+    qwen_image_2 = _read("extensions_built_in/diffusion_models/qwen_image_2/qwen_image_2.py")
     ideogram = _read("extensions_built_in/diffusion_models/ideogram4/ideogram4.py")
+    moss = _read("toolkit/audio/moss_music/__init__.py")
+    yue2_tokenizer = _read("extensions_built_in/audio_models/yue2/src/tokenizer.py")
+    registry = _read("toolkit/models/registry.py")
 
     assert "ACE-Step/acestep-" not in caption_options
     assert "ACE-Step/acestep-" not in caption_job
@@ -220,7 +267,7 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert "zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter" not in caption_options
     assert "./models/Qwen2.5-Omni-7B-H3-Prompt-Rewriter" in caption_options
     assert "./models/text_encoders/qwen3_omni_30b_a3b_thinking_convrot8.safetensors" in caption_job
-    assert "name_or_path: './models/Flex.1-alpha'" in job_config
+    assert '"./models/Flex.1-alpha"' in model_ui
     assert 'MISTRAL_PATH = "./models/Mistral-Small-3.1-24B-Instruct-2503"' in flux2
     assert 'flux2_vae_path: str = "./models/flux2_vae/ae.safetensors"' in flux2
     assert 'flux2_vae_path: str = "./models/flux2_vae/ae.safetensors"' in klein
@@ -230,8 +277,17 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert 'te_path = "./models/umt5_xxl_encoder"' in wan
     assert '_wan_vae_path = "./models/wan2.1-vae"' in wan22
     assert 'base_model_path = "./models/Qwen-Image"' in qwen_image
-    assert 'config="./models/Qwen-Image"' in qwen_image
+    assert "QwenImageTransformer2DModel.load(" in qwen_image
+    assert 'BASE_REPO = "./models/Qwen-Image-2.1"' in qwen_image_2
     assert 'QWEN3_VL_PATH = "./models/Qwen3-VL-8B-Instruct"' in ideogram
+    assert 'HF_REPO = "./models/MOSS-Music-8B-Instruct"' in moss
+    assert 'MERT_REPO = "./models/MERT-v2-FullSong"' in yue2_tokenizer
+    assert 'HEAD_REPO = "./models/yue2-mothersuperior-realaudio-tokenizer-v4"' in yue2_tokenizer
+    assert 'SHEETSAGE_REPO = "./models/SheetSage2"' in yue2_tokenizer
+    assert 'SHEETSAGE_FILE = "./models/audio_encoders/sheetsage2_bf16.safetensors"' in yue2_tokenizer
+    registry_paths = re.findall(r'"(?:name_or_path|extras_name_or_path)": "([^"]+)"', registry)
+    assert registry_paths
+    assert all(path.startswith("./models/") for path in registry_paths)
 
 
 def test_qwen3_omni_uses_local_checkpoint_and_processor_metadata():
