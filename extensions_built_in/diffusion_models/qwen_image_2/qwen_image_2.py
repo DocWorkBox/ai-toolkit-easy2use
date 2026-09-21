@@ -75,10 +75,10 @@ scheduler_config = {
     "use_karras_sigmas": False,
 }
 
-# the Comfy-Org repack is the weight source; the original repo supplies the
-# configs and the processor, which the repack does not carry
+# The Comfy-Org repack is the weight source; AIgate keeps the original model's
+# configs and processor in a local directory because the repack omits them.
 COMFY_REPO = "Comfy-Org/Qwen-Image-2.1"
-BASE_REPO = "Qwen/Qwen-Image-2.1"
+BASE_REPO = "/datasets/studio/huggingface/models/Qwen-Image-2.1"
 
 # decode above this many output pixels goes through the VAE's tiled path
 TILE_DECODE_ABOVE_PIXELS = 1024 * 1024

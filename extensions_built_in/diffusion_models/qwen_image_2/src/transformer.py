@@ -909,7 +909,7 @@ class QwenImage21Transformer2DModel(
 
     # ---- toolkit loading (OstrisModelMixin) ----
     aitk_subfolder = "transformer"
-    aitk_config_repo = "Qwen/Qwen-Image-2.1"
+    aitk_config_repo = "/datasets/studio/huggingface/models/Qwen-Image-2.1"
 
     aitk_comfy_repo = "Comfy-Org/Qwen-Image-2.1"
     # convrot8 first: it is the toolkit's default qtype, and a matching

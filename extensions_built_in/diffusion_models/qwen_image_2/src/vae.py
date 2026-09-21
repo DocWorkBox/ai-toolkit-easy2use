@@ -1189,7 +1189,7 @@ class AutoencoderKLQwenImage21(
 
     # ---- toolkit loading (OstrisModelMixin) ----
     aitk_subfolder = "vae"
-    aitk_config_repo = "Qwen/Qwen-Image-2.1"
+    aitk_config_repo = "/datasets/studio/huggingface/models/Qwen-Image-2.1"
 
     aitk_comfy_repo = "Comfy-Org/Qwen-Image-2.1"
     _COMFY_FILES = ["vae/qwen_image_2.1_vae_bf16.safetensors"]
