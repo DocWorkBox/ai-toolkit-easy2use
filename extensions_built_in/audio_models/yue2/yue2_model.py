@@ -71,7 +71,7 @@ def _variant_prompt(parsed: dict, variant: str):
         return parsed["style"], ""
     return parsed["style"], parsed["lyrics"]
 
-DEFAULT_CHECKPOINT = "Comfy-Org/YuE2/checkpoints/yue2_3b_int8_convrot.safetensors"
+DEFAULT_CHECKPOINT = "/datasets/studio/huggingface/models/YuE2/checkpoints/yue2_3b_int8_convrot.safetensors"
 # community tokenizer files have no ComfyUI folder; they live under <MODELS_PATH>/ai_toolkit/
 AI_TOOLKIT_DIR = "ai_toolkit"
 

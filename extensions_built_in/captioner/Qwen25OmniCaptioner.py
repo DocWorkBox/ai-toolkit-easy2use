@@ -42,8 +42,11 @@ TARGET_SAMPLE_RATE = 16000
 STATIC_MAX_LENGTH = 8704
 
 # thinker hidden size -> config/processor repo; single-file checkpoints carry no config
-BASE_REPO_BY_HIDDEN = {3584: "Qwen/Qwen2.5-Omni-7B", 2048: "Qwen/Qwen2.5-Omni-3B"}
-DEFAULT_BASE_REPO = "Qwen/Qwen2.5-Omni-7B"
+BASE_REPO_BY_HIDDEN = {
+    3584: "/datasets/studio/huggingface/models/Qwen2.5-Omni-7B",
+    2048: "Qwen/Qwen2.5-Omni-3B",
+}
+DEFAULT_BASE_REPO = "/datasets/studio/huggingface/models/Qwen2.5-Omni-7B"
 
 
 class Qwen25OmniCaptioner(BaseCaptioner):

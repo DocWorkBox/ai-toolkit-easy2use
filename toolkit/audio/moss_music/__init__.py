@@ -4,7 +4,7 @@ from .configuration import MossMusicConfig, MossMusicEncoderConfig
 from .modeling import MossMusicModel
 from .processing import MelConfig, MossMusicProcessor
 
-HF_REPO = "OpenMOSS-Team/MOSS-Music-8B-Instruct"
+HF_REPO = "/datasets/studio/huggingface/models/MOSS-Music-8B-Instruct"
 
 
 def load_moss_music(

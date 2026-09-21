@@ -187,7 +187,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'MOSS-Music',
         group: 'music',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['OpenMOSS-Team/MOSS-Music-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/datasets/studio/huggingface/models/MOSS-Music-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
             'config.process[0].caption.caption_format': ['ace_step', undefined],
             'config.process[0].caption.caption_prompt': [mossMusicCaptionPrompt, undefined],
@@ -195,7 +195,7 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.compile': [true, false],
         },
         name_or_path_options: [
-            { value: 'OpenMOSS-Team/MOSS-Music-8B-Instruct', label: 'OpenMOSS-Team/MOSS-Music-8B-Instruct' },
+            { value: '/datasets/studio/huggingface/models/MOSS-Music-8B-Instruct', label: 'MOSS-Music-8B-Instruct' },
         ],
         captionPrompts: {
             '描述（ACE-Step）': mossMusicCaptionPrompt,
@@ -342,13 +342,13 @@ export const captionerTypes: CaptionOption[] = [
         supportsLoras: true,
         cloudLoras: [
             {
-                path: 'ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_lora_caption_this_song.safetensors',
+                path: '/datasets/studio/huggingface/models/ai-tookit-Qwen2.5-Omni-7B/qwen2_5_omni_7b_lora_caption_this_song.safetensors',
                 name: 'Caption This Song',
             },
         ],
         defaults: {
             'config.process[0].caption.loras': [[], undefined],
-            'config.process[0].caption.model_name_or_path': ['ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/datasets/studio/huggingface/models/ai-tookit-Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', defaultNameOrPath],
             'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage, ...extensionsAudio], defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultVideoCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -357,8 +357,8 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.compile': [true, false],
         },
         name_or_path_options: [
-            { value: 'ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', label: 'ai-toolkit/Qwen2.5-Omni-7B (convrot8)' },
-            { value: 'Qwen/Qwen2.5-Omni-7B', label: 'Qwen/Qwen2.5-Omni-7B' },
+            { value: '/datasets/studio/huggingface/models/ai-tookit-Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', label: 'ai-toolkit/Qwen2.5-Omni-7B (convrot8)' },
+            { value: '/datasets/studio/huggingface/models/Qwen2.5-Omni-7B', label: 'Qwen/Qwen2.5-Omni-7B' },
             { value: 'Qwen/Qwen2.5-Omni-3B', label: 'Qwen/Qwen2.5-Omni-3B' },
         ],
         captionPrompts: {

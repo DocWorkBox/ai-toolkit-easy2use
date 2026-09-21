@@ -19,10 +19,10 @@ from toolkit.basic import UnusableFileError
 
 from .model import ABC_END, ABC_START, CODEC_SIZE, EOD, INSTRUCTIONS, MUSIC_START
 
-MERT_REPO = "m-a-p/MERT-v2-FullSong"
+MERT_REPO = "/datasets/studio/huggingface/models/MERT-v2-FullSong"
 MERT_SAMPLE_RATE = 24000
 MERT_LAYER = 20
-HEAD_REPO = "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4"
+HEAD_REPO = "/datasets/studio/huggingface/models/yue2-mothersuperior-realaudio-tokenizer-v4"
 HEAD_FILE = "tokenizer_head_joint_v4.pt"
 NAR_LORA_FILE = "nar_lora_joint_v4.pt"
 HEAD_WINDOW = 512
@@ -93,7 +93,7 @@ def _rebuild_rotary(model: nn.Module) -> int:
 
 
 SHEETSAGE_REPO = "m-a-p/SheetSage2"
-SHEETSAGE_FILE = "Comfy-Org/YuE2/audio_encoders/sheetsage2_bf16.safetensors"
+SHEETSAGE_FILE = "/datasets/studio/huggingface/models/YuE2/audio_encoders/sheetsage2_bf16.safetensors"
 # tied to token_embedding.weight (loaded); everything else in the Comfy file maps 1:1 onto upstream
 NONPERSISTENT_OK = {"decoder.embed_tokens.weight"}
 SHEETSAGE_SAMPLE_RATE = 24000

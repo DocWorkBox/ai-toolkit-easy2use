@@ -8,12 +8,16 @@ from safetensors import safe_open
 from .model import MelBandRoformer
 
 HF_REPO = "ai-toolkit/melbandroformer"
+LOCAL_MODEL_DIR = "/datasets/studio/huggingface/models/melbandroformer"
 DEFAULT_WEIGHTS = "melbandroformer_vocals_kj.safetensors"
 MODEL_SAMPLE_RATE = 44100
 
 
 def get_weights_path(filename: str = DEFAULT_WEIGHTS) -> str:
-    """MODELS_PATH/checkpoints/<filename>, pulled from the HF repo root if missing."""
+    """AIgate model directory, then MODELS_PATH, then the HF repo."""
+    local_path = os.path.join(LOCAL_MODEL_DIR, filename)
+    if os.path.exists(local_path):
+        return local_path
     from toolkit.paths import MODELS_PATH  # lazy: read after the CLI has loaded .env
     ckpt_dir = os.path.join(MODELS_PATH, "checkpoints")
     path = os.path.join(ckpt_dir, filename)
