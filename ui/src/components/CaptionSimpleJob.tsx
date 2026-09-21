@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Plus, X } from 'lucide-react';
+import LoraBrowserModal, { LoraPick } from '@/components/generate/LoraBrowserModal';
 import {
   Checkbox,
   CreatableSelectInput,
@@ -9,10 +11,11 @@ import {
   TextAreaInput,
   TextInput,
 } from '@/components/formInputs';
-import { CaptionJobConfig } from '@/types';
+import { CaptionJobConfig, CaptionLora } from '@/types';
 import { handleCaptionerTypeChange } from '@/helpers/captionJobConfig';
 import {
   batchSizeOptions,
+  captionFormatOptions,
   captionerTypes,
   defaultQtype,
   groupedCaptionerTypes,
@@ -96,6 +99,13 @@ const restoreStoredCaptionApiSettings = (setJobConfig: (value: any, key?: string
 const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, setGpuIDs, gpuList, showGPUSelect }) => {
   const selectedCaptionOption = captionerTypes.find(option => option.name === jobConfig.config.process[0].type);
   const additionalSections = selectedCaptionOption?.additionalSections || [];
+  const [loraModalOpen, setLoraModalOpen] = useState(false);
+  const loras: CaptionLora[] = jobConfig.config.process[0].caption.loras || [];
+  const setLoras = (next: CaptionLora[]) => setJobConfig(next, 'config.process[0].caption.loras');
+  const addLora = (pick: LoraPick) => {
+    if (loras.some(lora => lora.path === pick.path)) return;
+    setLoras([...loras, { path: pick.path, name: pick.name, strength: 1.0 }]);
+  };
   const [apiTestStatus, setApiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [apiTestMessage, setApiTestMessage] = useState('');
   const isRemoteApiCaptioner = additionalSections.includes('caption.api_base_url');
@@ -380,6 +390,66 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
           />
         </div>
       )}
+      {additionalSections.includes('caption.caption_format') && (
+        <div className="mt-4">
+          <SelectInput
+            label="输出格式"
+            value={jobConfig.config.process[0].caption.caption_format || 'ace_step'}
+            onChange={value => setJobConfig(value, 'config.process[0].caption.caption_format')}
+            options={captionFormatOptions}
+          />
+        </div>
+      )}
+      {selectedCaptionOption?.supportsLoras && (
+        <div className="mt-4">
+          <div className="mb-1 text-xs text-gray-300">LoRA</div>
+          <div className="space-y-2">
+            {loras.map((lora, index) => (
+              <div key={lora.path} className="rounded-md border border-gray-800 bg-gray-950/60 px-2 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 truncate text-xs text-gray-200" title={lora.path}>{lora.name}</span>
+                  <input
+                    type="number"
+                    step={0.05}
+                    min={-2}
+                    max={3}
+                    value={lora.strength}
+                    onChange={event => {
+                      const strength = parseFloat(event.target.value);
+                      const next = [...loras];
+                      next[index] = { ...lora, strength: isNaN(strength) ? 0 : strength };
+                      setLoras(next);
+                    }}
+                    className="w-16 rounded border border-gray-700 bg-gray-950 px-1.5 py-0.5 text-right text-xs text-gray-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLoras(loras.filter(item => item.path !== lora.path))}
+                    className="text-gray-500 hover:text-red-400"
+                    title="移除"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setLoraModalOpen(true)}
+              className="flex w-full items-center justify-center gap-1 rounded-md bg-gray-800 px-2 py-1 text-xs text-gray-200 hover:bg-gray-700"
+            >
+              <Plus className="h-3.5 w-3.5" /> 添加 LoRA
+            </button>
+          </div>
+          <div className="mt-1 text-[11px] text-gray-500">打标时以旁路方式应用，不会合并到模型权重。</div>
+          <LoraBrowserModal
+            isOpen={loraModalOpen}
+            onClose={() => setLoraModalOpen(false)}
+            onPick={addLora}
+            cloudLoras={selectedCaptionOption.cloudLoras}
+          />
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div>
           {selectedCaptionOption?.supportsQuantization !== false && (
@@ -542,6 +612,20 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               checked={jobConfig.config.process[0].caption.compile || false}
               onChange={value => setJobConfig(value, 'config.process[0].caption.compile')}
             />
+            {additionalSections.includes('caption.extract_vocals_before_transcribe') && (
+              <Checkbox
+                label="转录前提取人声"
+                checked={jobConfig.config.process[0].caption.extract_vocals_before_transcribe || false}
+                onChange={value => setJobConfig(value, 'config.process[0].caption.extract_vocals_before_transcribe')}
+              />
+            )}
+            {additionalSections.includes('caption.keep_timestamps') && (
+              <Checkbox
+                label="保留歌词时间戳"
+                checked={jobConfig.config.process[0].caption.keep_timestamps || false}
+                onChange={value => setJobConfig(value, 'config.process[0].caption.keep_timestamps')}
+              />
+            )}
             {additionalSections.includes('caption.thinking') && (
               <Checkbox
                 label="思考模式"

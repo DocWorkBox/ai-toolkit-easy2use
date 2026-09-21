@@ -249,6 +249,34 @@ def _ensure_cpu_pinned(t: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
     return t
 
 
+def _storage_device(t: torch.Tensor) -> torch.device:
+    """Device of a tensor's actual storage. A wrapper subclass (torchao) can report one
+    device on the outside while its inner tensors sit elsewhere (a `.data =` move updates
+    only the outer metadata), so walk __tensor_flatten__ down to the leaves."""
+    try:
+        names, _ = t.__tensor_flatten__()
+    except Exception:
+        return t.device
+    for name in names:
+        inner = getattr(t, name, None)
+        if isinstance(inner, torch.Tensor):
+            return _storage_device(inner)
+    return t.device
+
+
+def _move_own_param(module: nn.Module, name: str, param: nn.Parameter, device) -> None:
+    """Move one of ``module``'s direct parameters to ``device``. Plain tensors go through
+    `.data =`; quantized tensor subclasses (torchao AffineQuantizedTensor) get the whole
+    Parameter replaced -- `.data =` on them moves only the outer metadata, leaving the
+    inner storage behind (same reason _move_params_to_cpu_and_pin replaces them)."""
+    with torch.no_grad():
+        moved = param.data.to(device)
+        if _is_quantized_tensor(param.data):
+            setattr(module, name, nn.Parameter(moved, requires_grad=param.requires_grad))
+        else:
+            param.data = moved
+
+
 def _move_params_to_cpu_and_pin(module: nn.Module):
     """Force parameters to CPU (+pinned) so we can 'bounce' them per forward/backward."""
     with torch.no_grad():
@@ -311,6 +339,12 @@ class _BouncingLinearFn(torch.autograd.Function):
             ctx.save_for_backward(x.to("cpu"), weight_cpu, bias_cpu)
             ctx.device = torch.device("cpu")
             return out.to(x.device)
+
+        if x.device != device:
+            # a pipeline that derives its execution device from the module's
+            # (fully offloaded -> "cpu") parameters can feed cpu activations;
+            # compute happens on the staged device and the output stays there
+            x = x.to(device, non_blocking=True)
 
         state = _get_device_state(device)
         # the guard makes current_stream() (used by the staging helpers' event
@@ -460,6 +494,11 @@ class _BouncingConv2dFn(torch.autograd.Function):
             ctx.save_for_backward(x.to("cpu"), weight_cpu, bias_cpu)
             ctx.meta = ("cpu", stride, padding, dilation, groups, target_dtype)
             return out.to(x.device)
+
+        if x.device != device:
+            # cpu activations from a fully-offloaded pipeline: see
+            # _BouncingLinearFn.forward
+            x = x.to(device, non_blocking=True)
 
         state = _get_device_state(device)
         # device guard: see _BouncingLinearFn.forward
@@ -631,6 +670,40 @@ class BaseLayerMemoryManager:
             param._is_memory_managed = True
 
 
+class EmbeddingLayerMemoryManager(BaseLayerMemoryManager):
+    """Offloads a (large, frozen) nn.Embedding by keeping the weight on cpu
+    and doing the row gather THERE: instead of staging a multi-GB vocab table
+    to the gpu, only the looked-up rows (tokens x dim, ~KBs) cross the bus.
+    Lookups happen once per prompt, so the cpu gather is free."""
+
+    def __init__(self, module: nn.Module, manager: "MemoryManager"):
+        super().__init__(module, manager)
+
+        # cpu-resident weight; no pinning — the weight never crosses the bus
+        module.weight.data = module.weight.data.to("cpu")
+        # subclass buffers (gemma's embed_scale) must join the cpu-side math
+        for buf_name, buf in module._buffers.items():
+            if buf is not None:
+                module._buffers[buf_name] = buf.to("cpu")
+
+        self._original_forward = module.forward
+
+        def _mm_forward(input_ids, *args, **kwargs):
+            if args or kwargs:
+                return self._original_forward(input_ids, *args, **kwargs)
+            out_device = (
+                input_ids.device
+                if input_ids.device.type == "cuda"
+                else self.manager.process_device
+            )
+            # the original forward preserves subclass behavior (scaled word
+            # embeddings multiply by embed_scale; raw F.embedding would not)
+            out = self._original_forward(input_ids.to("cpu"))
+            return out.to(out_device, non_blocking=True)
+
+        module.forward = _mm_forward
+
+
 class LinearLayerMemoryManager(BaseLayerMemoryManager):
     def __init__(
         self,
@@ -738,6 +811,11 @@ class OstrisLinearLayerMemoryManager(BaseLayerMemoryManager):
             if not cpu_bufs and bias_cpu is None:
                 # already resident on device
                 return self._original_forward(x)
+
+            if x.device != device:
+                # cpu activations from a fully-offloaded pipeline: see
+                # _BouncingLinearFn.forward
+                x = x.to(device, non_blocking=True)
 
             state = _get_device_state(device)
             d = state["depth"]

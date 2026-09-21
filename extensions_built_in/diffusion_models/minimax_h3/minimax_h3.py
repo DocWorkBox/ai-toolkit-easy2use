@@ -49,22 +49,26 @@ from toolkit.accelerator import unwrap_model
 from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
 from toolkit.basic import flush
 from toolkit.config_modules import GenerateImageConfig, ModelConfig
-from toolkit.memory_management import MemoryManager
+from toolkit.dto import DTO
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
+from toolkit.models.v2.text_encoders.qwen3_vl import Qwen3VLTextEncoder
+from toolkit.models.v2.resolver import (
+    find_file_recursive,
+    repo_id_from_name_or_path,
+    resolve_comfy_file,
+)
 from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.util.comfy_quant_import import import_comfy_quantized_layers
 from toolkit.util.ostris_quant import OstrisLinear
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
-from toolkit.util.quantize import get_qtype, quantize, quantize_model
-from optimum.quanto import freeze
 
 from .src import packing
 
 packing_video_exts = [".mp4", ".avi", ".mov", ".webm", ".mkv", ".wmv", ".m4v", ".flv"]
-from .src.audio_vae import MiniMaxH3AudioVAE, fold_audio_vae_weight_norm
+from .src.audio_vae import MiniMaxH3AudioVAE
 from .src.packing import (
     KEYFRAME_ENCODE_SEED,
     KEYFRAME_NOISE_AUG_T,
@@ -115,7 +119,15 @@ COMFY_FILES = {
     "text_encoder": "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
     "video_vae": "vae/minimax_h3_video_vae_fp16.safetensors",
     "audio_vae": "vae/minimax_h3_audio_vae_fp32.safetensors",
+    "dit_fasth3": "diffusion_models/minimax_h3_fasth3_preview_v0.2_int8_convrot.safetensors",
 }
+# FastH3 (FastVideo 4-step VSA distill) int8-convrot repack, produced by
+# scripts/convert_minimax_h2_fastvideo.py from the FastVideo diffusers repo.
+# Hub fallback repo for the file (flat at the repo root, downloaded into
+# MODELS_PATH/diffusion_models/); not published there yet — until it is, the
+# file must exist locally or be built with the converter.
+FASTH3_REPO = "Kijai/MiniMax-H3-experimental"
+FASTH3_SOURCE_REPO = "FastVideo/FastVideo-Minimax-FastH3-Preview-v0.2"
 # tokenizer/processor/text-encoder config come from the original repo (tiny files)
 ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"
 
@@ -233,64 +245,21 @@ class MinimaxH3Model(BaseModel):
     # ------------------------------------------------------------------
     # Loading
     # ------------------------------------------------------------------
-    @staticmethod
-    def _find_file_recursive(root_dir: str, filename: str) -> Optional[str]:
-        """First (breadth-stable, sorted) match of ``filename`` anywhere under
-        ``root_dir``."""
-        if not os.path.isdir(root_dir):
-            return None
-        for dirpath, dirnames, filenames in os.walk(root_dir):
-            dirnames.sort()
-            if filename in filenames:
-                return os.path.join(dirpath, filename)
-        return None
-
     def _resolve_comfy_file(self, component: str) -> str:
-        """Find a weight file at its local location, or download it there
-        when (and only when) it is missing.
-
-        Search order: model_kwargs override, the repo-relative path under
-        MODELS_PATH (diffusion_models/, text_encoders/, vae/), the bare
-        filename at the root, any subfolder of the component's category
-        folder (recursive — e.g. diffusion_models/my_custom_sub/), the same
-        spots under name_or_path when it is a local folder, then the hub —
-        downloaded to the repo-relative path under MODELS_PATH.
-        """
-        override = self.model_config.model_kwargs.get(f"{component}_path", None)
-        if override is not None:
-            if not os.path.exists(override):
-                raise FileNotFoundError(
-                    f"model_kwargs.{component}_path does not exist: {override}"
-                )
-            return override
-
-        rel_path = COMFY_FILES[component]
-        filename = os.path.basename(rel_path)
-        category = os.path.dirname(rel_path)
-        roots = [MODELS_PATH]
+        """Find a weight file at its local location (model_kwargs override,
+        comfy layout under MODELS_PATH or a local name_or_path dir), or
+        download it there when (and only when) it is missing — see
+        toolkit/models/v2/resolver.py for the search order."""
         name_or_path = self.model_config.name_or_path
-        if name_or_path and os.path.isdir(name_or_path):
-            roots.append(name_or_path)
-        for root in roots:
-            for rel in (rel_path, filename):
-                candidate = os.path.join(root, rel)
-                if os.path.exists(candidate):
-                    return candidate
-        for root in roots:
-            found = self._find_file_recursive(os.path.join(root, category), filename)
-            if found is not None:
-                return found
-
-        import huggingface_hub
-
-        repo_id = COMFY_REPO
-        if name_or_path and not os.path.exists(name_or_path) and "/" in name_or_path:
-            repo_id = name_or_path
-        self.print_and_status_update(
-            f"Downloading {rel_path} from {repo_id} into {MODELS_PATH}"
+        extra_roots = (
+            [name_or_path] if name_or_path and os.path.isdir(name_or_path) else []
         )
-        return huggingface_hub.hf_hub_download(
-            repo_id=repo_id, filename=rel_path, local_dir=MODELS_PATH
+        return resolve_comfy_file(
+            COMFY_FILES[component],
+            repo_id=repo_id_from_name_or_path(name_or_path, COMFY_REPO),
+            override_path=self.model_config.model_kwargs.get(f"{component}_path", None),
+            extra_roots=extra_roots,
+            status_fn=self.print_and_status_update,
         )
 
     def _dit_component(self) -> str:
@@ -311,8 +280,8 @@ class MinimaxH3Model(BaseModel):
         pre-quantized, and a merge would resample every int8 scale.
 
         Path resolution: a local path is used as-is; otherwise the toolkit's
-        persistent adapter folder is searched for the filename; otherwise a
-        ``user/repo/file.safetensors`` hub path downloads into
+        persistent adapter folder is searched for the filename;
+        otherwise a ``user/repo/file.safetensors`` hub path downloads into
         <TOOLKIT_ROOT>/models/loras/training_adapters/.
         """
         from toolkit.config_modules import NetworkConfig
@@ -325,7 +294,7 @@ class MinimaxH3Model(BaseModel):
             adapter_root = os.path.join(
                 TOOLKIT_ROOT, "models", "loras", "training_adapters"
             )
-            found = self._find_file_recursive(adapter_root, filename)
+            found = find_file_recursive(adapter_root, filename)
             if found is not None:
                 lora_path = found
             else:
@@ -409,46 +378,12 @@ class MinimaxH3Model(BaseModel):
         self.invert_assistant_lora = False
 
     def _load_transformer(self) -> MiniMaxH3Transformer:
-        dtype = self.torch_dtype
         dit_path = self._resolve_comfy_file(self._dit_component())
         self.print_and_status_update(f"Loading transformer from {dit_path}")
-        state_dict = load_file(dit_path)
-
-        params = MiniMaxH3TransformerParams()
-        table = state_dict.get("adaln_t_table", None)
-        if table is not None:
-            # pruned checkpoint: factored timestep table instead of the MLP
-            params.adaln_t_table_size = table.shape[0]
-            params.time_embed_dim = table.shape[1]
-
-        with torch.device("meta"):
-            transformer = MiniMaxH3Transformer(params)
-
-        # attach the pre-quantized (int8 ConvRot) linears onto the toolkit's
-        # quantization backends; the rest loads at its stored precision (the
-        # checkpoint's bf16/fp16/fp32 mix is deliberate)
-        state_dict, num_quantized = import_comfy_quantized_layers(
-            transformer, state_dict, orig_dtype=dtype
-        )
-        if num_quantized:
-            self.print_and_status_update(
-                f" - attached {num_quantized} pre-quantized ConvRot layers"
-            )
-        result = transformer.load_state_dict(state_dict, assign=True, strict=False)
-        quantized_weight_keys = {
-            f"{name}.weight"
-            for name, m in transformer.named_modules()
-            if isinstance(m, OstrisLinear)
-        }
-        bad_missing = [k for k in result.missing_keys if k not in quantized_weight_keys]
-        if bad_missing or result.unexpected_keys:
-            raise ValueError(
-                f"MiniMax-H3 transformer load mismatch: missing {bad_missing[:8]}, "
-                f"unexpected {result.unexpected_keys[:8]}"
-            )
-        del state_dict
-        flush()
-        return transformer
+        # the mixin single-file path: config sniffed from the checkpoint
+        # (adaln_t_table), pre-quantized ConvRot linears attached, everything
+        # else at its stored precision (the bf16/fp16/fp32 mix is deliberate)
+        return MiniMaxH3Transformer.load_model(dit_path, dtype=self.torch_dtype)
 
     def _load_text_encoder(self):
         from accelerate import init_empty_weights
@@ -474,7 +409,7 @@ class MinimaxH3Model(BaseModel):
             )
             config = AutoConfig.from_pretrained(te_path)
             config.text_config.num_hidden_layers = TEXT_ENCODER_LAYER
-            text_encoder = Qwen3VLForConditionalGeneration.from_pretrained(
+            text_encoder = Qwen3VLTextEncoder.from_pretrained(
                 te_path, config=config, torch_dtype=self.te_torch_dtype
             )
         else:
@@ -496,7 +431,7 @@ class MinimaxH3Model(BaseModel):
             config.text_config.num_hidden_layers = TEXT_ENCODER_LAYER
             config.tie_word_embeddings = False
             with init_empty_weights():
-                text_encoder = Qwen3VLForConditionalGeneration(config)
+                text_encoder = Qwen3VLTextEncoder(config)
             text_encoder.lm_head = None
 
             state_dict = load_file(te_file)
@@ -551,38 +486,9 @@ class MinimaxH3Model(BaseModel):
 
     def _load_vaes(self) -> MiniMaxH3VaeBundle:
         self.print_and_status_update("Loading video VAE")
-        video_sd = load_file(self._resolve_comfy_file("video_vae"))
-        # normalization stats ride along in the comfy file; the module holds
-        # them as non-persistent buffers, keep them float32
-        video_stats = {
-            k: video_sd.pop(k).float()
-            for k in ("latents_mean", "latents_std")
-            if k in video_sd
-        }
-        video_vae = MiniMaxH3VideoVAE()
-        video_vae.load_state_dict(video_sd, strict=True, assign=True)
-        for k, v in video_stats.items():
-            getattr(video_vae, k).copy_(v)
-        video_vae.eval().requires_grad_(False)
-        del video_sd
-
+        video_vae = MiniMaxH3VideoVAE.load_model(self._resolve_comfy_file("video_vae"))
         self.print_and_status_update("Loading audio VAE")
-        audio_sd = load_file(self._resolve_comfy_file("audio_vae"))
-        audio_stats = {
-            k: audio_sd.pop(k).float()
-            for k in ("latents_mean", "latents_std")
-            if k in audio_sd
-        }
-        # comfy repack ships the weight norm already folded; fold only if the
-        # raw parametrization is present (original-repo file)
-        if any(k.endswith("weight_g") for k in audio_sd.keys()):
-            audio_sd = fold_audio_vae_weight_norm(audio_sd)
-        audio_vae = MiniMaxH3AudioVAE()
-        audio_vae.load_state_dict(audio_sd, strict=True, assign=True)
-        for k, v in audio_stats.items():
-            getattr(audio_vae, k).copy_(v)
-        audio_vae.to(torch.float32).eval().requires_grad_(False)
-        del audio_sd
+        audio_vae = MiniMaxH3AudioVAE.load_model(self._resolve_comfy_file("audio_vae"))
         flush()
         return MiniMaxH3VaeBundle(video_vae, audio_vae)
 
@@ -596,54 +502,16 @@ class MinimaxH3Model(BaseModel):
         if self.model_config.assistant_lora_path is not None:
             self.load_training_adapter(transformer)
 
-        if self.model_config.quantize:
-            self.print_and_status_update("Quantizing transformer")
-            quantize_model(self, transformer)
-            flush()
-
-        if (
-            self.model_config.layer_offloading
-            and self.model_config.layer_offloading_transformer_percent > 0
-        ):
-            MemoryManager.attach(
-                transformer,
-                self.device_torch,
-                offload_percent=self.model_config.layer_offloading_transformer_percent,
-            )
-
-        if self.model_config.low_vram:
-            self.print_and_status_update("Keeping transformer on CPU")
-            transformer.to("cpu")
-        else:
-            transformer.to(self.device_torch)
+        # quantize + offload + placement, all driven by model_config
+        transformer.aitk_post_load(**self.component_load_kwargs("transformer"))
         flush()
 
         tokenizer, processor, text_encoder = self._load_text_encoder()
-        te_prequantized = any(
-            isinstance(m, OstrisLinear) for m in text_encoder.modules()
-        )
-        if self.model_config.quantize_te and not te_prequantized:
-            self.print_and_status_update("Quantizing text encoder")
-            quantize(text_encoder, weights=get_qtype(self.model_config.qtype_te))
-            freeze(text_encoder)
-            flush()
-        elif self.model_config.quantize_te:
-            self.print_and_status_update(
-                "Text encoder is already nvfp4/int8 quantized; skipping quantize_te"
-            )
-        if (
-            self.model_config.layer_offloading
-            and self.model_config.layer_offloading_text_encoder_percent > 0
-        ):
-            MemoryManager.attach(
-                text_encoder,
-                self.device_torch,
-                offload_percent=self.model_config.layer_offloading_text_encoder_percent,
-            )
-        if self.model_config.low_vram:
-            text_encoder.to("cpu")
-        else:
-            text_encoder.to(self.device_torch)
+        if any(isinstance(m, OstrisLinear) for m in text_encoder.modules()):
+            # already nvfp4/int8 quantized; aitk_post_load skips quantize_te
+            text_encoder.aitk_is_quantized = True
+        # quantize + offload + placement, all driven by model_config
+        text_encoder.aitk_post_load(**self.component_load_kwargs("te"))
         flush()
 
         vae_bundle = self._load_vaes()
@@ -914,17 +782,6 @@ class MinimaxH3Model(BaseModel):
         if self.model.device == torch.device("cpu"):
             self.model.to(device)
 
-        # a grad-enabled prediction is the primary (loss carrying) one unless
-        # the trainer declared a secondary slot on the batch (prior /
-        # guidance-unconditional / preservation passes). Trainers that make
-        # several grad predictions per step (e.g. turbo rollouts) get one
-        # primary per prediction, last writer wins.
-        is_primary_pred = (
-            torch.is_grad_enabled()
-            and batch is not None
-            and batch.audio_pred_slot is None
-        )
-
         batch_size, _, t_lat, h_lat, w_lat = latent_model_input.shape
 
         with torch.no_grad():
@@ -971,6 +828,8 @@ class MinimaxH3Model(BaseModel):
                 )
 
             sa = sigma_a.view(-1, 1, 1)
+            audio_target = None
+            noisy_audio_rows = None
             if raw_audio is not None:
                 expected_rows = a_lat * packing.AUDIO_CHANNELS
                 if raw_audio.shape[1] > expected_rows:
@@ -981,31 +840,29 @@ class MinimaxH3Model(BaseModel):
                     )
                 # the audio noise is drawn once per step and shared by every
                 # pass (prior, primary, cfg/guidance, preservation) so they all
-                # see the same soundtrack and the stored target keeps matching
-                if (
-                    batch.audio_noise is not None
-                    and batch.audio_noise.shape == raw_audio.shape
-                ):
-                    audio_noise = batch.audio_noise.to(device, torch.float32)
+                # see the same soundtrack and every pass's target matches. It
+                # rides on the latents DTO along with the trimmed audio so
+                # on-the-fly encodes aren't repeated per pass.
+                audio_noise = (
+                    batch.latents.get("audio_noise")
+                    if isinstance(batch.latents, DTO)
+                    else None
+                )
+                if audio_noise is not None and audio_noise.shape == raw_audio.shape:
+                    audio_noise = audio_noise.to(device, torch.float32)
                 else:
                     audio_noise = torch.randn_like(raw_audio)
-                    batch.audio_noise = audio_noise
+                    if batch.latents is not None:
+                        batch.latents = DTO(
+                            batch.latents, audio=raw_audio, audio_noise=audio_noise
+                        )
                 audio_rows = (1.0 - sa) * raw_audio + sa * audio_noise
-                batch.audio_latents = raw_audio
-                if batch.audio_target is None:
-                    # model predicts clean - noise; audio_pred is negated below
-                    # so the stored target follows ai-toolkit's noise - clean.
-                    # With the shared noise this is the same value on every
-                    # pass, so first writer is fine (and it keeps a guidance
-                    # extrapolated target from being overwritten).
-                    batch.audio_target = (audio_noise - raw_audio).detach()
-                if is_primary_pred:
-                    # expose what audio perceptual losses need to rebuild the
-                    # clean estimate (x0 = noisy - sigma_a * pred). Tied to the
-                    # primary pass so they always match audio_pred, even when a
-                    # trainer makes primary predictions at several sigmas.
-                    batch.audio_noisy = audio_rows
-                    batch.audio_sigma = sigma_a
+                # model predicts clean - noise; audio_pred is negated below so
+                # the target follows ai-toolkit's noise - clean convention
+                audio_target = (audio_noise - raw_audio).detach()
+                # what audio perceptual losses need to rebuild the clean
+                # estimate (x0 = noisy - sigma_a * pred); rides the pred DTO
+                noisy_audio_rows = audio_rows
             else:
                 # no soundtrack: silence (zeros) noised at the audio sigma
                 # rides along without contributing to the loss
@@ -1094,20 +951,26 @@ class MinimaxH3Model(BaseModel):
             video_indices=video_indices.to(device),
             audio_indices=audio_indices.to(device),
             text_indices=text_indices.to(device),
+            # target-video token grid (patch 1x2x2); consumed only by VSA models
+            vsa_video_grid=(t_lat, h_lat // 2, w_lat // 2),
         )
 
         if num_cond_audio > 0:
             # reference soundtrack rows are conditioning, not targets
             audio_pred = audio_pred[:, num_cond_audio:]
-        if batch is not None and batch.audio_target is not None:
-            # flip to ai-toolkit's noise - clean convention
-            if is_primary_pred:
-                batch.audio_pred = -audio_pred
-            else:
-                batch.set_secondary_audio_pred(-audio_pred)
 
         video_pred = video_pred[:, num_cond:]
         noise_pred = unpatchify_video_tokens(video_pred, t_lat, h_lat, w_lat)
+        if audio_target is not None:
+            # every pass's DTO carries its own audio stream; preds flipped to
+            # ai-toolkit's noise - clean convention
+            return DTO(
+                -noise_pred,
+                audio=-audio_pred,
+                audio_target=audio_target,
+                audio_noisy=noisy_audio_rows,
+                audio_sigma=sigma_a,
+            )
         return -noise_pred
 
     def get_loss_target(self, *args, **kwargs):
@@ -1226,19 +1089,9 @@ class MinimaxH3Model(BaseModel):
             "*adaln_proj*",
         ]
 
-    def convert_lora_weights_before_save(self, state_dict):
-        # ComfyUI's MiniMax-H3 keys are the original checkpoint keys, so the
-        # standard diffusion_model prefix maps directly
-        return {
-            k.replace("transformer.", "diffusion_model."): v
-            for k, v in state_dict.items()
-        }
-
-    def convert_lora_weights_before_load(self, state_dict):
-        return {
-            k.replace("diffusion_model.", "transformer."): v
-            for k, v in state_dict.items()
-        }
+    # ComfyUI's MiniMax-H3 keys are the original checkpoint keys, so the
+    # standard diffusion_model prefix maps directly
+    lora_keys_use_comfy_prefix = True
 
 
 class MinimaxH3Ref2VAModel(MinimaxH3Model):
@@ -1303,6 +1156,9 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
         if self.dopsd:
             self.dopsd_self_ref = True
             self.require_pixel_tensor_cache = True
+            self.dopsd_bleed_strength = float(
+                self.model_config.model_kwargs.get("dopsd_bleed_strength", 1.0)
+            )
 
     def _dit_component(self) -> str:
         partition = str(
@@ -1695,3 +1551,109 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
         if is_video:
             return result  # dict consumed by new_save_image_function
         return result[0]
+
+
+class MinimaxH3FastModel(MinimaxH3Model):
+    """FastH3: FastVideo's DMD2-distilled 4-step MiniMax-H3 preview, trained
+    with VSA (Video Sparse Attention) at 90% sparsity. Text-to-video(+audio)
+    only — no first-frame or reference conditioning.
+
+    The DiT is the int8-ConvRot repack of
+    ``FastVideo/FastVideo-Minimax-FastH3-Preview-v0.2`` (built with
+    scripts/convert_minimax_h2_fastvideo.py): the pruned comfy layout plus a
+    ``blocks.N.attn.to_gate_compress`` linear per block. Attention runs the
+    trained VSA policy — pooled 64-token (4,4,4) tile top-k block-sparse
+    attention with the gated compression branch — via FlexAttention
+    (src/vsa.py), in training and sampling alike. Text encoder and VAEs are
+    shared with the base model.
+
+    ``model_kwargs``:
+      - ``vsa`` (default true): false runs dense attention with the gate
+        branch off, matching FastVideo's dense LoRA-preview mode
+      - ``vsa_sparsity`` (default 0.9, the checkpoint's trained policy)
+
+    Sample with 4 steps (the distilled schedule) and guidance_scale 1.
+    """
+
+    arch = "minimax_h3_vsa"
+    # FastH3 samples on its trained ladder: [999, 749, 500, 250] on the
+    # shared 1000-step grid, each scheduler applying its own shift
+    t1000_sample_ladder = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        kw = self.model_config.model_kwargs
+        self.vsa_sparsity: Optional[float] = None
+        if bool(kw.get("vsa", True)):
+            self.vsa_sparsity = float(kw.get("vsa_sparsity", 0.9))
+
+    def _dit_component(self) -> str:
+        return "dit_fasth3"
+
+    def _resolve_comfy_file(self, component: str) -> str:
+        if component != "dit_fasth3":
+            return super()._resolve_comfy_file(component)
+        # local search at the comfy-layout locations first; the hub file sits
+        # at the FastH3 repo's root, so the download is done directly here
+        name_or_path = self.model_config.name_or_path
+        extra_roots = (
+            [name_or_path] if name_or_path and os.path.isdir(name_or_path) else []
+        )
+        rel_path = COMFY_FILES[component]
+        found = resolve_comfy_file(
+            rel_path,
+            repo_id=FASTH3_REPO,
+            override_path=self.model_config.model_kwargs.get(f"{component}_path", None),
+            extra_roots=extra_roots,
+            status_fn=self.print_and_status_update,
+            local_only=True,
+        )
+        if found is not None:
+            return found
+        import huggingface_hub
+
+        target_dir = os.path.join(MODELS_PATH, "diffusion_models")
+        os.makedirs(target_dir, exist_ok=True)
+        self.print_and_status_update(
+            f"Downloading {os.path.basename(rel_path)} from {FASTH3_REPO}"
+        )
+        try:
+            return huggingface_hub.hf_hub_download(
+                repo_id=FASTH3_REPO,
+                filename=os.path.basename(rel_path),
+                local_dir=target_dir,
+            )
+        except Exception as e:
+            raise FileNotFoundError(
+                f"{os.path.basename(rel_path)} was not found locally or on "
+                f"{FASTH3_REPO}. Build it from the FastVideo release with:\n"
+                f"  python scripts/convert_minimax_h2_fastvideo.py "
+                f"{FASTH3_SOURCE_REPO} {os.path.join(target_dir, os.path.basename(rel_path))}\n"
+                f"or point model_kwargs.dit_fasth3_path at an existing "
+                f"FastH3 int8-convrot file."
+            ) from e
+
+    def _load_transformer(self) -> MiniMaxH3Transformer:
+        transformer = super()._load_transformer()
+        if not transformer.params.gate_compress:
+            raise ValueError(
+                "minimax_h3_vsa needs a VSA-trained checkpoint with "
+                "blocks.N.attn.to_gate_compress weights (FastH3); this file "
+                "has none. Use arch minimax_h3 for the base checkpoints."
+            )
+        transformer.vsa_sparsity = self.vsa_sparsity
+        return transformer
+
+    def _build_condition(
+        self, batch: "DataLoaderBatchDTO", latent_shape, device, dtype
+    ):
+        # t2v only: no keyframe or reference conditioning
+        return None, None, (), ()
+
+    def get_base_model_version(self):
+        return "minimax_h3_vsa"
+
+    @property
+    def text_embedding_space_version(self):
+        # same Qwen3-VL presentation as the base model: share the embed cache
+        return "minimax_h3"
