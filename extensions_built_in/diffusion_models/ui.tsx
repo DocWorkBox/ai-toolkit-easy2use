@@ -534,6 +534,89 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
   },
   {
+    name: "qwen_image_2",
+    label: "Qwen-Image-2.1",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      "config.process[0].model.name_or_path": [
+        "Comfy-Org/Qwen-Image-2.1",
+        defaultNameOrPath,
+      ],
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].train.unload_text_encoder": [false, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      // the Comfy-Org weights are pre-quantized int8 convrot; these qtypes
+      // match the checkpoints exactly, so the load is unchanged. Picking a
+      // different qtype re-quantizes layer by layer into that format.
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      "config.process[0].sample.guidance_scale": [3.0, 4.0],
+      // the VAE is RGBA: images load, encode and decode with their alpha
+      "config.process[0].model.model_kwargs": [
+        {
+          rgba: false,
+        },
+        {},
+      ],
+    },
+    disableSections: ["network.conv", "train.unload_text_encoder"],
+    // one model: it edits when the dataset has control paths, and is plain
+    // text to image when it does not
+    additionalSections: [
+      "datasets.multi_control_paths",
+      "sample.multi_ctrl_imgs",
+      "model.low_vram",
+      "model.layer_offloading",
+    ],
+    customModelSelectOptions: [
+      {
+        type: "checkbox",
+        label: "透明通道（RGBA）",
+        getValue: (config: JobConfig) =>
+          config?.config?.process?.[0]?.model?.model_kwargs?.rgba ?? false,
+        onChange: (
+          value: boolean,
+          config: JobConfig,
+          setJobConfig: (value: any, key: string) => void,
+        ) => {
+          const kwargs = {
+            ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}),
+          };
+          if (value) {
+            kwargs.rgba = true;
+          } else {
+            delete kwargs.rgba;
+          }
+          setJobConfig(kwargs, "config.process[0].model.model_kwargs");
+        },
+        doc: {
+          title: "透明通道（RGBA）",
+          description: (
+            <div className="space-y-2">
+              <p>
+                此模型的 VAE 原生支持 RGBA。启用后，数据集图片和参考图会读取透明通道，
+                VAE 将编码全部四个通道，采样结果也会保存为保留透明度的 PNG。
+              </p>
+              <p>
+                没有透明通道的图片会按完全不透明处理，因此可以混合使用。关闭后将按普通
+                RGB 训练和采样：输入时丢弃透明通道，输出时补为完全不透明。
+              </p>
+              <p>
+                切换此选项会重新缓存潜变量，并且不能与使用 <code>alpha_mask</code>
+                的数据集同时启用，因为后者会将透明通道用作损失遮罩。
+              </p>
+            </div>
+          ),
+        },
+      },
+    ],
+  },
+  {
     name: "qwen_image_edit_plus:firered",
     label: "FireRed-Image-Edit-1.1",
     group: "instruction",
