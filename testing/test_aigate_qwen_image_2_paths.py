@@ -15,6 +15,9 @@ def test_qwen_image_2_uses_local_configs_with_comfy_weights():
     )
     assert f'BASE_REPO = "{PORTABLE_CONFIG_PATH}"' in model_source
     assert 'COMFY_REPO = "Comfy-Org/Qwen-Image-2.1"' in model_source
+    assert "component_path = COMFY_REPO" in model_source
+    assert "base_model_path, dtype=dtype, subfolder=\"text_encoder\"" not in model_source
+    assert "config_path=base_model_path" in model_source
 
     for path in (
         "extensions_built_in/diffusion_models/qwen_image_2/src/text_encoder.py",

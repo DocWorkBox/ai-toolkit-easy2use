@@ -155,6 +155,7 @@ class QwenImage2Model(BaseModel):
         self.print_and_status_update("Loading Qwen-Image 2.1 model")
         model_path = self.model_config.name_or_path
         base_model_path = self.model_config.extras_name_or_path
+        component_path = COMFY_REPO
 
         if base_model_path == model_path and not os.path.isdir(base_model_path):
             # extras default to name_or_path, which is the comfy repack (or a
@@ -165,6 +166,7 @@ class QwenImage2Model(BaseModel):
         ):
             # a local full checkpoint supplies its own text encoder / vae
             base_model_path = model_path
+            component_path = model_path
 
         self.print_and_status_update("Loading transformer")
         transformer = QwenImage21Transformer2DModel.load(
@@ -177,7 +179,10 @@ class QwenImage2Model(BaseModel):
         self.print_and_status_update("Loading text encoder")
         processor = QwenImage21TextEncoder.load_processor(base_model_path)
         text_encoder = QwenImage21TextEncoder.load_model(
-            base_model_path, dtype=dtype, subfolder="text_encoder"
+            component_path,
+            config_path=base_model_path,
+            dtype=dtype,
+            subfolder="text_encoder",
         )
         # the vision tower stays: any prompt may carry reference images. bf16
         # Conv3d has no fast kernel, the equivalent GEMM does
@@ -189,7 +194,9 @@ class QwenImage2Model(BaseModel):
 
         self.print_and_status_update("Loading VAE")
         vae = AutoencoderKLQwenImage21.load(
-            base_model_path, **self.component_load_kwargs("vae")
+            component_path,
+            config_path=base_model_path,
+            **self.component_load_kwargs("vae"),
         )
         vae.requires_grad_(False)
         vae.eval()

@@ -198,9 +198,18 @@ def test_catalog_covers_qwen3_omni_checkpoints_and_local_metadata():
 def test_catalog_covers_new_main_models_and_components():
     by_id = {item["id"]: item for item in _catalog()["models"]}
 
+    assert {
+        by_id[key]["root"]
+        for key in (
+            "qwen-image-21-transformer",
+            "qwen-image-21-text-encoder",
+            "qwen-image-21-vae",
+        )
+    } == {"configured_models"}
     assert by_id["qwen-image-21-transformer"]["path"] == (
-        "./models/diffusion_models/qwen_image_2.1_int8_convrot.safetensors"
+        "diffusion_models/qwen_image_2.1_int8_convrot.safetensors"
     )
+    assert by_id["qwen-image-21-config"]["path"] == "./models/Qwen-Image-2.1"
     assert {
         by_id["qwen-image-21-config"]["family"],
         by_id["qwen-image-21-text-encoder"]["family"],
@@ -228,7 +237,7 @@ def test_catalog_covers_new_main_models_and_components():
     )
 
 
-def test_minimax_h3_is_the_only_remote_training_default():
+def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path():
     options = _model_ui()
     values = re.findall(
         r"[\"']config\.process\[0\]\.model\.(?:name_or_path|extras_name_or_path|assistant_lora_path|unconditional_lora_path)[\"']\s*:\s*\[\s*[\"']([^\"']+)[\"']",
@@ -237,7 +246,10 @@ def test_minimax_h3_is_the_only_remote_training_default():
 
     remote_values = [value for value in values if not value.startswith("./models/")]
     assert remote_values
-    assert set(remote_values) == {"Comfy-Org/MiniMax-H3"}
+    assert set(remote_values) == {
+        "Comfy-Org/MiniMax-H3",
+        "Comfy-Org/Qwen-Image-2.1",
+    }
 
     minimax = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
     assert 'COMFY_REPO = "Comfy-Org/MiniMax-H3"' in minimax
@@ -548,6 +560,40 @@ def test_model_scanner_uses_configured_models_path_for_minimax(tmp_path):
     assert by_id["minimax-h3-video-vae"]["status"] == "missing"
     assert "ComfyUI" in by_id["minimax-h3-video-vae"]["detail"]
     assert "MODELS_PATH" in by_id["minimax-h3-video-vae"]["detail"]
+
+
+def test_qwen_image_21_scans_comfy_weights_and_portable_configs(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    configured_root = tmp_path / "ComfyUI" / "models"
+    monkeypatch.setenv("MODELS_PATH", str(configured_root))
+    entries = {
+        item["id"]: item
+        for item in _catalog()["models"]
+        if item["id"].startswith("qwen-image-21-")
+    }
+    for key in (
+        "qwen-image-21-transformer",
+        "qwen-image-21-text-encoder",
+        "qwen-image-21-vae",
+    ):
+        weight = configured_root / entries[key]["path"]
+        weight.parent.mkdir(parents=True, exist_ok=True)
+        weight.write_bytes(b"weight")
+
+    config = tmp_path / "models" / "Qwen-Image-2.1"
+    for relative in entries["qwen-image-21-config"]["required_all"]:
+        target = config / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("{}", encoding="utf-8")
+
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    results = {item["id"]: item for item in report["models"]}
+
+    for key in entries:
+        assert results[key]["status"] == "ready"
+    assert results["qwen-image-21-transformer"]["path"].startswith("<MODELS_PATH>/")
+    assert results["qwen-image-21-config"]["absolute_path"] == str(config.resolve())
 
 
 def test_model_scanner_detects_lfs_pointer_as_incomplete(tmp_path):
