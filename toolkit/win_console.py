@@ -7,9 +7,9 @@ leaves the job with no console at all, and Windows hands a brand new console
 that has none. MSVC during a torch/triton compile, git during a HF download
 and ffmpeg would each flash a window on the user's desktop.
 
-Defaulting those spawns to CREATE_NO_WINDOW suppresses the flash. This is a
-no-op unless we are on Windows *and* have no console, so running run.py from a
-terminal behaves exactly as it did before.
+Defaulting those spawns to CREATE_NO_WINDOW suppresses the flash when the
+parent has no console. Native Windows tools may also emit non-UTF-8 output,
+so text pipe decoding needs a fallback even when the parent has a console.
 """
 
 import subprocess
@@ -43,22 +43,22 @@ def _has_console():
 
 
 def suppress_child_consoles():
-    """Make CREATE_NO_WINDOW the default for subprocesses, where it matters."""
+    """Protect Windows text pipes and hide children of console-free jobs."""
     global _patched
     if _patched or sys.platform != "win32":
         return
+    hide_child_windows = False
     try:
-        if _has_console():
-            return
+        hide_child_windows = not _has_console()
     except Exception:
-        # Never let a console tweak take down a training run.
-        return
+        # Console detection must not disable the independent decode protection.
+        pass
 
     original_init = subprocess.Popen.__init__
 
     def patched_init(self, *args, **kwargs):
         _ensure_text_subprocess_decode_fallback(kwargs)
-        if len(args) >= _CREATIONFLAGS_POSITION:
+        if not hide_child_windows or len(args) >= _CREATIONFLAGS_POSITION:
             # Passed positionally; leave the caller's choice alone.
             return original_init(self, *args, **kwargs)
         flags = kwargs.get("creationflags", 0)

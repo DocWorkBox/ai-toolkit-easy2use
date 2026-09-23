@@ -10,6 +10,11 @@ export const resolvePythonPath = (): string => {
   const candidates: string[] = [];
 
   if (isWindows) {
+    // Match the manager's portable detection and resolve an absolute path so
+    // detached jobs can find the pythonw.exe beside their own interpreter.
+    if (process.env.AITK_RUNTIME_LAYOUT?.trim().toLowerCase() !== 'standard') {
+      candidates.push(path.join(TOOLKIT_ROOT, 'runtime', 'python', 'python.exe'));
+    }
     candidates.push(path.join(TOOLKIT_ROOT, '.venv', 'Scripts', 'python.exe'));
     candidates.push(path.join(TOOLKIT_ROOT, 'venv', 'Scripts', 'python.exe'));
   } else {
