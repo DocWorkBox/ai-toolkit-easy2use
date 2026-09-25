@@ -5,6 +5,7 @@ from .omnigen2 import OmniGen2Model
 from .flux_kontext import FluxKontextModel
 from .wan22 import Wan225bModel, Wan2214bModel, Wan2214bI2VModel
 from .qwen_image import QwenImageModel, QwenImageEditModel, QwenImageEditPlusModel
+from .qwen_image_2 import QwenImage2Model
 from .flux2 import Flux2Model, Flux2Klein4BModel, Flux2Klein9BModel
 from .z_image import ZImageModel
 from .ltx2 import LTX2Model, LTX23Model, LTX25Model
@@ -19,7 +20,7 @@ from .prx_pixel_t2i import PRXPixelT2IModel
 from .krea2 import Krea2Model
 from .boogu_image import BooguImageModel, BooguImageEditModel
 from .mageflow import MageFlowModel, MageFlowEditModel
-from .minimax_h3 import MinimaxH3Model, MinimaxH3Ref2VAModel
+from .minimax_h3 import MinimaxH3Model, MinimaxH3Ref2VAModel, MinimaxH3FastModel
 
 AI_TOOLKIT_MODELS = [
     # put a list of models here
@@ -36,6 +37,7 @@ AI_TOOLKIT_MODELS = [
     QwenImageModel,
     QwenImageEditModel,
     QwenImageEditPlusModel,
+    QwenImage2Model,
     Flux2Model,
     ZImageModel,
     LTX2Model,
@@ -58,4 +60,5 @@ AI_TOOLKIT_MODELS = [
     MageFlowEditModel,
     MinimaxH3Model,
     MinimaxH3Ref2VAModel,
+    MinimaxH3FastModel,
 ]

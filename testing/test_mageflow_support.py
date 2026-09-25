@@ -3,7 +3,7 @@ from pathlib import Path
 
 REGISTRY_SOURCE = Path("extensions_built_in/diffusion_models/__init__.py")
 MAGEFLOW_SOURCE = Path("extensions_built_in/diffusion_models/mageflow/mageflow.py")
-OPTIONS_SOURCE = Path("ui/src/app/jobs/new/options.tsx")
+OPTIONS_SOURCE = Path("extensions_built_in/diffusion_models/ui.tsx")
 SIMPLE_JOB_SOURCE = Path("ui/src/app/jobs/new/SimpleJob.tsx")
 
 
@@ -24,8 +24,8 @@ def test_mageflow_uses_bundled_implementation_and_official_repos():
     assert "from .src.transformer import MageFlow, MageFlowParams" in source
     assert "from .src.vae import MageVAE" in source
     assert "from .src.pipeline import MageFlowPipeline" in source
-    assert "name: 'mageflow'" in options
-    assert "name: 'mageflow_edit'" in options
+    assert 'name: "mageflow"' in options
+    assert 'name: "mageflow_edit"' in options
     assert "microsoft/Mage-Flow-Base" in options
     assert "microsoft/Mage-Flow-Edit-Base" in options
 
