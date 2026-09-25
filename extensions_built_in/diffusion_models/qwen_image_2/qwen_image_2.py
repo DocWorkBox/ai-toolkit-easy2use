@@ -34,6 +34,7 @@ from toolkit.basic import flush
 from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
+from toolkit.models.v2.resolver import find_file_recursive
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
@@ -75,13 +76,32 @@ scheduler_config = {
     "use_karras_sigmas": False,
 }
 
-# The Comfy-Org repack is the weight source; AIgate keeps the original model's
-# configs and processor in a local directory because the repack omits them.
+# The Comfy-Org repack is the weight source; compshare keeps the original
+# model's configs and processor in a separate local directory because the
+# repack omits them.
 COMFY_REPO = "Comfy-Org/Qwen-Image-2.1"
-BASE_REPO = "Qwen/Qwen-Image-2.1"
+BASE_REPO = "/model/ModelScope/Qwen/Qwen-Image-2.1"
 
 # decode above this many output pixels goes through the VAE's tiled path
 TILE_DECODE_ABOVE_PIXELS = 1024 * 1024
+
+
+def _resolve_local_comfy_component(root: str, candidates: List[str]) -> str:
+    for rel_path in candidates:
+        for candidate in (
+            os.path.join(root, rel_path),
+            os.path.join(root, os.path.basename(rel_path)),
+        ):
+            if os.path.isfile(candidate):
+                return candidate
+    for rel_path in candidates:
+        found = find_file_recursive(root, os.path.basename(rel_path))
+        if found is not None:
+            return found
+    raise FileNotFoundError(
+        f"None of the expected Qwen-Image-2.1 weights were found under {root}: "
+        f"{', '.join(candidates)}"
+    )
 
 
 def _drop_repeats(images):
@@ -155,6 +175,26 @@ class QwenImage2Model(BaseModel):
         self.print_and_status_update("Loading Qwen-Image 2.1 model")
         model_path = self.model_config.name_or_path
         base_model_path = self.model_config.extras_name_or_path
+        local_comfy_root = os.path.isdir(model_path) and not os.path.isdir(
+            os.path.join(model_path, "text_encoder")
+        )
+
+        if local_comfy_root:
+            if not base_model_path or base_model_path == model_path:
+                base_model_path = BASE_REPO
+            transformer_path = _resolve_local_comfy_component(
+                model_path, QwenImage21Transformer2DModel._COMFY_FILES
+            )
+            text_encoder_path = _resolve_local_comfy_component(
+                model_path, QwenImage21TextEncoder._COMFY_FILES
+            )
+            vae_path = _resolve_local_comfy_component(
+                model_path, AutoencoderKLQwenImage21._COMFY_FILES
+            )
+        else:
+            transformer_path = model_path
+            text_encoder_path = base_model_path
+            vae_path = base_model_path
 
         if base_model_path == model_path and not os.path.isdir(base_model_path):
             # extras default to name_or_path, which is the comfy repack (or a
@@ -168,7 +208,7 @@ class QwenImage2Model(BaseModel):
 
         self.print_and_status_update("Loading transformer")
         transformer = QwenImage21Transformer2DModel.load(
-            model_path,
+            transformer_path,
             config_path=base_model_path,
             **self.component_load_kwargs("transformer"),
         )
@@ -177,7 +217,10 @@ class QwenImage2Model(BaseModel):
         self.print_and_status_update("Loading text encoder")
         processor = QwenImage21TextEncoder.load_processor(base_model_path)
         text_encoder = QwenImage21TextEncoder.load_model(
-            base_model_path, dtype=dtype, subfolder="text_encoder"
+            text_encoder_path,
+            dtype=dtype,
+            subfolder="text_encoder",
+            config_path=base_model_path,
         )
         # the vision tower stays: any prompt may carry reference images. bf16
         # Conv3d has no fast kernel, the equivalent GEMM does
@@ -189,7 +232,9 @@ class QwenImage2Model(BaseModel):
 
         self.print_and_status_update("Loading VAE")
         vae = AutoencoderKLQwenImage21.load(
-            base_model_path, **self.component_load_kwargs("vae")
+            vae_path,
+            config_path=base_model_path,
+            **self.component_load_kwargs("vae"),
         )
         vae.requires_grad_(False)
         vae.eval()

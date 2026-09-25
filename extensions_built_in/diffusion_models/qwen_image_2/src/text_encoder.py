@@ -17,9 +17,9 @@ _COMFY_PREFIXES = (
 
 
 class QwenImage21TextEncoder(Qwen3VLTextEncoder):
-    aitk_config_repo = "Qwen/Qwen-Image-2.1"
+    aitk_config_repo = "/model/ModelScope/Qwen/Qwen-Image-2.1"
     aitk_tokenizer_subfolder = "processor"
-    aitk_processor_repo = "Qwen/Qwen-Image-2.1"
+    aitk_processor_repo = "/model/ModelScope/Qwen/Qwen-Image-2.1"
     aitk_processor_subfolder = "processor"
 
     aitk_comfy_repo = "Comfy-Org/Qwen-Image-2.1"

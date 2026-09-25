@@ -540,8 +540,12 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "Comfy-Org/Qwen-Image-2.1",
+        "/model/ModelScope/Comfy-Org/Qwen-Image-2.1",
         defaultNameOrPath,
+      ],
+      "config.process[0].model.extras_name_or_path": [
+        "/model/ModelScope/Qwen/Qwen-Image-2.1",
+        undefined,
       ],
       "config.process[0].model.quantize": [true, false],
       "config.process[0].model.quantize_te": [true, false],
