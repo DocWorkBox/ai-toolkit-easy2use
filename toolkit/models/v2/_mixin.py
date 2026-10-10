@@ -616,6 +616,12 @@ class OstrisModelMixin:
         checkpoints read from non-safetensors sources). ``config``, when
         given, is used directly (for models whose config comes from the
         holder, e.g. model_kwargs-driven archs)."""
+        # comfy repacks can carry ``<attn>.comfy_attention.config`` uint8 JSON
+        # blobs (e.g. {"attention": "comfy_kitchen_int8"}): ComfyUI runtime
+        # attention hints, not weights
+        state_dict = {
+            k: v for k, v in state_dict.items() if not k.endswith(".comfy_attention.config")
+        }
         state_dict = cls.convert_state_dict_on_load(state_dict)
         has_quant_markers = "scaled_fp8" in state_dict or any(
             k.endswith(".comfy_quant") for k in state_dict

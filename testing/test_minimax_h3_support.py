@@ -61,27 +61,30 @@ def test_minimax_h3_training_adapter_uses_aigate_defaults_and_localized_help():
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
-    adapter_path = "/datasets/ComfyUI/models/loras/minimax_h3_training_adapter_v1.safetensors"
+    adapter_path = (
+        "ostris/minimax_h3_training_adapter/"
+        "minimax_h3_training_adapter_v3.safetensors"
+    )
     ref2va_adapter_path = (
         "ostris/minimax_h3_training_adapter/"
-        "minimax_h3_ref2va_training_adapter_v1.safetensors"
+        "minimax_h3_ref2va_training_adapter_v2.safetensors"
     )
     assert options.count(adapter_path) == 3
     assert options.count(ref2va_adapter_path) == 3
     assert 'label: "蒸馏保持方式"' in options
     assert 'label: "对比引导"' in options
-    assert 'label: "训练适配器"' in options
-    assert 'label: "对比引导 + 训练适配器（默认）"' in options
+    assert 'label: "训练适配器（默认）"' in options
+    assert 'label: "对比引导 + 训练适配器"' in options
     assert '{ value: "dopsd", label: "D-OPSD" }' in options
     assert '{ value: "none", label: "不启用" }' in options
     assert "kwargs.dopsd = true" in options
     assert "D-OPSD 使用自蒸馏" in options
     assert "Distillation Handling Method" not in options
-    assert '"config.process[0].train.do_guidance_loss": [true, undefined]' in options
+    assert '"config.process[0].train.do_guidance_loss": [true, undefined]' not in options
     assert '"config.process[0].train.guidance_loss_target": [4.0, undefined]' not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.5"' in version
+    assert 'VERSION = "1.18.6"' in version
 
 
 def test_minimax_h3_ref2va_supports_video_references():
