@@ -245,6 +245,7 @@ def resolve_lora_file(
     path: str,
     hf_token: Optional[str] = None,
     status_fn: Optional[Callable[[str], None]] = None,
+    download_dir: Optional[str] = None,
 ) -> str:
     """Resolve a LoRA reference to a local file.
 
@@ -258,6 +259,7 @@ def resolve_lora_file(
     if os.path.isfile(path):
         return path
     loras_root = os.path.join(MODELS_PATH, "loras")
+    download_root = download_dir or loras_root
     splits = path.split("/")
     # 'org/repo/rel/file.safetensors' -> repo 'org/repo', file 'rel/file.safetensors'
     rel_path = "/".join(splits[2:]) if len(splits) >= 3 else splits[-1]
@@ -266,11 +268,13 @@ def resolve_lora_file(
         os.path.join(loras_root, rel_path),
         os.path.join(MODELS_PATH, rel_path),
         os.path.join(loras_root, filename),
+        os.path.join(download_root, rel_path),
+        os.path.join(download_root, filename),
         os.path.join(MODELS_PATH, path),
     ):
         if os.path.isfile(candidate):
             return candidate
-    for root in (loras_root, MODELS_PATH):
+    for root in (loras_root, download_root, MODELS_PATH):
         found = find_file_recursive(root, filename)
         if found is not None:
             return found
@@ -284,10 +288,11 @@ def resolve_lora_file(
     import huggingface_hub
 
     repo_id = "/".join(splits[:2])
+    os.makedirs(download_root, exist_ok=True)
     if status_fn is not None:
-        status_fn(f"Downloading LoRA {rel_path} from {repo_id} into {loras_root}")
+        status_fn(f"Downloading LoRA {rel_path} from {repo_id} into {download_root}")
     return huggingface_hub.hf_hub_download(
-        repo_id=repo_id, filename=rel_path, token=hf_token, local_dir=loras_root
+        repo_id=repo_id, filename=rel_path, token=hf_token, local_dir=download_root
     )
 
 

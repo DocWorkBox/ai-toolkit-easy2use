@@ -54,9 +54,9 @@ from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
 from toolkit.models.v2.text_encoders.qwen3_vl import Qwen3VLTextEncoder
 from toolkit.models.v2.resolver import (
-    find_file_recursive,
     repo_id_from_name_or_path,
     resolve_comfy_file,
+    resolve_lora_file,
 )
 from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.util.comfy_quant_import import import_comfy_quantized_layers
@@ -301,36 +301,15 @@ class MinimaxH3Model(BaseModel):
         lora_path = self.model_config.assistant_lora_path
         if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:
             lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH
-        if not os.path.exists(lora_path):
-            filename = os.path.basename(lora_path)
-            adapter_root = os.path.join(
-                TOOLKIT_ROOT, "models", "loras", "training_adapters"
-            )
-            found = find_file_recursive(adapter_root, filename)
-            if found is not None:
-                lora_path = found
-            else:
-                lora_splits = lora_path.split("/")
-                if len(lora_splits) != 3:
-                    raise ValueError(
-                        f"Assistant LoRA path {lora_path} is not a local path, a "
-                        f"file under {adapter_root}, or a "
-                        "'user/repo/file.safetensors' hub path."
-                    )
-                import huggingface_hub
-
-                os.makedirs(adapter_root, exist_ok=True)
-                try:
-                    lora_path = huggingface_hub.hf_hub_download(
-                        repo_id="/".join(lora_splits[:2]),
-                        filename=lora_splits[2],
-                        local_dir=adapter_root,
-                    )
-                except Exception as e:
-                    raise ValueError(
-                        f"Failed to download assistant LoRA from {lora_path}: {e}"
-                    )
-            self.model_config.assistant_lora_path = lora_path
+        adapter_root = os.path.join(
+            TOOLKIT_ROOT, "models", "loras", "training_adapters"
+        )
+        lora_path = resolve_lora_file(
+            lora_path,
+            status_fn=self.print_and_status_update,
+            download_dir=adapter_root,
+        )
+        self.model_config.assistant_lora_path = lora_path
 
         # load the adapter; it stays a live module (never merged) and the
         # sampler toggles it off for previews

@@ -104,8 +104,8 @@ def test_minimax_h3_remote_adapters_use_writable_toolkit_models_folder():
     assert 'if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:' in model
     assert 'lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH' in model
     assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in model
-    assert "found = find_file_recursive(adapter_root, filename)" in model
-    assert "local_dir=adapter_root" in model
+    assert "resolve_lora_file(" in model
+    assert "download_dir=adapter_root" in model
 
 
 def test_aigate_comfy_models_path_is_the_effective_ui_default():

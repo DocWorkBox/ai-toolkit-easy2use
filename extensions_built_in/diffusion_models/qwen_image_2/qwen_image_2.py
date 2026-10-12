@@ -32,7 +32,6 @@ off while sampling, so samples show the turbo model plus what was trained.
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-import huggingface_hub
 import numpy as np
 import torch
 from PIL import Image
@@ -45,6 +44,8 @@ from toolkit.config_modules import GenerateImageConfig, ModelConfig, NetworkConf
 from toolkit.lora_special import LoRASpecialNetwork
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
+from toolkit.models.v2.resolver import resolve_lora_file
+from toolkit.paths import TOOLKIT_ROOT
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
@@ -263,21 +264,14 @@ class QwenImage2Model(BaseModel):
         model. It is never merged: the weights are int8, whose grid swallows a
         delta this small on a requantize."""
         self.print_and_status_update("Loading assistant LoRA")
-        lora_path = self.model_config.assistant_lora_path
-        if not os.path.exists(lora_path):
-            # assume it is a hub path
-            lora_splits = lora_path.split("/")
-            if len(lora_splits) != 3:
-                raise ValueError(
-                    f"Assistant LoRA path {lora_path} is not a valid local path or hub path."
-                )
-            repo_id = "/".join(lora_splits[:2])
-            filename = lora_splits[2]
-            try:
-                lora_path = huggingface_hub.hf_hub_download(repo_id=repo_id, filename=filename)
-                self.model_config.assistant_lora_path = lora_path
-            except Exception as e:
-                raise ValueError(f"Failed to download assistant LoRA from {lora_path}: {e}")
+        lora_path = resolve_lora_file(
+            self.model_config.assistant_lora_path,
+            status_fn=self.print_and_status_update,
+            download_dir=os.path.join(
+                TOOLKIT_ROOT, "models", "loras", "training_adapters"
+            ),
+        )
+        self.model_config.assistant_lora_path = lora_path
         lora_state_dict = load_file(lora_path)
         dim_key = next(k for k in lora_state_dict if k.endswith("lora_A.weight"))
         dim = int(lora_state_dict[dim_key].shape[0])
