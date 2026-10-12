@@ -15,7 +15,7 @@
 
 ## 当前支持概览
 
-- 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Qwen-Image-2.1 / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image / Krea 2 / Mage-Flow 等
+- 图像：FLUX.1 / FLUX.2 / FLUX.2 Klein / Qwen-Image / Qwen-Image-2512 / Qwen-Image-2.1 / Qwen-Image-2.1 Turbo / Ming-Image / Iris-3B / Z-Image / SDXL / SD1.5 / ERNIE-Image / Nucleus-Image / Krea 2 / Mage-Flow 等
 - 编辑：Qwen-Image-Edit / Qwen-Image-Edit-2509 / Qwen-Image-Edit-2511 / HiDream E1 / FireRed-Image-Edit-1.1 / Mage-Flow Edit 预设
 - 视频：Wan 2.x / LTX-2 / LTX-2.3 / MiniMax-H3 等
 - 音频：ACE-Step 1.5 / ACE-Step 1.5 XL / YuE2
@@ -43,6 +43,9 @@
 - [Qwen/Qwen-Image](https://huggingface.co/Qwen/Qwen-Image) (Qwen-Image)
 - [Qwen/Qwen-Image-2512](https://huggingface.co/Qwen/Qwen-Image-2512) (Qwen-Image-2512)
 - [Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) (Qwen-Image-2.1)
+- [Qwen/Qwen-Image-2.1-Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo) (Qwen-Image-2.1 Turbo)
+- [inclusionAI/Ming-Image-0.1-Design](https://huggingface.co/inclusionAI/Ming-Image-0.1-Design) (Ming-Image 0.1 Design)
+- [speridlabs/iris-3b](https://huggingface.co/speridlabs/iris-3b) (Iris-3B)
 - [HiDream-ai/HiDream-I1-Full](https://huggingface.co/HiDream-ai/HiDream-I1-Full) (HiDream I1)
 - [OmniGen2/OmniGen2](https://huggingface.co/OmniGen2/OmniGen2) (OmniGen2)
 - [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) (Z-Image Turbo)
@@ -68,6 +71,7 @@
 - [Qwen/Qwen-Image-Edit-2509](https://huggingface.co/Qwen/Qwen-Image-Edit-2509) (Qwen-Image-Edit-2509)
 - [Qwen/Qwen-Image-Edit-2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) (Qwen-Image-Edit-2511)
 - [Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) (Qwen-Image-2.1) - 同一模型同时支持文生图与编辑；数据集包含控制图时执行编辑训练
+- [Qwen/Qwen-Image-2.1-Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo) (Qwen-Image-2.1 Turbo) - 同一模型同时支持文生图与编辑，并使用 8 步蒸馏权重
 - [HiDream-ai/HiDream-E1-1](https://huggingface.co/HiDream-ai/HiDream-E1-1) (HiDream E1)
 - [Boogu/Boogu-Image-0.1-Edit](https://huggingface.co/Boogu/Boogu-Image-0.1-Edit) (Boogu Image Edit)
 - [krea/Krea-2-Raw](https://huggingface.co/krea/Krea-2-Raw) (Krea 2 Edit Training)
