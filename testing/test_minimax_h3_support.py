@@ -89,6 +89,19 @@ def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help(
     assert 'VERSION = "1.18.7"' in version
 
 
+def test_fasth3_uses_compshare_dit_and_shared_minimax_components():
+    options = OPTIONS_SOURCE.read_text(encoding="utf-8")
+
+    assert '"/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy"' in options
+    shared_root = "/model/ModelScope/Comfy-Org/MiniMax-H3"
+    assert (
+        f'"{shared_root}/text_encoders/'
+        'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"' in options
+    )
+    assert f'"{shared_root}/vae/minimax_h3_video_vae_fp16.safetensors"' in options
+    assert f'"{shared_root}/vae/minimax_h3_audio_vae_fp32.safetensors"' in options
+
+
 def test_minimax_h3_ref2va_supports_video_references():
     model = MODEL_SOURCE.read_text(encoding="utf-8")
 

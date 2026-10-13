@@ -634,7 +634,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       // the turbo weight file in the repack (text encoder and VAE come from
       // the same repack); model_kwargs.turbo selects the turbo schedule
       "config.process[0].model.name_or_path": [
-        "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
+        "/model/ModelScope/Comfy-Org/Qwen-Image-2.1",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -1467,8 +1467,19 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "FastVideo/FastVideo-FastH3-Comfy",
+        "/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy",
         defaultNameOrPath,
+      ],
+      "config.process[0].model.model_kwargs": [
+        {
+          text_encoder_path:
+            "/model/ModelScope/Comfy-Org/MiniMax-H3/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          video_vae_path:
+            "/model/ModelScope/Comfy-Org/MiniMax-H3/vae/minimax_h3_video_vae_fp16.safetensors",
+          audio_vae_path:
+            "/model/ModelScope/Comfy-Org/MiniMax-H3/vae/minimax_h3_audio_vae_fp32.safetensors",
+        },
+        {},
       ],
       // pre-quantized weights: matching qtypes keep the load unchanged
       "config.process[0].model.quantize": [true, false],
@@ -1561,18 +1572,16 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           不支持首帧或参考条件。
         </p>
         <p>
-          权重从设置中的{" "}
-          <Link href="/settings" className="text-blue-400 hover:underline">
-            模型目录路径
-          </Link>{" "}
-          加载。缺失文件会在首次加载时从 <code>FastVideo/FastVideo-FastH3-Comfy</code>
-          下载到该目录。文本编码器和 VAE 与 MiniMax-H3 共用，已有 MiniMax-H3 环境只需新增 DiT。
-          使用的文件如下：
+          FastH3 DiT 从 compshare 的 <code>/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy</code>
+          加载；文本编码器和 VAE 从 <code>/model/ModelScope/Comfy-Org/MiniMax-H3</code>
+          共享。使用的文件如下：
         </p>
         <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
-          <code>{`<MODELS_PATH>/
+          <code>{`/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy/
 ├── diffusion_models/
 │   └── fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors
+
+/model/ModelScope/Comfy-Org/MiniMax-H3/
 ├── text_encoders/
 │   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
 └── vae/

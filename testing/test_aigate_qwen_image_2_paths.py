@@ -50,6 +50,21 @@ def test_qwen_image_2_resolves_split_weights_and_adapters_locally():
     assert "lora_path = resolve_lora_file(" in model_source
 
 
+def test_qwen_image_2_turbo_uses_compshare_directory_and_turbo_weights():
+    model_source = _source(
+        "extensions_built_in/diffusion_models/qwen_image_2/qwen_image_2.py"
+    )
+    ui_source = _source("extensions_built_in/diffusion_models/ui.tsx")
+
+    assert ui_source.count(f'"{COMFY_MODEL_DIR}"') == 2
+    assert 'TURBO_COMFY_FILES = [' in model_source
+    assert (
+        '"diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors"'
+        in model_source
+    )
+    assert "TURBO_COMFY_FILES if self.is_turbo" in model_source
+
+
 def test_comfy_resolvers_find_turbo_weights_and_adapter(tmp_path, monkeypatch):
     from toolkit.models.v2 import resolver
 

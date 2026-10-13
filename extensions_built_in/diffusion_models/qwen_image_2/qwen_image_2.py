@@ -92,6 +92,9 @@ scheduler_config = {
 # repack omits them.
 COMFY_REPO = "Comfy-Org/Qwen-Image-2.1"
 BASE_REPO = "/model/ModelScope/Qwen/Qwen-Image-2.1"
+TURBO_COMFY_FILES = [
+    "diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
+]
 
 # the turbo checkpoint is sampled with the schedule it ships
 # (TURBO_SAMPLE_SIGMAS in src/pipeline.py) as-is: no resolution shift, no
@@ -211,8 +214,12 @@ class QwenImage2Model(BaseModel):
         if local_comfy_root:
             if not base_model_path or base_model_path == model_path:
                 base_model_path = BASE_REPO
+            transformer_candidates = (
+                TURBO_COMFY_FILES if self.is_turbo
+                else QwenImage21Transformer2DModel._COMFY_FILES
+            )
             transformer_path = _resolve_local_comfy_component(
-                model_path, QwenImage21Transformer2DModel._COMFY_FILES
+                model_path, transformer_candidates
             )
             text_encoder_path = _resolve_local_comfy_component(
                 model_path, QwenImage21TextEncoder._COMFY_FILES
