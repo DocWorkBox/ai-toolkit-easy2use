@@ -35,6 +35,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _isUiRunning;
     private bool _isShuttingDown;
     private bool _restartRequired;
+    private bool? _updateAvailable;
 
     public MainViewModel(
         ILauncherBackend backend,
@@ -52,7 +53,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         InstallCommand = new AsyncCommand(InstallAsync, CanInstallEnvironment);
         CheckUpdatesCommand = new AsyncCommand(CheckUpdatesAsync, CanRunMaintenance);
         RepairCommand = new AsyncCommand(RepairAsync, CanRepairEnvironment);
-        UpdateCommand = new AsyncCommand(UpdateAsync, CanRunMaintenance);
+        UpdateCommand = new AsyncCommand(UpdateAsync, CanUpdate);
         DoctorCommand = new AsyncCommand(DoctorAsync, CanRunMaintenance);
         StartCommand = new AsyncCommand(StartUiAsync, () => CanStart);
         StopCommand = new AsyncCommand(StopUiAsync, () => CanStop);
@@ -277,15 +278,35 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             "正在检查更新",
             async cancellationToken =>
             {
-                var update = await _backend.CheckUpdatesAsync(AppendEvent, cancellationToken);
-                UpdateStatus = update.UpdateAvailable
-                    ? update.Behind is > 0
-                        ? $"有 {update.Behind} 个代码更新"
-                        : "依赖需要更新"
-                    : "已是最新版本";
+                await RefreshUpdateStatusAsync(cancellationToken);
                 StatusText = "更新检查完成";
             }
         );
+    }
+
+    private async Task RefreshUpdateStatusAsync(CancellationToken cancellationToken)
+    {
+        _updateAvailable = null;
+        UpdateStatus = "正在检查更新";
+        try
+        {
+            var update = await _backend.CheckUpdatesAsync(AppendEvent, cancellationToken);
+            _updateAvailable = update.UpdateAvailable;
+            UpdateStatus = update.UpdateAvailable
+                ? update.Behind is > 0
+                    ? $"有 {update.Behind} 个代码更新"
+                    : "依赖需要更新"
+                : "已是最新版本";
+        }
+        catch
+        {
+            UpdateStatus = "状态待确认";
+            throw;
+        }
+        finally
+        {
+            UpdateCommand.RaiseCanExecuteChanged();
+        }
     }
 
     public Task ScanModelsAsync()
@@ -447,6 +468,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                         $"manager {action.ToString().ToLowerInvariant()} 失败，代码 {result.ExitCode}。"
                     );
                 }
+                if (action == ManagerAction.Update)
+                {
+                    StatusText = "程序已更新，正在复查更新状态";
+                    try
+                    {
+                        await RefreshUpdateStatusAsync(cancellationToken);
+                    }
+                    catch (Exception error) when (error is not OperationCanceledException)
+                    {
+                        AppendLog("warning", $"程序更新已完成，但更新状态复查失败：{error.Message}");
+                    }
+                }
                 var health = await _backend.DiagnoseEnvironmentAsync(
                     AppendEvent,
                     cancellationToken
@@ -576,6 +609,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool CanRunMaintenance()
     {
         return !_isShuttingDown && !IsBusy && _uiSession is null;
+    }
+
+    private bool CanUpdate()
+    {
+        return CanRunMaintenance() && _updateAvailable != false;
     }
 
     private bool CanScanModels()

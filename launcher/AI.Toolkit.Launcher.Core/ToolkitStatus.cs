@@ -117,6 +117,11 @@ public static class ToolkitStatusParser
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
+        if (root.TryGetProperty("fetch_ok", out var fetchOk)
+            && fetchOk.ValueKind != JsonValueKind.True)
+        {
+            throw new InvalidOperationException("无法连接更新源，暂时无法确认是否有更新。");
+        }
         return new UpdateStatus(
             String(root, "version", "未知"),
             String(root, "branch", "未知"),

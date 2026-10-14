@@ -1,9 +1,11 @@
 import path from 'path';
 import prisma from './prisma';
 import { DEFAULT_DATASETS_FOLDER, resolveDatasetsRoot as resolveDatasetPath } from './datasetPaths';
+import { DEFAULT_TRAINING_FOLDER, resolveTrainingRoot as resolveTrainingPath } from './trainingPaths';
 
 export const TOOLKIT_ROOT = path.resolve('@', '..', '..');
-export const defaultTrainFolder = path.join(TOOLKIT_ROOT, 'output');
+export const defaultTrainFolder = DEFAULT_TRAINING_FOLDER;
+export const resolveTrainingRoot = (value?: string | null) => resolveTrainingPath(value, TOOLKIT_ROOT);
 export const defaultDatasetsFolder = DEFAULT_DATASETS_FOLDER;
 export const resolveDatasetsRoot = (value?: string | null) => resolveDatasetPath(value, TOOLKIT_ROOT);
 export const defaultDataRoot = path.join(TOOLKIT_ROOT, 'data');
@@ -26,7 +28,7 @@ export const getTrainingFolder = async () => {
   if (row?.value && row.value !== '') {
     trainingRoot = row.value;
   }
-  return trainingRoot as string;
+  return resolveTrainingRoot(trainingRoot);
 };
 
 export const getHFToken = async () => {

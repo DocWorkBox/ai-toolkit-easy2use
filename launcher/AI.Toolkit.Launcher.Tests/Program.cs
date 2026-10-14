@@ -37,6 +37,12 @@ internal static class Program
             ("UI readiness probe", TestUiReadinessProbe),
             ("view model environment controls", TestViewModelEnvironmentControls),
             ("view model maintenance state", TestViewModelMaintenanceState),
+            ("view model refreshes update status", TestViewModelUpdateStatusRefresh),
+            ("view model update button follows check result", TestViewModelUpdateButtonState),
+            ("view model update recheck failure", TestViewModelUpdateRecheckFailure),
+            ("view model preserves newer remote updates", TestViewModelNewRemoteUpdate),
+            ("view model failed update retains pending status", TestViewModelFailedUpdateStatus),
+            ("offline update check is not current", TestOfflineUpdateCheck),
             ("view model restart reminder", TestViewModelRestartReminder),
             ("view model shutdown waits for maintenance", TestViewModelShutdownWaitsForMaintenance),
             ("view model UI lifecycle", TestViewModelUiLifecycle),
@@ -585,6 +591,116 @@ internal static class Program
         Assert.True(!viewModel.IsBusy, "busy state was not cleared");
         Assert.True(viewModel.CanStart, "start should be enabled after maintenance");
         Assert.Equal("环境修复完成，环境符合要求", viewModel.StatusText);
+    }
+
+    private static async Task TestViewModelUpdateStatusRefresh()
+    {
+        var backend = new FakeLauncherBackend();
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 1, UpdateAvailable = true };
+        await viewModel.CheckUpdatesAsync();
+        Assert.Equal("有 1 个代码更新", viewModel.UpdateStatus);
+
+        var update = viewModel.UpdateAsync();
+        Assert.True(!viewModel.UpdateCommand.CanExecute(null), "update must be disabled while busy");
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 0, UpdateAvailable = false };
+        backend.CompleteMaintenance();
+        await update;
+
+        Assert.Equal(2, backend.UpdateCheckCalls);
+        Assert.Equal("已是最新版本", viewModel.UpdateStatus);
+        Assert.Equal("程序更新完成，环境符合要求", viewModel.StatusText);
+        Assert.True(!viewModel.IsBusy, "update should release maintenance controls");
+        Assert.True(!viewModel.UpdateCommand.CanExecute(null), "completed update must disable update button");
+        Assert.True(viewModel.CheckUpdatesCommand.CanExecute(null), "manual checks must remain available");
+    }
+
+    private static async Task TestViewModelUpdateButtonState()
+    {
+        var backend = new FakeLauncherBackend();
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        await viewModel.InitializeAsync();
+        Assert.True(viewModel.UpdateCommand.CanExecute(null), "unknown status should allow update retry");
+
+        await viewModel.CheckUpdatesAsync();
+        Assert.Equal("已是最新版本", viewModel.UpdateStatus);
+        Assert.True(!viewModel.UpdateCommand.CanExecute(null), "up-to-date status must disable updating");
+        viewModel.UpdateCommand.Execute(null);
+        Assert.True(backend.LastAction is null, "disabled update command must not invoke the backend");
+        Assert.True(viewModel.CheckUpdatesCommand.CanExecute(null), "checks must remain enabled when current");
+
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 1, UpdateAvailable = true };
+        await viewModel.CheckUpdatesAsync();
+        Assert.True(viewModel.UpdateCommand.CanExecute(null), "new remote updates must enable updating");
+
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 0, UpdateAvailable = false };
+        await viewModel.CheckUpdatesAsync();
+        backend.UpdateCheckError = new IOException("Remote connection unavailable");
+        await viewModel.CheckUpdatesAsync();
+        Assert.Equal("状态待确认", viewModel.UpdateStatus);
+        Assert.True(viewModel.UpdateCommand.CanExecute(null), "failed checks must allow retry");
+        Assert.True(viewModel.CheckUpdatesCommand.CanExecute(null), "failed checks must not disable checks");
+    }
+
+    private static async Task TestViewModelUpdateRecheckFailure()
+    {
+        var backend = new FakeLauncherBackend { RestartRequiredAfterUpdate = true };
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 1, UpdateAvailable = true };
+        await viewModel.CheckUpdatesAsync();
+
+        var update = viewModel.UpdateAsync();
+        backend.UpdateCheckError = new IOException("Remote connection unavailable");
+        backend.CompleteMaintenance();
+        await update;
+
+        Assert.Equal("状态待确认", viewModel.UpdateStatus);
+        Assert.Equal("程序更新完成，需要重启应用", viewModel.StatusText);
+        Assert.True(viewModel.RestartRequired, "recheck failure must not suppress restart reminder");
+        Assert.True(!viewModel.IsBusy, "recheck failure must release controls");
+    }
+
+    private static async Task TestViewModelNewRemoteUpdate()
+    {
+        var backend = new FakeLauncherBackend();
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        var update = viewModel.UpdateAsync();
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 1, UpdateAvailable = true };
+        backend.CompleteMaintenance();
+        await update;
+        Assert.Equal(1, backend.UpdateCheckCalls);
+        Assert.Equal("有 1 个代码更新", viewModel.UpdateStatus);
+    }
+
+    private static async Task TestViewModelFailedUpdateStatus()
+    {
+        var backend = new FakeLauncherBackend();
+        var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
+        backend.UpdateCheck = backend.UpdateCheck with { Behind = 1, UpdateAvailable = true };
+        await viewModel.CheckUpdatesAsync();
+        var update = viewModel.UpdateAsync();
+        backend.CompleteMaintenance(exitCode: 1);
+        await update;
+        Assert.Equal(1, backend.UpdateCheckCalls);
+        Assert.Equal("有 1 个代码更新", viewModel.UpdateStatus);
+        Assert.Equal("操作失败", viewModel.StatusText);
+    }
+
+    private static Task TestOfflineUpdateCheck()
+    {
+        var rejected = false;
+        try
+        {
+            ToolkitStatusParser.ParseUpdateCheck(
+                """{"fetch_ok":false,"behind":null,"update_available":false}"""
+            );
+        }
+        catch (InvalidOperationException)
+        {
+            rejected = true;
+        }
+        Assert.True(rejected, "offline response must not be interpreted as up to date");
+        return Task.CompletedTask;
     }
 
     private static async Task TestViewModelRestartReminder()
@@ -1141,6 +1257,13 @@ internal static class Program
 
         public bool RestartRequiredAfterUpdate { get; set; }
 
+        public UpdateStatus UpdateCheck { get; set; } =
+            new("1.18.0", "main", false, 0, true, true, false, "cu130");
+
+        public Exception? UpdateCheckError { get; set; }
+
+        public int UpdateCheckCalls { get; private set; }
+
         public TaskCompletionSource<bool> OpenUiStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -1182,9 +1305,10 @@ internal static class Program
             CancellationToken cancellationToken
         )
         {
-            return Task.FromResult(
-                new UpdateStatus("1.18.0", "main", false, 0, true, true, false, "cu130")
-            );
+            UpdateCheckCalls++;
+            return UpdateCheckError is null
+                ? Task.FromResult(UpdateCheck)
+                : Task.FromException<UpdateStatus>(UpdateCheckError);
         }
 
         public Task<ModelScanReport> ScanModelsAsync(
@@ -1246,9 +1370,9 @@ internal static class Program
             _openUiRelease.Set();
         }
 
-        public void CompleteMaintenance()
+        public void CompleteMaintenance(int exitCode = 0)
         {
-            _maintenance.TrySetResult(new ManagerRunResult(0, string.Empty, string.Empty, false));
+            _maintenance.TrySetResult(new ManagerRunResult(exitCode, string.Empty, string.Empty, false));
         }
     }
 

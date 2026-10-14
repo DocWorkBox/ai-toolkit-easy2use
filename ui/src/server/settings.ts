@@ -1,7 +1,7 @@
 import path from 'path';
 import prisma from '@/server/prisma';
 import { defaultDatasetsFolder, defaultDataRoot, resolveDatasetsRoot } from '@/paths';
-import { defaultTrainFolder } from '@/paths';
+import { defaultTrainFolder, resolveTrainingRoot } from '@/paths';
 import NodeCache from 'node-cache';
 
 const myCache = new NodeCache();
@@ -47,7 +47,7 @@ export const getTrainingFolder = async () => {
   if (row?.value && row.value !== '') {
     trainingRoot = row.value;
   }
-  trainingRoot = path.resolve(trainingRoot);
+  trainingRoot = resolveTrainingRoot(trainingRoot);
   myCache.set(key, trainingRoot);
   return trainingRoot as string;
 };

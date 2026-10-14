@@ -71,7 +71,7 @@ export default function Settings() {
                   <label htmlFor="TRAINING_FOLDER" className="block text-sm font-medium mb-2">
                     训练输出路径
                     <div className="text-gray-500 text-sm ml-1">
-                      用于存放训练生成的文件。必须是绝对路径；若留空，将默认使用项目根目录下的 output 文件夹。
+                      默认使用 ./output，相对于训练器根目录；也支持自定义绝对路径。留空时使用默认目录。
                     </div>
                   </label>
                   <input

@@ -42,7 +42,7 @@ export const defaultJobConfig: JobConfig = {
     process: [
       {
         type: 'diffusion_trainer',
-        training_folder: 'output',
+        training_folder: './output',
         sqlite_db_path: './aitk_db.db',
         device: 'cuda',
         trigger_word: null,
