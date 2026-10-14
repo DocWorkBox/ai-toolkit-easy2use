@@ -188,6 +188,55 @@ def test_archive_update_rejects_path_traversal(tmp_path):
     assert not (tmp_path / "outside.txt").exists()
 
 
+def test_staged_sampling_update_deploys_backend_and_rebuilds_ui_once(monkeypatch, tmp_path):
+    from manager import launch
+
+    source = Path(__file__).resolve().parents[1]
+    payload_paths = (
+        "toolkit/staged_sampling.py",
+        "toolkit/config_modules.py",
+        "toolkit/models/base_model.py",
+        "extensions_built_in/diffusion_models/ui.tsx",
+        "extensions_built_in/diffusion_models/qwen_image_2/qwen_image_2.py",
+        "extensions_built_in/diffusion_models/qwen_image_2/src/pipeline.py",
+        "extensions_built_in/diffusion_models/ming_image/ming_image.py",
+        "extensions_built_in/diffusion_models/ming_image/src/pipeline.py",
+        "extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py",
+        "extensions_built_in/diffusion_models/minimax_h3/src/pipeline.py",
+        "extensions_built_in/diffusion_models/ltx2/ltx2.py",
+        "extensions_built_in/inference_engine/engine.py",
+        "ui/src/app/generate/page.tsx",
+        "ui/src/app/jobs/new/SimpleJob.tsx",
+        "ui/src/app/jobs/new/options.tsx",
+        "ui/src/app/jobs/new/jobConfig.ts",
+        "ui/src/app/jobs/new/utils.ts",
+        "ui/src/docs.tsx",
+        "ui/src/types.ts",
+    )
+    payload = {relative: (source / relative).read_bytes() for relative in payload_paths}
+    target = tmp_path / "portable"
+    ui_dir = target / "ui"
+    _write(ui_dir / "src/app/generate/page.tsx", "old generation page")
+    for relative in launch.UI_BUILD_OUTPUTS:
+        _write(ui_dir / relative, "old build")
+    launch._mark_ui_build_current(ui_dir)
+    assert launch.ui_build_is_current(ui_dir)
+    archive_path = tmp_path / "staged-sampling.zip"
+    _archive(archive_path, payload)
+
+    result = portable_update.apply_archive(archive_path, "staged-sampling-test", repo_root=target)
+
+    assert result["changed"] is True
+    for relative, content in payload.items():
+        assert (target / relative).read_bytes() == content
+    assert not launch.ui_build_is_current(ui_dir)
+    calls = []
+    monkeypatch.setattr(launch.subprocess, "call", lambda command, **kwargs: calls.append(command) or 0)
+    assert launch.ensure_ui_build("npm.cmd", {}, ui_dir) == 0
+    assert launch.ensure_ui_build("npm.cmd", {}, ui_dir) == 0
+    assert calls == [["npm.cmd", "run", "build"]]
+
+
 def test_archive_update_removes_only_previously_managed_files(tmp_path):
     first_archive = tmp_path / "first.zip"
     _archive(

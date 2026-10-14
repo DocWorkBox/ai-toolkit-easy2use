@@ -24,6 +24,8 @@ import numpy as np
 import torch
 from PIL import Image
 from diffusers.utils.torch_utils import randn_tensor
+from tqdm import tqdm
+from toolkit.staged_sampling import PreparedSample
 
 from . import packing
 from .text_encoder import trim_caption_tokens
@@ -61,6 +63,49 @@ class MiniMaxH3Pipeline:
     def set_progress_bar_config(self, **kwargs):
         pass
 
+    def prepare_staged_sample(self, **kwargs):
+        kwargs["prepared_condition"] = self.prepare_condition_rows(
+            kwargs.get("ctrl_img"), kwargs.get("ref_images"), kwargs.get("generator"))
+        return PreparedSample(self, dict(kwargs, output_type="latent"),
+                              dict(is_video=kwargs.get("num_frames", 124) > 1,
+                                   with_audio=kwargs.get("with_audio", True)))
+
+    def prepare_condition_rows(self, ctrl_img, ref_images, generator):
+        model, device = self.model, self.model.device_torch
+        if ctrl_img is not None and ref_images:
+            raise ValueError("ctrl_img (first frame) and ref_images are exclusive")
+
+        def encode_image(img):
+            model.sample_stage("vae")
+            # Preserve the released draw order: condition noise before VAE encoding.
+            noise = randn_tensor((1, 24, 1, img.size[1] // 16, img.size[0] // 16),
+                                 generator=generator, dtype=torch.float32).to(device)
+            frame = torch.from_numpy(np.array(img)).float() / 255.0 * 2.0 - 1.0
+            frame = frame.permute(2, 0, 1)[None, :, None]
+            clean = model.encode_keyframe_latents(frame)
+            return patchify_video_latents(KEYFRAME_NOISE_AUG_T * clean.to(device)
+                                         + (1.0 - KEYFRAME_NOISE_AUG_T) * noise)
+
+        def noise_aug_rows(latents):
+            noise = randn_tensor(latents.shape, generator=generator, dtype=torch.float32).to(device)
+            return patchify_video_latents(KEYFRAME_NOISE_AUG_T * latents.to(device, torch.float32)
+                                         + (1.0 - KEYFRAME_NOISE_AUG_T) * noise)
+
+        if ctrl_img is not None:
+            return encode_image(ctrl_img), None
+        parts, audio_parts = [], []
+        for ref in ref_images or []:
+            if isinstance(ref, dict):
+                parts.append(noise_aug_rows(ref["latent"][None]))
+                if ref.get("audio_rows") is not None:
+                    audio_parts.append(ref["audio_rows"][None].to(device))
+            elif isinstance(ref, torch.Tensor):
+                parts.append(noise_aug_rows(ref[None]))
+            else:
+                parts.append(encode_image(ref))
+        return (torch.cat(parts, dim=1) if parts else None,
+                torch.cat(audio_parts, dim=1).float() if audio_parts else None)
+
     @torch.no_grad()
     def __call__(
         self,
@@ -80,6 +125,8 @@ class MiniMaxH3Pipeline:
             list
         ] = None,  # ref2va references, already area-matched (own aspect, /32)
         with_audio: bool = True,
+        prepared_condition=None,
+        output_type="pil",
         **kwargs,
     ):
         model = self.model
@@ -140,53 +187,9 @@ class MiniMaxH3Pipeline:
         num_cond = layout.num_condition_video_rows
 
         # --- conditioning rows (draw order: condition noise, video, audio) --
-        def encode_condition_image(img: Image.Image) -> torch.Tensor:
-            cond_noise = randn_tensor(
-                (1, 24, 1, img.size[1] // 16, img.size[0] // 16),
-                generator=generator,
-                dtype=torch.float32,
-            ).to(device)
-            frame = torch.from_numpy(np.array(img)).float()
-            frame = (frame / 255.0) * 2.0 - 1.0  # (H, W, 3) -> [-1, 1]
-            frame = frame.permute(2, 0, 1)[None, :, None]  # (1, 3, 1, H, W)
-            cond_latents = model.encode_keyframe_latents(frame)  # (1, 24, 1, h, w) fp32
-            # released noise-aug recipe: x = t * clean + (1 - t) * noise at t = 0.999
-            cond_latents = (
-                KEYFRAME_NOISE_AUG_T * cond_latents.to(device)
-                + (1.0 - KEYFRAME_NOISE_AUG_T) * cond_noise
-            )
-            return patchify_video_latents(cond_latents)  # (1, rows, 96)
-
-        def noise_aug_rows(latents: torch.Tensor) -> torch.Tensor:
-            cond_noise = randn_tensor(
-                latents.shape, generator=generator, dtype=torch.float32
-            ).to(device)
-            mixed = (
-                KEYFRAME_NOISE_AUG_T * latents.to(device, torch.float32)
-                + (1.0 - KEYFRAME_NOISE_AUG_T) * cond_noise
-            )
-            return patchify_video_latents(mixed)
-
-        cond_rows = None
-        cond_audio_rows = None
-        if ctrl_img is not None:
-            cond_rows = encode_condition_image(ctrl_img)
-        elif ref_images:
-            parts = []
-            audio_parts = []
-            for r in ref_images:
-                if isinstance(r, dict):
-                    # pre-encoded video reference (+ optional clean soundtrack)
-                    parts.append(noise_aug_rows(r["latent"][None]))
-                    if r.get("audio_rows") is not None:
-                        audio_parts.append(r["audio_rows"][None].to(device))
-                elif isinstance(r, torch.Tensor):
-                    parts.append(noise_aug_rows(r[None]))
-                else:
-                    parts.append(encode_condition_image(r))
-            cond_rows = torch.cat(parts, dim=1)
-            if audio_parts:
-                cond_audio_rows = torch.cat(audio_parts, dim=1).float()
+        if prepared_condition is None:
+            prepared_condition = self.prepare_condition_rows(ctrl_img, ref_images, generator)
+        cond_rows, cond_audio_rows = prepared_condition
 
         # --- initial noise -------------------------------------------------
         if latents is None:
@@ -217,8 +220,9 @@ class MiniMaxH3Pipeline:
         text_indices = layout.text_indices.to(device)
 
         # --- denoise loop --------------------------------------------------
+        model.sample_stage("denoise")
         num_steps = sigmas_v.shape[0] - 1
-        for i in range(num_steps):
+        for i in tqdm(range(num_steps), desc="Denoising steps", leave=False, disable=output_type != "latent"):
             sv, sv_next = sigmas_v[i], sigmas_v[i + 1]
             sa, sa_next = sigmas_a[i], sigmas_a[i + 1]
             t_v = 1.0 - float(sv)
@@ -264,6 +268,16 @@ class MiniMaxH3Pipeline:
 
         # --- decode --------------------------------------------------------
         video_latents = unpatchify_video_tokens(video_rows, t_lat, h_lat, w_lat)
+        audio_latents = unpack_audio_tokens(audio_rows, a_lat)[0] if is_video and with_audio else None
+        result = (video_latents, audio_latents)
+        if output_type == "latent":
+            return result
+        return self.decode_staged_sample(result, is_video=is_video, with_audio=with_audio)
+
+    def decode_staged_sample(self, latents, is_video, with_audio):
+        model = self.model
+        model.sample_stage("vae")
+        video_latents, audio_latents = latents
         video = model.decode_latents(video_latents)  # (1, 3, T, H, W) in [-1, 1]
         video = ((video.float().clamp(-1, 1) + 1.0) * 127.5).round().to(torch.uint8)
         video = video[0].permute(1, 2, 3, 0).cpu()  # (T, H, W, C)
@@ -273,7 +287,6 @@ class MiniMaxH3Pipeline:
 
         audio_out = None
         if with_audio:
-            audio_latents = unpack_audio_tokens(audio_rows, a_lat)[0]  # (2, 32, A)
             waveform = model.decode_audio_latents(
                 audio_latents.float()
             )  # (2, 1, samples)

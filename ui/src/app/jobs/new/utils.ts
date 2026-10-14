@@ -59,6 +59,10 @@ export const handleModelArchChange = (
     }
   }
 
+  if (!newArch?.additionalSections?.includes('model.sample_staged_offloading')) {
+    setJobConfig(false, 'config.process[0].model.sample_staged_offloading');
+  }
+
   const numDatasets = jobConfig.config.process[0].datasets.length;
 
   let currentDefaults = expandDatasetDefaults(currentArch.defaults || {}, numDatasets);

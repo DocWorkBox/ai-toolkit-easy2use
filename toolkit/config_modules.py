@@ -694,6 +694,7 @@ class ModelConfig:
         self.qtype = kwargs.get("qtype", "qfloat8")
         self.qtype_te = kwargs.get("qtype_te", "qfloat8")
         self.low_vram = kwargs.get("low_vram", False)
+        self.sample_staged_offloading = kwargs.get("sample_staged_offloading", False)
         self.attn_masking = kwargs.get("attn_masking", False)
         if self.attn_masking and not self.is_flux:
             raise ValueError("attn_masking is only supported with flux models currently")
@@ -750,6 +751,8 @@ class ModelConfig:
 
         # compile the model with torch compile
         self.compile = kwargs.get("compile", False)
+        if self.sample_staged_offloading and self.compile:
+            raise ValueError("sample_staged_offloading cannot be combined with compile")
 
         if self.compile and self.quantize:
             print("Quantized model detected - allowing torch.compile (experimental)")
