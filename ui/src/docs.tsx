@@ -68,6 +68,17 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'model.sample_staged_offloading': {
+    title: '采样分阶段装卸（实验）',
+    description: (
+      <>
+        整批提示词先逐条编码，再逐张去噪，最后逐张 VAE 解码，减少重复装卸；带参考图时先集中编码参考图。
+        中间结果暂存 CPU 内存，不是多图并发；整批去噪完成后才开始输出图片。各阶段显示进度。
+        结束后恢复原有模型状态。默认关闭，批次越大占用的 CPU 内存越多。
+        可与层级卸载同时开启，保留其卸载比例和逐层加载机制；暂不支持与模型编译同时开启。
+      </>
+    ),
+  },
   'model.layer_offloading_transformer_percent': {
     title: 'Transformer 卸载百分比',
     description: (

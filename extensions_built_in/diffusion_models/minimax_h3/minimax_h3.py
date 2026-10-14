@@ -183,12 +183,16 @@ class MiniMaxH3VaeBundle(torch.nn.Module):
 
 
 class MinimaxH3Model(BaseModel):
+    supports_staged_sampling = True
     arch = "minimax_h3"
     # video flow shift; audio stays on AUDIO_SIGMA_SHIFT, remapped from this
     video_sigma_shift = packing.VIDEO_SIGMA_SHIFT
     # hub repo for missing files when name_or_path isn't an org/repo id
     comfy_repo = COMFY_REPO
     use_old_lokr_format = False
+
+    def get_staged_sampling_vae_modules(self):
+        return [self.video_vae, self.audio_vae]
 
     def __init__(
         self,
@@ -986,7 +990,7 @@ class MinimaxH3Model(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         sc = self.get_bucket_divisibility()
@@ -1010,7 +1014,9 @@ class MinimaxH3Model(BaseModel):
 
         with_audio = bool(self.model_config.model_kwargs.get("sample_audio", True))
 
-        result = pipeline(
+        from toolkit.staged_sampling import call_sample_pipeline, map_sample
+
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -1025,7 +1031,7 @@ class MinimaxH3Model(BaseModel):
         )
         if is_video:
             return result  # dict consumed by new_save_image_function
-        return result[0]
+        return map_sample(result, lambda images: images[0])
 
     # ------------------------------------------------------------------
     # Saving / bookkeeping
@@ -1482,7 +1488,7 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         sc = self.get_bucket_divisibility()
@@ -1500,6 +1506,7 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
         # every ctrl file is a REFERENCE (never a first frame): images are
         # resized to the target's pixel area with their own aspect kept;
         # videos are dataset-style encoded into multi-frame latent blocks
+        self.sample_stage("vae")
         ref_images = []
         for path in (
             gen_config.ctrl_img,
@@ -1528,7 +1535,9 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
 
         with_audio = bool(self.model_config.model_kwargs.get("sample_audio", True))
 
-        result = pipeline(
+        from toolkit.staged_sampling import call_sample_pipeline, map_sample
+
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -1543,7 +1552,7 @@ class MinimaxH3Ref2VAModel(MinimaxH3Model):
         )
         if is_video:
             return result  # dict consumed by new_save_image_function
-        return result[0]
+        return map_sample(result, lambda images: images[0])
 
 
 class MinimaxH3FastModel(MinimaxH3Model):

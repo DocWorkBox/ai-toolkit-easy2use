@@ -31,6 +31,7 @@ type AdditionalSections =
   | 'model.multistage'
   | 'model.layer_offloading'
   | 'model.low_vram'
+  | 'model.sample_staged_offloading'
   | 'model.qie.match_target_res'
   | 'model.assistant_lora_path'
   | 'model.unconditional_lora_path'
@@ -91,6 +92,7 @@ export interface GenerateDefaults {
   sample: { [key: string]: any };
   needsControlImage: boolean;
   sizeLocked: boolean;
+  supportsStagedSampling: boolean;
   /** structured prompt fields (audio models): the prompt is their tagged form */
   sampleTags?: SampleTags;
 }
@@ -247,6 +249,7 @@ export const getGenerateDefaults = (arch: ModelArch): GenerateDefaults => {
     needsControlImage:
       gen.needsControlImage ?? (sections.includes('sample.ctrl_img') || sections.includes('sample.multi_ctrl_imgs')),
     sizeLocked: gen.sizeLocked ?? false,
+    supportsStagedSampling: sections.includes('model.sample_staged_offloading'),
     sampleTags: arch.sampleTags,
   };
 };

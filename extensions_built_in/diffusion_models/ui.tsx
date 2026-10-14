@@ -617,6 +617,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "sample.multi_ctrl_imgs",
       "model.low_vram",
       "model.layer_offloading",
+      "model.sample_staged_offloading",
     ],
     customModelSelectOptions: qwenImage21TransparencyOption,
   },
@@ -665,6 +666,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "sample.multi_ctrl_imgs",
       "model.low_vram",
       "model.layer_offloading",
+      "model.sample_staged_offloading",
       "model.assistant_lora_path",
     ],
     customModelSelectOptions: qwenImage21TransparencyOption,
@@ -715,6 +717,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     additionalSections: [
       "model.low_vram",
       "model.layer_offloading",
+      "model.sample_staged_offloading",
       "model.assistant_lora_path",
     ],
     customModelSelectOptions: [
@@ -1080,6 +1083,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "sample.ctrl_img",
       "datasets.num_frames",
       "model.layer_offloading",
@@ -1260,6 +1264,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "sample.multi_ctrl_imgs",
       "datasets.multi_control_paths",
       "datasets.num_frames",
@@ -1501,6 +1506,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "datasets.num_frames",
       "model.layer_offloading",
       "model.low_vram",
@@ -1700,6 +1706,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "sample.ctrl_img",
       "datasets.num_frames",
       "model.layer_offloading",
