@@ -630,7 +630,16 @@ class Engine:
             def status_hook(msg):
                 job.emit("status", message=str(msg))
 
+            def phase_hook(phase, completed, total):
+                if job.cancel.is_set():
+                    raise GenerationCancelled()
+                job.emit("sample_phase", phase=phase, completed=completed, total=total,
+                         elapsed=round(time.perf_counter() - t_start, 3))
+
+            # Latent streaming does not run a VAE, and must retain cancellation.
+            step_hook.requires_vae = False
             holder.sample_step_hook = step_hook
+            holder.sample_progress_hook = phase_hook
             if hasattr(holder, "add_status_update_hook"):
                 holder._status_update_hooks.append(status_hook)
             gen_kwargs = {"sampler": "ddpm"} if self.holder_is_legacy else {}
@@ -642,6 +651,7 @@ class Engine:
             finally:
                 gen_seconds = time.perf_counter() - t_gen
                 holder.sample_step_hook = None
+                holder.sample_progress_hook = None
                 if hasattr(holder, "_status_update_hooks"):
                     try:
                         holder._status_update_hooks.remove(status_hook)

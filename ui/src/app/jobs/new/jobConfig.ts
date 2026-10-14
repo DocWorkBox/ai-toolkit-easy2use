@@ -111,6 +111,7 @@ export const defaultJobConfig: JobConfig = {
           qtype_te: 'qfloat8',
           arch: 'flex1',
           low_vram: false,
+          sample_staged_offloading: false,
           model_kwargs: {},
           compile: false,
         },

@@ -12,6 +12,8 @@ from toolkit.data_transfer_object.data_loader import DataLoaderBatchDTO
 from toolkit.dto import DTO
 from toolkit.models.base_model import BaseModel
 from toolkit.basic import flush
+from toolkit.staged_sampling import PreparedSample, call_sample_pipeline, map_sample
+from diffusers.utils.torch_utils import randn_tensor
 from toolkit.prompt_utils import PromptEmbeds
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
@@ -86,6 +88,82 @@ vocoder_prefix = "vocoder."
 base_te_path = "Lightricks/gemma-3-12b-it-qat-q4_0-unquantized"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
+
+
+class StagedLTXExecutionDevice:
+    @property
+    def _execution_device(self):
+        # CPU-parked VAEs/text encoders must not select the latent device.
+        return self._staged_execution_device
+
+    def __call__(self, *args, _staged_latents=False, **kwargs):
+        self._return_normalized_sample_latents = _staged_latents
+        try:
+            return super().__call__(*args, **kwargs)
+        finally:
+            self._return_normalized_sample_latents = False
+
+    def _denormalize_latents(self, latents, *args, **kwargs):
+        # Keep the exact pre-decode representation. The normal latent output
+        # denormalizes in fp32, whereas decoding casts to the prompt dtype first.
+        if getattr(self, "_return_normalized_sample_latents", False):
+            return latents
+        return super()._denormalize_latents(latents, *args, **kwargs)
+
+    def prepare_staged_sample(self, **kwargs):
+        if isinstance(self, LTX2ImageToVideoPipeline) and kwargs.get("latents") is None:
+            device = self._execution_device
+            image = self.video_processor.preprocess(kwargs["image"], height=kwargs["height"], width=kwargs["width"])
+            image = image.to(device=device, dtype=kwargs["prompt_embeds"].dtype)
+            latents, _ = self.prepare_latents(
+                image, 1, self.transformer.config.in_channels, kwargs["height"], kwargs["width"],
+                kwargs["num_frames"], 0.0, torch.float32, device, kwargs.get("generator"), None)
+            # Packed latents preserve the first-frame mask without a second VAE encode.
+            kwargs["latents"] = latents
+        decode = dict(output_type=kwargs.get("output_type", "pil"),
+                      dtype=kwargs["prompt_embeds"].dtype,
+                      generator=kwargs.get("generator"),
+                      decode_timestep=kwargs.get("decode_timestep", 0.0),
+                      decode_noise_scale=kwargs.get("decode_noise_scale"),
+                      framewise=getattr(self.vae, "use_framewise_decoding", False))
+        return PreparedSample(self, dict(kwargs, output_type="latent", return_dict=False, _staged_latents=True), decode)
+
+    def decode_staged_sample(self, latents, output_type, dtype, generator,
+                             decode_timestep, decode_noise_scale, framewise):
+        video_latents, audio_latents = latents
+        video_latents = video_latents.to(dtype)
+        device, batch_size = video_latents.device, video_latents.shape[0]
+        timestep = None
+        if self.vae.config.timestep_conditioning:
+            noise = randn_tensor(video_latents.shape, generator=generator, device=device, dtype=dtype)
+            if not isinstance(decode_timestep, list):
+                decode_timestep = [decode_timestep] * batch_size
+            if decode_noise_scale is None:
+                decode_noise_scale = decode_timestep
+            elif not isinstance(decode_noise_scale, list):
+                decode_noise_scale = [decode_noise_scale] * batch_size
+            timestep = torch.tensor(decode_timestep, device=device, dtype=dtype)
+            scale = torch.tensor(decode_noise_scale, device=device, dtype=dtype)[:, None, None, None, None]
+            video_latents = (1 - scale) * video_latents + scale * noise
+        video_latents = self._denormalize_latents(
+            video_latents, self.vae.latents_mean, self.vae.latents_std, self.vae.config.scaling_factor)
+        previous = getattr(self.vae, "use_framewise_decoding", False)
+        self.vae.use_framewise_decoding = framewise
+        try:
+            video = self.vae.decode(video_latents.to(self.vae.dtype), timestep, return_dict=False)[0]
+            video = self.video_processor.postprocess_video(video, output_type=output_type)
+            mel = self.audio_vae.decode(audio_latents.to(self.audio_vae.dtype), return_dict=False)[0]
+            return video, self.vocoder(mel)
+        finally:
+            self.vae.use_framewise_decoding = previous
+
+
+class StagedLTX2Pipeline(StagedLTXExecutionDevice, LTX2Pipeline):
+    pass
+
+
+class StagedLTX2ImageToVideoPipeline(StagedLTXExecutionDevice, LTX2ImageToVideoPipeline):
+    pass
 
 
 def new_save_image_function(
@@ -583,7 +661,8 @@ class LTX2Model(BaseModel):
     def get_generation_pipeline(self):
         scheduler = LTX2Model.get_train_scheduler()
 
-        pipeline: LTX2Pipeline = LTX2Pipeline(
+        pipeline_type = StagedLTX2Pipeline if getattr(self, "_staged_sampling", None) is not None else LTX2Pipeline
+        pipeline: LTX2Pipeline = pipeline_type(
             scheduler=scheduler,
             vae=unwrap_model(self.pipeline.vae),
             audio_vae=unwrap_model(self.pipeline.audio_vae),
@@ -595,8 +674,11 @@ class LTX2Model(BaseModel):
         )
         pipeline.transformer = unwrap_model(self.model)
         pipeline.text_encoder = unwrap_model(self.text_encoder[0])
+        if getattr(self, "_staged_sampling", None) is not None:
+            pipeline._staged_execution_device = self.device_torch
 
-        pipeline = pipeline.to(self.device_torch)
+        if getattr(self, "_staged_sampling", None) is None:
+            pipeline = pipeline.to(self.device_torch)
 
         return pipeline
 
@@ -609,13 +691,14 @@ class LTX2Model(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         # handle control image
         if gen_config.ctrl_img is not None:
             # switch to image to video pipeline
-            pipeline = LTX2ImageToVideoPipeline(
+            pipeline_type = StagedLTX2ImageToVideoPipeline if getattr(self, "_staged_sampling", None) is not None else LTX2ImageToVideoPipeline
+            pipeline = pipeline_type(
                 scheduler=pipeline.scheduler,
                 vae=pipeline.vae,
                 audio_vae=pipeline.audio_vae,
@@ -625,6 +708,8 @@ class LTX2Model(BaseModel):
                 transformer=pipeline.transformer,
                 vocoder=pipeline.vocoder,
             )
+            if getattr(self, "_staged_sampling", None) is not None:
+                pipeline._staged_execution_device = self.device_torch
 
         is_video = gen_config.num_frames > 1
         # override the generate single image to handle video + audio generation
@@ -637,7 +722,8 @@ class LTX2Model(BaseModel):
 
         # reactivate progress bar since this is slooooow
         pipeline.set_progress_bar_config(disable=False)
-        pipeline = pipeline.to(self.device_torch)
+        if getattr(self, "_staged_sampling", None) is None:
+            pipeline = pipeline.to(self.device_torch)
 
         # make sure dimensions are valid
         bd = self.get_bucket_divisibility()
@@ -690,7 +776,11 @@ class LTX2Model(BaseModel):
                 True  # they dont set this in some examples in diffusers, but I believe it should always be true for 2.3
             )
 
-        video, audio = pipeline(
+        # Diffusers resolves its execution device before invoking the components.
+        session = getattr(self, "_staged_sampling", None)
+        if session is None or not session.preparing:
+            self.sample_stage("denoise")
+        result = call_sample_pipeline(self, pipeline,
             prompt_embeds=conditional_embeds.text_embeds.to(
                 self.device_torch, dtype=self.torch_dtype
             ),
@@ -719,7 +809,11 @@ class LTX2Model(BaseModel):
             # pipeline.vae.use_tiling = False
             self.pipeline.vae.use_framewise_decoding = False
 
-        if is_video:
+        return map_sample(result, lambda decoded: self._format_sample_output(decoded, gen_config, pipeline))
+
+    def _format_sample_output(self, decoded, gen_config, pipeline):
+        video, audio = decoded
+        if gen_config.num_frames > 1:
             # redurn as a dict, we will handle it with an override function
             video = (video * 255).round().astype("uint8")
             video = torch.from_numpy(video)
@@ -1184,6 +1278,25 @@ COMFY_LTX25_FILES = {
 
 
 class LTX25Model(LTX2Model):
+    supports_staged_sampling = True
+
+    def get_staged_sampling_vae_modules(self):
+        # Audio may still be on CPU when an image-only dataset cached the video VAE.
+        return [self.pipeline.vae, self.pipeline.audio_vae]
+
+    def get_staged_sampling_extra_modules(self):
+        return {"denoise": [self.pipeline.connectors], "vae": [self.pipeline.vocoder]}
+
+    def configure_staged_sampling(self, session):
+        # Both T2V and I2V share these modules. I2V encodes the first frame
+        # between connectors and denoising, so phase transitions follow calls.
+        session.before_forward(self.model, "denoise")
+        session.before_forward(self.pipeline.connectors, "denoise")
+        session.before_forward(self.pipeline.vocoder, "vae")
+        for vae in (self.pipeline.vae, self.pipeline.audio_vae):
+            session.wrap_method(vae, "encode", "vae")
+            session.wrap_method(vae, "decode", "vae")
+
     arch = "ltx2.5"
     ltx_version = "2.5"
     ltx_te_path = None

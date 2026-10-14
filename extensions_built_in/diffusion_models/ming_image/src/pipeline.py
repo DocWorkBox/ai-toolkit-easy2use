@@ -13,6 +13,8 @@ import numpy as np
 import torch
 from diffusers.utils.torch_utils import randn_tensor
 from PIL import Image
+from tqdm import tqdm
+from toolkit.staged_sampling import PreparedSample
 
 from toolkit.samplers.custom_flowmatch_sampler import calculate_shift
 
@@ -93,6 +95,13 @@ class MingImagePipeline:
     def set_progress_bar_config(self, **kwargs):
         pass
 
+    def prepare_staged_sample(self, **kwargs):
+        return PreparedSample(self, dict(kwargs, output_type="latent"))
+
+    def decode_staged_sample(self, latents):
+        self.model.sample_stage("vae")
+        return self.model.decode_to_images(latents)
+
     @torch.no_grad()
     def __call__(
         self,
@@ -105,6 +114,7 @@ class MingImagePipeline:
         latents: Optional[torch.Tensor] = None,
         generator: Optional[torch.Generator] = None,
         reference_latents: Optional[List[Optional[torch.Tensor]]] = None,
+        output_type="pil",
         **kwargs,
     ) -> List[Image.Image]:
         model = self.model
@@ -143,7 +153,8 @@ class MingImagePipeline:
         query_neg = [torch.zeros_like(q) for q in query]
         direct_neg = [torch.zeros_like(d) for d in direct]
 
-        for timestep in scheduler.timesteps:
+        model.sample_stage("denoise")
+        for step_index, timestep in enumerate(tqdm(scheduler.timesteps, desc="Denoising steps", leave=False, disable=output_type != "latent")):
             t = timestep.expand(latents.shape[0]).to(device)
             noise_pred = run_transformer(
                 transformer, latents, t, query, direct, ref_latents=reference_latents
@@ -154,11 +165,18 @@ class MingImagePipeline:
                 )
                 noise_pred = uncond_pred + guidance_scale * (noise_pred - uncond_pred)
 
+            preview = None
+            if getattr(model, "sample_step_hook", None) is not None:
+                preview = latents.float() - scheduler.sigmas[step_index] * noise_pred.float()
             latents = scheduler.step(
                 noise_pred.to(torch.float32),
                 timestep,
                 latents.to(torch.float32),
                 return_dict=False,
             )[0].to(dtype)
+            if preview is not None:
+                model._emit_sample_step(preview, step_index, len(scheduler.timesteps))
 
-        return model.decode_to_images(latents)
+        if output_type == "latent":
+            return latents
+        return self.decode_staged_sample(latents)

@@ -341,6 +341,7 @@ function GeneratePageInner() {
   // ---- generation ----
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ step: number; total: number | null; elapsed: number } | null>(null);
+  const [samplePhase, setSamplePhase] = useState<{ phase: string; completed: number; total: number } | null>(null);
   const [statusLine, setStatusLine] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ResultItem[]>(persisted.results || []);
@@ -498,6 +499,11 @@ function GeneratePageInner() {
           case 'progress':
             setProgress({ step: header.step, total: header.total, elapsed: header.elapsed });
             break;
+          case 'sample_phase':
+            setSamplePhase({ phase: header.phase, completed: header.completed, total: header.total });
+            setStatusLine(`${({ text_encoder: '提示词编码', prepare: '参考图处理', denoise: '逐张去噪', decode: '逐张解码' } as Record<string, string>)[header.phase] || header.phase} ${header.completed}/${header.total}`);
+            if (header.phase !== 'denoise') setProgress(null);
+            break;
           case 'latent': {
             try {
               if (header.preview) preview = header.preview;
@@ -578,10 +584,12 @@ function GeneratePageInner() {
   const generate = async () => {
     if (!ready || running) return;
     const abort = beginRun();
+    setSamplePhase(null);
     setStatusLine('Submitting');
     previewSizeRef.current = sample.width && sample.height ? { width: sample.width, height: sample.height } : null;
     const body: { model: any; sample: any; stream: any } = {
-      model: { ...model, arch, loras: activeLoras },
+      model: { ...model, arch, loras: activeLoras,
+        sample_staged_offloading: !!entry?.supportsStagedSampling && !!model.sample_staged_offloading },
       sample: { ...sample, seed: sample.seed === '' ? -1 : sample.seed },
       stream: { latents: 'raw', every_n_steps: 1, max_frames: 0 },
     };
@@ -869,6 +877,13 @@ function GeneratePageInner() {
                   />
                 </div>
               ) : null}
+              {running && samplePhase?.total ? (
+                <div className="absolute top-1 left-0 right-0 h-0.5 bg-gray-800 z-10" role="progressbar"
+                  aria-label="分阶段进度" aria-valuemin={0} aria-valuemax={samplePhase.total} aria-valuenow={samplePhase.completed}>
+                  <div className="h-0.5 bg-green-500 transition-all"
+                    style={{ width: `${Math.min(100, samplePhase.completed / samplePhase.total * 100)}%` }} />
+                </div>
+              ) : null}
               {error && (
                 <div className="absolute bottom-3 left-3 right-3 z-10 text-rose-300 text-sm bg-rose-950/70 rounded px-3 py-2 whitespace-pre-wrap">
                   {error}
@@ -1092,6 +1107,16 @@ function GeneratePageInner() {
                         min={0}
                         max={100}
                         step={1}
+                      />
+                    </div>
+                  )}
+                  {entry?.supportsStagedSampling && (
+                    <div className="mt-2">
+                      <Checkbox
+                        label="采样分阶段装卸（实验）"
+                        checked={!!model.sample_staged_offloading}
+                        onChange={v => setModel(m => ({ ...m, sample_staged_offloading: v, ...(v ? { compile: false } : {}) }))}
+                        docKey="model.sample_staged_offloading"
                       />
                     </div>
                   )}

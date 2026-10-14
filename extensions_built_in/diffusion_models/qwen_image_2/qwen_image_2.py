@@ -634,6 +634,8 @@ class QwenImage2Model(BaseModel):
     # ------------------------------------------------------------------
     # Sampling
     # ------------------------------------------------------------------
+    supports_staged_sampling = True
+
     def get_generation_pipeline(self):
         return QwenImage21Pipeline(self)
 
@@ -646,7 +648,7 @@ class QwenImage2Model(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         divisor = self.get_bucket_divisibility()
@@ -683,7 +685,9 @@ class QwenImage2Model(BaseModel):
                 target_pixels=self._target_pixels((gen_config.width, gen_config.height)),
             )
 
-        return pipeline(
+        from toolkit.staged_sampling import call_sample_pipeline, map_sample
+
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -693,7 +697,8 @@ class QwenImage2Model(BaseModel):
             latents=gen_config.latents,
             generator=generator,
             condition_images=condition_images,
-        )[0]
+        )
+        return map_sample(result, lambda images: images[0])
 
     # ------------------------------------------------------------------
     # Saving / bookkeeping
