@@ -41,6 +41,38 @@ requirements, PyTorch imports, GPU visibility, Node dependency tree, and local
 FFmpeg. `AITK_ROOT` can explicitly select the checkout being managed; the
 Windows launcher always sets it to the root shown in its status bar.
 
+### Portable incremental updates
+
+Archive-style portable bundles update from `DocWorkBox/ai-toolkit-easy2use`'s
+`protable` branch. The updater pins the target commit, reads its complete
+[Git tree](https://docs.github.com/en/rest/git/trees#get-a-tree), and compares
+Git blob hashes with installed files. Only changed or missing files are
+downloaded. Unchanged EXEs and binary assets are not fetched again. Older
+Windows archives with CRLF text are supported without a full download.
+
+The existing launcher log shows file counts, percentage, MiB transferred and
+average KiB/s about once per second while receiving data. Downloads have a
+60-second inactivity timeout, not a total-duration limit. Python and curl
+fallbacks both stream data; curl's output buffering is disabled. Proxy settings
+are inherited as before, and TLS verification stays enabled.
+
+All downloaded files must match their expected size and Git hash before program
+files are installed. Verified blobs are cached in `.cache/portable-update/blobs`
+and reused after a failed attempt. A failed download does not change program
+files or advance the recorded commit. Each installed file is replaced atomically;
+this is not a filesystem-wide transaction. If a file is locked or installation
+is interrupted, retrying checks the installed hashes and completes the update.
+
+Models, datasets, output, runtime, database and generated UI files are protected.
+Only obsolete files in the previous managed-file list can be removed. Changed
+launcher EXEs are staged for the existing restart mechanism. UI source changes
+still invalidate the build fingerprint and cause a single rebuild on service start.
+No environment packages are installed by the portable code-update operation.
+
+The first update from an older updater still uses that older implementation.
+After these manager files have been installed, subsequent updates use this
+incremental path; a launcher EXE rebuild is not required for download progress.
+
 ## Design
 
 - **The install logic lives in the repo it installs.** Every commit knows how

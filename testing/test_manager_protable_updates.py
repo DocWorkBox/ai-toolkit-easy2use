@@ -58,69 +58,6 @@ def test_remote_commit_uses_curl_when_python_ssl_fails(monkeypatch):
     assert portable_update._fetch_remote_commit() == "abcdef1234567890"
 
 
-def test_portable_update_can_build_archive_from_temporary_git_checkout(
-    monkeypatch, tmp_path
-):
-    remote_commit = "1234567890abcdef"
-    fetched_commit = "abcdef1234567890"
-    monkeypatch.setattr(
-        portable_update,
-        "remote_status",
-        lambda _root: {
-            "fetch_ok": True,
-            "remote_commit": remote_commit,
-            "behind": 1,
-        },
-    )
-
-    def create_archive(path, _temp_dir):
-        _archive(path, {"manager/new.py": b"new code"})
-        return fetched_commit
-
-    monkeypatch.setattr(portable_update, "_create_archive_from_git", create_archive)
-    monkeypatch.setattr(
-        portable_update.util,
-        "download",
-        lambda *_args, **_kwargs: pytest.fail("archive download fallback was used"),
-    )
-
-    result = portable_update.update_from_remote(repo_root=tmp_path)
-
-    assert result["commit"] == fetched_commit
-    assert (tmp_path / "manager/new.py").read_bytes() == b"new code"
-    assert portable_update.read_state(tmp_path)["commit"] == fetched_commit
-
-
-def test_git_archive_fetch_forces_http1_and_low_speed_timeout(monkeypatch, tmp_path):
-    clone_commands = []
-    commit = "abcdef1234567890"
-    archive_path = tmp_path / "portable.zip"
-    monkeypatch.setattr(portable_update.gitwin, "find_git", lambda: "git")
-
-    def run_clone(command, timeout):
-        clone_commands.append((command, timeout))
-        return portable_update.subprocess.CompletedProcess(command, 0, b"", b"")
-
-    def run_local_git(command, **_kwargs):
-        if "rev-parse" in command:
-            return portable_update.subprocess.CompletedProcess(
-                command, 0, (commit + "\n").encode("ascii"), b""
-            )
-        output_arg = next(value for value in command if value.startswith("--output="))
-        Path(output_arg.split("=", 1)[1]).write_bytes(b"zip")
-        return portable_update.subprocess.CompletedProcess(command, 0, b"", b"")
-
-    monkeypatch.setattr(portable_update, "_run_captured", run_clone)
-    monkeypatch.setattr(portable_update.subprocess, "run", run_local_git)
-
-    assert portable_update._create_archive_from_git(archive_path, tmp_path) == commit
-    command, timeout = clone_commands[0]
-    assert "http.version=HTTP/1.1" in command
-    assert "http.lowSpeedLimit=1024" in command
-    assert "http.lowSpeedTime=60" in command
-    assert timeout == 300
-
-
 def test_archive_update_preserves_user_data_and_stages_launcher(tmp_path):
     protected = {
         "runtime/python/python.exe": "runtime",
