@@ -40,6 +40,7 @@ pytorch-wavelets==1.3.0
 matplotlib==3.10.1
 setuptools>=77.0.3
 av==16.0.1
+# Keep compatible with the portable Torch 2.9 runtime.
 torchcodec==0.9.1
 librosa==0.11.0
 mutagen==1.47.0

@@ -44,6 +44,50 @@ def test_catalog_uses_local_paths_and_official_download_links():
         ), item
 
 
+def test_current_training_adapters_use_shared_portable_directory():
+    by_id = {item["id"]: item for item in _catalog()["models"]}
+    adapters = {
+        "minimax-h3-training-adapter-v3": "minimax_h3_training_adapter_v3.safetensors",
+        "minimax-h3-ref2va-training-adapter-v2": "minimax_h3_ref2va_training_adapter_v2.safetensors",
+        "fasth3-v2-training-adapter": "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
+        "qwen-image-2-turbo-training-adapter": "qwen_image_2_turbo_training_adapter_v1.safetensors",
+        "ming-image-training-adapter": "ming_image_01_design_training_adapter_v1.safetensors",
+    }
+    options = _model_ui()
+    for key, filename in adapters.items():
+        expected = "./models/loras/training_adapters/" + filename
+        assert key in by_id, key
+        assert by_id[key]["path"] == expected
+        assert "root" not in by_id[key]
+        assert expected in options
+    assert by_id["minimax-h3-ref2va-training-adapter-v1"]["path"] == (
+        "./models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v1.safetensors"
+    )
+
+
+def test_training_adapter_scan_uses_toolkit_root_not_external_models(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    monkeypatch.setenv("MODELS_PATH", str(tmp_path / "external-comfy-models"))
+    filenames = (
+        "minimax_h3_training_adapter_v3.safetensors",
+        "minimax_h3_ref2va_training_adapter_v2.safetensors",
+        "minimax_h3_ref2va_training_adapter_v1.safetensors",
+        "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
+        "qwen_image_2_turbo_training_adapter_v1.safetensors",
+    )
+    folder = tmp_path / "models" / "loras" / "training_adapters"
+    folder.mkdir(parents=True)
+    for filename in filenames:
+        (folder / filename).write_bytes(b"weights")
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    for filename in filenames:
+        matches = [item for item in report["models"] if item["path"].endswith("/" + filename)]
+        assert len(matches) == 1, filename
+        assert matches[0]["status"] == "ready", matches[0]
+        assert matches[0]["absolute_path"] == str((folder / filename).resolve())
+
+
 def test_catalog_defines_special_component_layouts():
     by_id = {item["id"]: item for item in _catalog()["models"]}
 
@@ -153,7 +197,7 @@ def test_catalog_groups_related_models_and_scans_minimax_from_models_path():
     ref2va_adapter_v1 = by_id["minimax-h3-ref2va-training-adapter-v1"]
     assert ref2va_adapter_v1["family"] == "MiniMax-H3"
     assert ref2va_adapter_v1["path"] == (
-        "./models/minimax_h3_training_adapter/"
+        "./models/loras/training_adapters/"
         "minimax_h3_ref2va_training_adapter_v1.safetensors"
     )
 
@@ -249,6 +293,9 @@ def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path(
     assert set(remote_values) == {
         "Comfy-Org/MiniMax-H3",
         "Comfy-Org/Qwen-Image-2.1",
+        "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
+        "Comfy-Org/Ming-Image",
+        "FastVideo/FastVideo-FastH3-Comfy",
     }
 
     minimax = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
@@ -590,7 +637,7 @@ def test_qwen_image_21_scans_comfy_weights_and_portable_configs(tmp_path, monkey
     report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
     results = {item["id"]: item for item in report["models"]}
 
-    for key in entries:
+    for key in entries.keys() - {"qwen-image-21-turbo-transformer"}:
         assert results[key]["status"] == "ready"
     assert results["qwen-image-21-transformer"]["path"].startswith("<MODELS_PATH>/")
     assert results["qwen-image-21-config"]["absolute_path"] == str(config.resolve())

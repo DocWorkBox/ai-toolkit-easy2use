@@ -6,6 +6,7 @@ from .flux_kontext import FluxKontextModel
 from .wan22 import Wan225bModel, Wan2214bModel, Wan2214bI2VModel
 from .qwen_image import QwenImageModel, QwenImageEditModel, QwenImageEditPlusModel
 from .qwen_image_2 import QwenImage2Model
+from .ming_image import MingImageModel
 from .flux2 import Flux2Model, Flux2Klein4BModel, Flux2Klein9BModel
 from .z_image import ZImageModel
 from .ltx2 import LTX2Model, LTX23Model, LTX25Model
@@ -18,6 +19,7 @@ from .z_image.z_image_l2p_model import ZImageL2PModel
 from .ideogram4 import Ideogram4Model
 from .prx_pixel_t2i import PRXPixelT2IModel
 from .krea2 import Krea2Model
+from .iris3b import Iris3BModel
 from .boogu_image import BooguImageModel, BooguImageEditModel
 from .mageflow import MageFlowModel, MageFlowEditModel
 from .minimax_h3 import MinimaxH3Model, MinimaxH3Ref2VAModel, MinimaxH3FastModel
@@ -38,6 +40,7 @@ AI_TOOLKIT_MODELS = [
     QwenImageEditModel,
     QwenImageEditPlusModel,
     QwenImage2Model,
+    MingImageModel,
     Flux2Model,
     ZImageModel,
     LTX2Model,
@@ -54,6 +57,7 @@ AI_TOOLKIT_MODELS = [
     Ideogram4Model,
     PRXPixelT2IModel,
     Krea2Model,
+    Iris3BModel,
     BooguImageModel,
     BooguImageEditModel,
     MageFlowModel,

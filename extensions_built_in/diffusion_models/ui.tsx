@@ -2,7 +2,7 @@
 // registers in AI_TOOLKIT_MODELS. Loaded at runtime by the UI, not bundled:
 // see ui/src/extensions/README.md for the convention and the allowed imports.
 import Link from "next/link";
-import type { ModelArch } from "@/app/jobs/new/options";
+import type { CustomModelOption, ModelArch } from "@/app/jobs/new/options";
 import type { JobConfig } from "@/types";
 import {
   defaultSampleConfig,
@@ -11,6 +11,51 @@ import {
 
 const defaultNameOrPath = "";
 const defaultLinearRank = 32;
+
+// Qwen-Image-2.1 and its turbo distill share the RGBA VAE, so both entries
+// carry this option
+const qwenImage21TransparencyOption: CustomModelOption[] = [
+  {
+    type: "checkbox",
+    label: "透明通道（RGBA）",
+    getValue: (config: JobConfig) =>
+      config?.config?.process?.[0]?.model?.model_kwargs?.rgba ?? false,
+    onChange: (
+      value: boolean,
+      config: JobConfig,
+      setJobConfig: (value: any, key: string) => void,
+    ) => {
+      const kwargs = {
+        ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}),
+      };
+      if (value) {
+        kwargs.rgba = true;
+      } else {
+        delete kwargs.rgba;
+      }
+      setJobConfig(kwargs, "config.process[0].model.model_kwargs");
+    },
+    doc: {
+      title: "透明通道（RGBA）",
+      description: (
+        <div className="space-y-2">
+          <p>
+            此模型的 VAE 原生支持 RGBA。启用后，数据集图片和参考图会读取透明通道，
+            VAE 将编码全部四个通道，采样结果也会保存为保留透明度的 PNG。
+          </p>
+          <p>
+            没有透明通道的图片会按完全不透明处理，因此可以混合使用。关闭后将按普通
+            RGB 训练和采样：输入时丢弃透明通道，输出时补为完全不透明。
+          </p>
+          <p>
+            切换此选项会重新缓存潜变量，并且不能与使用 <code>alpha_mask</code>
+            的数据集同时启用，因为后者会将透明通道用作损失遮罩。
+          </p>
+        </div>
+      ),
+    },
+  },
+];
 
 export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
   {
@@ -573,6 +618,105 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "model.low_vram",
       "model.layer_offloading",
     ],
+    customModelSelectOptions: qwenImage21TransparencyOption,
+  },
+  {
+    name: "qwen_image_2:turbo",
+    label: "Qwen-Image-2.1 Turbo（训练适配器）",
+    generateNameOverride: "Qwen-Image-2.1 Turbo",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      // the turbo weight file in the repack (text encoder and VAE come from
+      // the same repack); model_kwargs.turbo selects the turbo schedule
+      "config.process[0].model.name_or_path": [
+        "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
+        defaultNameOrPath,
+      ],
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].train.unload_text_encoder": [false, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      // training adapter: live on the DiT while training, off while sampling
+      "config.process[0].model.assistant_lora_path": [
+        './models/loras/training_adapters/qwen_image_2_turbo_training_adapter_v1.safetensors',
+        undefined
+      ],
+      // the turbo checkpoint samples with its own fixed 8-step schedule at
+      // CFG 1; the step count here is informational
+      "config.process[0].sample.guidance_scale": [1.0, 4.0],
+      "config.process[0].sample.sample_steps": [8, 25],
+      "config.process[0].model.model_kwargs": [
+        {
+          turbo: true,
+          rgba: false,
+        },
+        {},
+      ],
+    },
+    disableSections: ["network.conv", "train.unload_text_encoder"],
+    additionalSections: [
+      "datasets.multi_control_paths",
+      "sample.multi_ctrl_imgs",
+      "model.low_vram",
+      "model.layer_offloading",
+      "model.assistant_lora_path",
+    ],
+    customModelSelectOptions: qwenImage21TransparencyOption,
+  },
+  {
+    name: "ming_image",
+    label: "Ming-Image 0.1 Design（训练适配器）",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      // the ComfyUI repack (local copies in the comfy models folder win over
+      // the download); the vendor repo or a fine-tune here loads as named
+      "config.process[0].model.name_or_path": [
+        "Comfy-Org/Ming-Image",
+        defaultNameOrPath,
+      ],
+      "config.process[0].model.quantize": [true, false],
+      // the text encoder is a 16B MoE (34 GB in bf16): quantize it, and
+      // prefer caching text embeddings so it can be unloaded before training
+      "config.process[0].model.quantize_te": [true, false],
+      // the ComfyUI repack ships int8 convrot for both; these qtypes match it
+      // exactly, so the files attach as-is (another qtype re-quantizes)
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      // training adapter: merged in for training, inverted for sampling
+      "config.process[0].model.assistant_lora_path": [
+        "./models/loras/training_adapters/ming_image_01_design_training_adapter_v1.safetensors",
+        undefined,
+      ],
+      // recommended: 12 steps, no guidance (the negative is zero conditioning)
+      "config.process[0].sample.guidance_scale": [1.0, 4.0],
+      "config.process[0].sample.sample_steps": [12, 25],
+      // the VAE is RGBA: images load, encode and decode with their alpha
+      "config.process[0].model.model_kwargs": [
+        {
+          rgba: false,
+        },
+        {},
+      ],
+    },
+    disableSections: ["network.conv"],
+    // the model also edits (a dataset control path + reference image); the
+    // UI does not expose that yet
+    additionalSections: [
+      "model.low_vram",
+      "model.layer_offloading",
+      "model.assistant_lora_path",
+    ],
     customModelSelectOptions: [
       {
         type: "checkbox",
@@ -605,6 +749,12 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
               <p>
                 没有透明通道的图片会按完全不透明处理，因此可以混合使用。关闭后将按普通
                 RGB 训练和采样：输入时丢弃透明通道，输出时补为完全不透明。
+              </p>
+              <p>
+                要采样透明图片，提示词需以模型的固定触发词开头，例如{" "}
+                <code>RGBA, 4-channel, transparent background</code> 或{" "}
+                <code>带透明通道，4通道RGBA图像</code>，并使用 2048×2048 分辨率；
+                相同提示词在 1024 分辨率下会输出不透明图片。
               </p>
               <p>
                 切换此选项会重新缓存潜变量，并且不能与使用 <code>alpha_mask</code>
@@ -903,10 +1053,8 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
-      "config.process[0].train.do_guidance_loss": [true, undefined],
-      "config.process[0].train.guidance_loss_target": [3.5, undefined],
       "config.process[0].model.assistant_lora_path": [
-        "./models/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors",
+        "./models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -949,10 +1097,10 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
         label: "蒸馏保持方式",
         options: [
           { value: "cg", label: "对比引导" },
-          { value: "ta", label: "训练适配器" },
+          { value: "ta", label: "训练适配器（默认）" },
           {
             value: "both",
-            label: "对比引导 + 训练适配器（默认）",
+            label: "对比引导 + 训练适配器",
           },
           { value: "none", label: "不启用" },
         ],
@@ -995,13 +1143,13 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
               "config.process[0].train.guidance_loss_target",
             );
             setJobConfig(
-              "./models/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors",
+              "./models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
           } else if (value === "both") {
             setJobConfig(true, "config.process[0].train.do_guidance_loss");
             setJobConfig(
-              "./models/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors",
+              "./models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
@@ -1086,10 +1234,8 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
-      "config.process[0].train.do_guidance_loss": [true, undefined],
-      "config.process[0].train.guidance_loss_target": [3.5, undefined],
       "config.process[0].model.assistant_lora_path": [
-        "./models/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors",
+        "./models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1131,10 +1277,10 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
         label: "蒸馏保持方式",
         options: [
           { value: "cg", label: "对比引导" },
-          { value: "ta", label: "训练适配器" },
+          { value: "ta", label: "训练适配器（默认）" },
           {
             value: "both",
-            label: "对比引导 + 训练适配器（默认）",
+            label: "对比引导 + 训练适配器",
           },
           { value: "dopsd", label: "D-OPSD" },
           { value: "none", label: "不启用" },
@@ -1192,13 +1338,13 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
               "config.process[0].train.guidance_loss_target",
             );
             setJobConfig(
-              "./models/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors",
+              "./models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
           } else if (value === "both") {
             setJobConfig(true, "config.process[0].train.do_guidance_loss");
             setJobConfig(
-              "./models/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v1.safetensors",
+              "./models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
@@ -1298,13 +1444,140 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           <Link href="/settings" className="text-blue-400 hover:underline">
             模型目录路径
           </Link>
-          , using{" "}
+          ，使用{" "}
           <code>
             diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors
           </code>{" "}
           ，它是同一版本的 Ref2VA 分区；文本编码器和 VAE 与 FL2VA 架构共用。
           其余行为（预量化加载、24 fps、17n+5 帧网格、引导系数 1、单图模式）
           均与 MiniMax-H3 一致。
+        </p>
+      </div>
+    ),
+  },
+  {
+    name: "minimax_h3_vsa",
+    label: "FastH3 8-Step V2",
+    group: "video",
+    isVideoModel: true,
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      "config.process[0].model.name_or_path": [
+        "FastVideo/FastVideo-FastH3-Comfy",
+        defaultNameOrPath,
+      ],
+      // pre-quantized weights: matching qtypes keep the load unchanged
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype_te": ["nvfp4", "qfloat8"],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.cache_text_embeddings": [true, false],
+      "config.process[0].model.assistant_lora_path": [
+        "./models/loras/training_adapters/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
+        undefined,
+      ],
+      "config.process[0].network.linear": [16, defaultLinearRank],
+      "config.process[0].network.linear_alpha": [16, defaultLinearRank],
+      "config.process[0].network.network_kwargs.ignore_if_contains": [
+        ["adaln_proj"],
+        [],
+      ],
+      "config.process[0].sample.num_frames": [107, 1],
+      "config.process[0].sample.fps": [24, 1],
+      "config.process[0].sample.width": [768, 1024],
+      "config.process[0].sample.height": [768, 1024],
+      "config.process[0].sample.guidance_scale": [1, 4],
+      "config.process[0].sample.sample_steps": [8, 25],
+      "config.process[0].train.audio_loss_multiplier": [1.0, undefined],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].datasets[x].do_audio": [true, undefined],
+      "config.process[0].datasets[x].cache_latents_to_disk": [true, false],
+      "config.process[0].datasets[x].fps": [24, undefined],
+      "config.process[0].datasets[x].num_frames": [39, undefined],
+      "config.process[0].datasets[x].auto_frame_count": [true, undefined],
+    },
+    disableSections: ["network.conv"],
+    additionalSections: [
+      "datasets.num_frames",
+      "model.layer_offloading",
+      "model.low_vram",
+      "datasets.do_audio",
+      "datasets.audio_normalize",
+      "datasets.audio_preserve_pitch",
+      "train.audio_loss_multiplier",
+      "datasets.auto_frame_count",
+      "model.assistant_lora_path",
+    ],
+    customModelSelectOptions: [
+      {
+        label: "蒸馏保持方式",
+        options: [
+          { value: "ta", label: "训练适配器（默认）" },
+          { value: "none", label: "不启用" },
+        ],
+        getValue: (config: JobConfig) => {
+          const assistantLoraPath =
+            config?.config?.process?.[0]?.model?.assistant_lora_path;
+          return assistantLoraPath && assistantLoraPath.trim() !== ""
+            ? "ta"
+            : "none";
+        },
+        onChange: (
+          value: string,
+          config: JobConfig,
+          setJobConfig: (value: any, key: string) => void,
+        ) => {
+          setJobConfig(
+            value === "ta"
+              ? "./models/loras/training_adapters/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors"
+              : undefined,
+            "config.process[0].model.assistant_lora_path",
+          );
+        },
+        doc: {
+          title: "FastH3 蒸馏保持方式",
+          description: (
+            <div>
+              FastH3 是步数蒸馏模型，直接训练会逐渐破坏原有蒸馏能力。
+              训练适配器（MiniMax-H3 适配器）会在训练时吸收这种偏移，并在推理时移除；
+              但训练时间过长后，蒸馏能力仍可能退化。
+            </div>
+          ),
+        },
+      },
+    ],
+    modelNotes: (
+      <div className="space-y-2">
+        <p>
+          FastVideo 的 FastH3 8-Step V2：将 MiniMax-H3 通过 DMD2 蒸馏到 8 步，
+          并使用视频稀疏注意力（80% 稀疏度）。仅支持带联合音频的文生视频，
+          不支持首帧或参考条件。
+        </p>
+        <p>
+          权重从设置中的{" "}
+          <Link href="/settings" className="text-blue-400 hover:underline">
+            模型目录路径
+          </Link>{" "}
+          加载。缺失文件会在首次加载时从 <code>FastVideo/FastVideo-FastH3-Comfy</code>
+          下载到该目录。文本编码器和 VAE 与 MiniMax-H3 共用，已有 MiniMax-H3 环境只需新增 DiT。
+          使用的文件如下：
+        </p>
+        <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
+          <code>{`<MODELS_PATH>/
+├── diffusion_models/
+│   └── fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors
+├── text_encoders/
+│   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+└── vae/
+    ├── minimax_h3_video_vae_fp16.safetensors
+    └── minimax_h3_audio_vae_fp32.safetensors`}</code>
+        </pre>
+        <p>
+          采样使用 8 步、引导系数 1（训练时的调度）。视频固定为 24 fps，
+          帧数会向下对齐到 17n+5 网格。
         </p>
       </div>
     ),
@@ -1658,6 +1931,29 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].model.quantize": [true, false],
       "config.process[0].model.quantize_te": [true, false],
       "config.process[0].train.timestep_type": ["linear", "sigmoid"],
+      "config.process[0].network.conv": [undefined, 16],
+      "config.process[0].network.conv_alpha": [undefined, 16],
+      "config.process[0].model.low_vram": [true, false],
+    },
+    disableSections: ["network.conv"],
+    additionalSections: ["model.low_vram", "model.layer_offloading"],
+  },
+  {
+    name: "iris3b",
+    label: "Iris-3B（像素空间）",
+    group: "image",
+    defaults: {
+      "config.process[0].model.name_or_path": [
+        "./models/iris-3b",
+        defaultNameOrPath,
+      ],
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].sample.guidance_scale": [3, 4],
+      "config.process[0].sample.sample_steps": [30, 25],
       "config.process[0].network.conv": [undefined, 16],
       "config.process[0].network.conv_alpha": [undefined, 16],
       "config.process[0].model.low_vram": [true, false],

@@ -11,6 +11,8 @@ export interface GpuMemory {
   total: number;
   free: number;
   used: number;
+  // unified memory (e.g. GB10): figures are the system RAM pool the GPU shares
+  shared?: boolean;
 }
 
 export interface GpuPower {
@@ -185,6 +187,7 @@ export interface TrainConfig {
   loss_type: 'mse' | 'mae' | 'wavelet' | 'stepped';
   do_differential_guidance?: boolean;
   differential_guidance_scale?: number;
+  pool_datasets?: boolean;
   audio_loss_multiplier?: number;
   max_loss?: number | null;
   validation_config?: ValidationConfig;

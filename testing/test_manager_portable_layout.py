@@ -115,3 +115,22 @@ def test_portable_runtime_is_never_deleted_for_architecture_switch(
         manager_env.ensure_venv(spec)
 
     assert sentinel.read_text(encoding="utf-8") == "portable runtime"
+
+
+def test_portable_runtime_is_not_recreated_for_missing_headers(monkeypatch, tmp_path):
+    import shutil
+
+    interpreter = str(tmp_path / "runtime" / "python" / "python.exe")
+    monkeypatch.setenv("AITK_RUNTIME_LAYOUT", "portable")
+    monkeypatch.setattr(manager_env, "venv_exists", lambda: True)
+    monkeypatch.setattr(manager_env, "venv_python", lambda: interpreter)
+    monkeypatch.setattr(manager_env, "_venv_platform", lambda: "win-amd64")
+    monkeypatch.setattr(manager_env, "find_uv", lambda: "uv.exe")
+    monkeypatch.setattr(manager_env, "_venv_has_headers", lambda: False)
+
+    def refuse_delete(*args, **kwargs):
+        pytest.fail("Bundled portable runtime must not be deleted")
+
+    monkeypatch.setattr(shutil, "rmtree", refuse_delete)
+    spec = SimpleNamespace(uv_python=None, python_version="3.12")
+    assert manager_env.ensure_venv(spec) == interpreter

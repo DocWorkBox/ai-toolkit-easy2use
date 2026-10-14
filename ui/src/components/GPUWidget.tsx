@@ -62,7 +62,7 @@ export default function GPUWidget({ gpu }: GPUWidgetProps) {
             </div>
             <div className="flex items-center space-x-2 mb-1 mt-3">
               <HardDrive className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <p className="text-xs text-gray-400">显存</p>
+              <p className="text-xs text-gray-400">{gpu.memory.shared ? '共享内存' : '显存'}</p>
               <span className="text-xs text-gray-300 ml-auto">
                 {((gpu.memory.used / gpu.memory.total) * 100).toFixed(1)}%
               </span>
