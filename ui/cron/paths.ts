@@ -1,9 +1,11 @@
 import path from 'path';
 import prisma from './prisma';
+import { DEFAULT_DATASETS_FOLDER, resolveDatasetsRoot as resolveDatasetPath } from './datasetPaths';
 
 export const TOOLKIT_ROOT = path.resolve('@', '..', '..');
 export const defaultTrainFolder = path.join(TOOLKIT_ROOT, 'output');
-export const defaultDatasetsFolder = path.join(TOOLKIT_ROOT, 'datasets');
+export const defaultDatasetsFolder = DEFAULT_DATASETS_FOLDER;
+export const resolveDatasetsRoot = (value?: string | null) => resolveDatasetPath(value, TOOLKIT_ROOT);
 export const defaultDataRoot = path.join(TOOLKIT_ROOT, 'data');
 export const defaultModelsFolder = path.join(TOOLKIT_ROOT, 'models');
 

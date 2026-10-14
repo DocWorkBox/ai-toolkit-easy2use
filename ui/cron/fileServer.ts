@@ -31,7 +31,7 @@ import os from 'os';
 import path from 'path';
 import { pipeline } from 'stream';
 import prisma from './prisma';
-import { defaultDatasetsFolder, defaultTrainFolder, defaultDataRoot, TOOLKIT_ROOT } from './paths';
+import { defaultDatasetsFolder, defaultTrainFolder, defaultDataRoot, TOOLKIT_ROOT, resolveDatasetsRoot } from './paths';
 
 const isDev = process.argv.includes('dev');
 
@@ -70,6 +70,9 @@ async function getRoots(forceFresh = false): Promise<Roots> {
   });
   const fromRow = (key: string, fallback: string) => {
     const row = rows.find(r => r.key === key);
+    if (key === 'DATASETS_FOLDER') {
+      return resolveDatasetsRoot(row?.value || fallback);
+    }
     // path.resolve strips trailing slashes; a root stored as "/mnt/foo/" would
     // otherwise make the `root + path.sep` prefix check fail on every file.
     return path.resolve(row?.value && row.value !== '' ? row.value : fallback);

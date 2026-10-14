@@ -73,6 +73,15 @@ The first update from an older updater still uses that older implementation.
 After these manager files have been installed, subsequent updates use this
 incremental path; a launcher EXE rebuild is not required for download progress.
 
+### Dataset directory defaults
+
+The dataset setting defaults to `./datasets`. Both the Next.js routes and the
+file server resolve relative dataset settings against the toolkit root, not the
+`ui` process working directory. The settings API normalizes an absolute path to
+the current root's default dataset directory back to `./datasets` when displaying
+or saving it. Custom absolute paths on other drives and UNC shares are preserved.
+Previously saved job configurations are not rewritten.
+
 ## Design
 
 - **The install logic lives in the repo it installs.** Every commit knows how

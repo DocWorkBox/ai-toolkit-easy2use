@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/server/prisma';
 import {
   defaultTrainFolder,
-  defaultDatasetsFolder,
+  normalizeDatasetsSetting,
   defaultModelsFolder,
 } from '@/paths';
 import { flushCache } from '@/server/settings';
@@ -18,10 +18,7 @@ export async function GET() {
     if (!settingsObject.TRAINING_FOLDER || settingsObject.TRAINING_FOLDER === '') {
       settingsObject.TRAINING_FOLDER = defaultTrainFolder;
     }
-    // if DATASETS_FOLDER is not set, use default
-    if (!settingsObject.DATASETS_FOLDER || settingsObject.DATASETS_FOLDER === '') {
-      settingsObject.DATASETS_FOLDER = defaultDatasetsFolder;
-    }
+    settingsObject.DATASETS_FOLDER = normalizeDatasetsSetting(settingsObject.DATASETS_FOLDER);
     // MODELS_PATH from the env file always takes precedence over the setting
     if (process.env.MODELS_PATH && process.env.MODELS_PATH.trim() !== '') {
       settingsObject.MODELS_PATH = process.env.MODELS_PATH;
@@ -54,8 +51,8 @@ export async function POST(request: Request) {
       }),
       prisma.settings.upsert({
         where: { key: 'DATASETS_FOLDER' },
-        update: { value: DATASETS_FOLDER },
-        create: { key: 'DATASETS_FOLDER', value: DATASETS_FOLDER },
+        update: { value: normalizeDatasetsSetting(DATASETS_FOLDER) },
+        create: { key: 'DATASETS_FOLDER', value: normalizeDatasetsSetting(DATASETS_FOLDER) },
       }),
       prisma.settings.upsert({
         where: { key: 'MODELS_PATH' },

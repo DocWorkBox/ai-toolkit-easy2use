@@ -1,6 +1,6 @@
 import path from 'path';
 import prisma from '@/server/prisma';
-import { defaultDatasetsFolder, defaultDataRoot } from '@/paths';
+import { defaultDatasetsFolder, defaultDataRoot, resolveDatasetsRoot } from '@/paths';
 import { defaultTrainFolder } from '@/paths';
 import NodeCache from 'node-cache';
 
@@ -27,7 +27,7 @@ export const getDatasetsRoot = async () => {
   }
   // Strip trailing slashes; the routes' `root + path.sep` prefix checks 403
   // on every file if the stored path ends with a separator.
-  datasetsPath = path.resolve(datasetsPath);
+  datasetsPath = resolveDatasetsRoot(datasetsPath);
   myCache.set(key, datasetsPath);
   return datasetsPath as string;
 };
