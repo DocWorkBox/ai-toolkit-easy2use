@@ -27,7 +27,6 @@ import os
 from typing import Dict, List, Optional
 
 import torch
-from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 from tqdm import tqdm
 
@@ -36,6 +35,7 @@ from diffusers.loaders import FromOriginalModelMixin, PeftAdapterMixin
 from diffusers.models.modeling_utils import ModelMixin
 
 from toolkit.basic import flush
+from toolkit.models.v2.resolver import resolve_named_file
 
 
 class BasicModel(ModelMixin, ConfigMixin, PeftAdapterMixin, FromOriginalModelMixin):
@@ -527,17 +527,7 @@ class OstrisModelMixin:
     def _resolve_single_file(name_or_path: str) -> str:
         """Resolve a .safetensors reference to a local file, downloading
         'org/repo/path/file.safetensors' hub references as needed."""
-        if os.path.isfile(name_or_path):
-            return name_or_path
-        parts = name_or_path.split("/")
-        if len(parts) < 3:
-            raise ValueError(
-                f"'{name_or_path}' is not a local file or a hub file reference "
-                "('org/repo/filename.safetensors')."
-            )
-        return hf_hub_download(
-            repo_id="/".join(parts[:2]), filename="/".join(parts[2:])
-        )
+        return resolve_named_file(name_or_path)
 
     @classmethod
     def _load_single_file_config(
@@ -616,6 +606,12 @@ class OstrisModelMixin:
         checkpoints read from non-safetensors sources). ``config``, when
         given, is used directly (for models whose config comes from the
         holder, e.g. model_kwargs-driven archs)."""
+        # comfy repacks can carry ``<attn>.comfy_attention.config`` uint8 JSON
+        # blobs (e.g. {"attention": "comfy_kitchen_int8"}): ComfyUI runtime
+        # attention hints, not weights
+        state_dict = {
+            k: v for k, v in state_dict.items() if not k.endswith(".comfy_attention.config")
+        }
         state_dict = cls.convert_state_dict_on_load(state_dict)
         has_quant_markers = "scaled_fp8" in state_dict or any(
             k.endswith(".comfy_quant") for k in state_dict
