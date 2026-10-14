@@ -468,7 +468,10 @@ export default function SimpleJob({
                     </>
                   }
                   checked={jobConfig.config.process[0].model.layer_offloading || false}
-                  onChange={value => setJobConfig(value, 'config.process[0].model.layer_offloading')}
+                  onChange={value => setJobConfig({
+                    ...jobConfig.config.process[0].model,
+                    layer_offloading: value,
+                  }, 'config.process[0].model')}
                   docKey="model.layer_offloading"
                 />
                 {jobConfig.config.process[0].model.layer_offloading && (
@@ -502,6 +505,18 @@ export default function SimpleJob({
                   </div>
                 )}
               </>
+            )}
+            {modelArch?.additionalSections?.includes('model.sample_staged_offloading') && (
+              <Checkbox
+                label="采样分阶段装卸（实验）"
+                checked={jobConfig.config.process[0].model.sample_staged_offloading || false}
+                onChange={value => setJobConfig({
+                  ...jobConfig.config.process[0].model,
+                  sample_staged_offloading: value,
+                  compile: value ? false : jobConfig.config.process[0].model.compile,
+                }, 'config.process[0].model')}
+                docKey="model.sample_staged_offloading"
+              />
             )}
           </Card>
           {disableSections.includes('model.quantize') ? null : (
@@ -545,6 +560,7 @@ export default function SimpleJob({
                 onChange={value => {
                   setJobConfig(value, 'config.process[0].model.compile');
                   if (value) {
+                    setJobConfig(false, 'config.process[0].model.sample_staged_offloading');
                     for (const key in defaultCompileOptions) {
                       setJobConfig((defaultCompileOptions as any)[key], `config.process[0].model.${key}`);
                     }

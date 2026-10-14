@@ -43,6 +43,7 @@ from toolkit.accelerator import get_accelerator, unwrap_model
 from typing import TYPE_CHECKING
 from toolkit.print import print_acc
 from toolkit.basic import flush
+from toolkit.staged_sampling import staged_sampling, StagedSampleBatch, sample_to_device
 
 if TYPE_CHECKING:
     from toolkit.lora_special import LoRASpecialNetwork
@@ -105,6 +106,7 @@ class BaseModel:
     # text-generating models: the trainer runs train_llm_accumulation (model-owned
     # loss via get_llm_loss) instead of the diffusion step; no vae / text encoder
     is_llm = False
+    supports_staged_sampling = False
 
     def __init__(
             self,
@@ -450,7 +452,13 @@ class BaseModel:
 
         return install_sample_step_hooks(self, pipeline)
 
+    def sample_stage(self, phase):
+        session = getattr(self, '_staged_sampling', None)
+        if session is not None:
+            session.stage(phase)
+
     @torch.no_grad()
+    @staged_sampling
     def generate_images(
             self,
             image_configs: List[GenerateImageConfig],
@@ -458,6 +466,7 @@ class BaseModel:
             pipeline: Union[None, StableDiffusionPipeline,
                             StableDiffusionXLPipeline] = None,
     ):
+        staging = getattr(self, '_staged_sampling', None)
         network = self.network
         merge_multiplier = 1.0
         flush()
@@ -485,15 +494,16 @@ class BaseModel:
             # the network to drastically speed up inference
             unique_network_weights = set(
                 [x.network_multiplier for x in image_configs])
-            if len(unique_network_weights) == 1 and network.can_merge_in:
+            if len(unique_network_weights) == 1 and network.can_merge_in and staging is None:
                 can_merge_in = True
                 merge_multiplier = unique_network_weights.pop()
                 network.merge_in(merge_weight=merge_multiplier)
         else:
             network = BlankNetwork()
 
-        self.save_device_state()
-        self.set_device_state_preset('generate')
+        if staging is None:
+            self.save_device_state()
+            self.set_device_state_preset('generate')
 
         # save current seed state for training
         rng_state = torch.get_rng_state()
@@ -507,6 +517,8 @@ class BaseModel:
                 pass
 
         unwrap_step_hooks = self._install_sample_step_hooks(pipeline)
+        if staging is not None:
+            unwrap_step_hooks = staging.track_cleanup(unwrap_step_hooks)
 
         start_multiplier = 1.0
         if network is not None:
@@ -514,12 +526,15 @@ class BaseModel:
 
         # pipeline.to(self.device_torch)
 
+        staged_batch = StagedSampleBatch(staging, pipeline, network) if staging is not None else None
+        if staging is not None:
+            staging.progress("text_encoder", 0, len(image_configs))
         with network:
             with torch.no_grad():
                 if network is not None:
                     assert network.is_active
 
-                for i in tqdm(range(len(image_configs)), desc=f"Generating Samples", leave=True, position=0):
+                for i in tqdm(range(len(image_configs)), desc="Encoding sample prompts" if staging else "Generating Samples", leave=True, position=0):
                     gen_config = image_configs[i]
 
                     extra = {}
@@ -607,9 +622,14 @@ class BaseModel:
                         conditional_embeds = None
                         unconditional_embeds = None
                     elif self.sample_prompts_cache is not None:
-                        conditional_embeds = self.sample_prompts_cache[i]['conditional'].to(self.device_torch, dtype=self.torch_dtype)
-                        unconditional_embeds = self.sample_prompts_cache[i]['unconditional'].to(self.device_torch, dtype=self.torch_dtype)
+                        cached = self.sample_prompts_cache[i]
+                        if staging is not None:
+                            cached = sample_to_device(cached, "cpu")
+                        embed_device = "cpu" if staging is not None else self.device_torch
+                        conditional_embeds = cached['conditional'].to(embed_device, dtype=self.torch_dtype)
+                        unconditional_embeds = cached['unconditional'].to(embed_device, dtype=self.torch_dtype)
                     else:
+                        self.sample_stage('text_encoder')
                         ctrl_img = None
                         has_control_images = False
                         if gen_config.ctrl_img is not None or gen_config.ctrl_img_1 is not None or gen_config.ctrl_img_2 is not None or gen_config.ctrl_img_3 is not None:
@@ -761,6 +781,15 @@ class BaseModel:
                             raise ValueError(
                                 "Refiner is only supported for XL models")
 
+                    if staged_batch is not None:
+                        staged_batch.add(gen_config, conditional_embeds, unconditional_embeds, extra)
+                        staging.progress("text_encoder", i + 1, len(image_configs))
+                        conditional_embeds = unconditional_embeds = None
+                        # Control tensors from the final prompt must not pin GPU memory.
+                        ctrl_img = ctrl_img_1 = ctrl_img_2 = ctrl_img_3 = None
+                        ctrl_img_list = validation_image = None
+                        continue
+
                     if conditional_embeds is not None:
                         conditional_embeds = conditional_embeds.to(
                             self.device_torch, dtype=self.unet.dtype)
@@ -782,6 +811,9 @@ class BaseModel:
                     self._after_sample_image(i, len(image_configs))
                     flush()
 
+                if staged_batch is not None:
+                    staged_batch.run()
+
                 if self.adapter is not None and isinstance(self.adapter, ReferenceAdapter):
                     self.adapter.clear_memory()
 
@@ -789,6 +821,11 @@ class BaseModel:
         # clear pipeline and cache to reduce vram usage
         del pipeline
         torch.cuda.empty_cache()
+
+        if staging is not None:
+            # The outer context restores exact placement, gradient flags and RNG,
+            # including when prompt encoding, denoising or decoding raises.
+            return
 
         # restore training state
         torch.set_rng_state(rng_state)

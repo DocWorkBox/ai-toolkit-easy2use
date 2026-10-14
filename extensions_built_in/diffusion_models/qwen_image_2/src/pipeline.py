@@ -25,6 +25,8 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from diffusers.utils.torch_utils import randn_tensor
+from tqdm import tqdm
+from toolkit.staged_sampling import PreparedSample
 
 SYSTEM_PROMPT = "Comprehend and analyze the provided prompt."
 VISION_BLOCK = "<|vision_start|><|image_pad|><|vision_end|>"
@@ -346,6 +348,18 @@ class QwenImage21Pipeline:
     def set_progress_bar_config(self, **kwargs):
         pass
 
+    def prepare_staged_sample(self, **kwargs):
+        images = kwargs.pop("condition_images", None)
+        if images:
+            self.model.sample_stage("vae")
+        kwargs["prepared_condition"] = self.model.encode_condition_images(images)
+        kwargs["output_type"] = "latent"
+        return PreparedSample(self, kwargs)
+
+    def decode_staged_sample(self, latents):
+        self.model.sample_stage("vae")
+        return self.model.decode_to_images(latents)
+
     @torch.no_grad()
     def __call__(
         self,
@@ -358,6 +372,8 @@ class QwenImage21Pipeline:
         latents: Optional[torch.Tensor] = None,
         generator: Optional[torch.Generator] = None,
         condition_images: Optional[List[torch.Tensor]] = None,
+        prepared_condition=None,
+        output_type="pil",
         **kwargs,
     ) -> List[Image.Image]:
         model = self.model
@@ -368,9 +384,12 @@ class QwenImage21Pipeline:
         latent_width = width // VAE_SCALE_FACTOR
         channels = transformer.config.in_channels
 
-        condition_latents, condition_shapes = model.encode_condition_images(
-            condition_images
-        )
+        if prepared_condition is None:
+            if condition_images:
+                model.sample_stage("vae")
+            prepared_condition = model.encode_condition_images(condition_images)
+        condition_latents, condition_shapes = prepared_condition
+        model.sample_stage("denoise")
 
         if latents is None:
             # randn_tensor, not torch.randn: the caller's generator may be a cpu one
@@ -405,7 +424,7 @@ class QwenImage21Pipeline:
         cond = model.pad_prompt_embeds(conditional_embeds)
         uncond = model.pad_prompt_embeds(unconditional_embeds) if do_cfg else None
 
-        for timestep in scheduler.timesteps:
+        for step_index, timestep in enumerate(tqdm(scheduler.timesteps, desc="Denoising steps", leave=False, disable=output_type != "latent")):
             t = timestep.expand(latents.shape[0]).to(device, dtype=dtype) / 1000
             noise_pred = run_transformer(
                 transformer,
@@ -426,11 +445,18 @@ class QwenImage21Pipeline:
                 )
                 noise_pred = uncond_pred + guidance_scale * (noise_pred - uncond_pred)
 
+            preview = None
+            if getattr(model, "sample_step_hook", None) is not None:
+                preview = latents.float() - scheduler.sigmas[step_index] * noise_pred.float()
             latents = scheduler.step(
                 noise_pred.to(torch.float32),
                 timestep,
                 latents.to(torch.float32),
                 return_dict=False,
             )[0].to(dtype)
+            if preview is not None:
+                model._emit_sample_step(preview, step_index, len(scheduler.timesteps))
 
-        return model.decode_to_images(latents)
+        if output_type == "latent":
+            return latents
+        return self.decode_staged_sample(latents)

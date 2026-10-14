@@ -91,6 +91,7 @@ TILE_DECODE_ABOVE_PIXELS = 1024 * 1024
 
 
 class MingImageModel(BaseModel):
+    supports_staged_sampling = True
     arch = "ming_image"
 
     def __init__(
@@ -491,7 +492,7 @@ class MingImageModel(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         divisor = self.get_bucket_divisibility()
@@ -500,6 +501,7 @@ class MingImageModel(BaseModel):
 
         reference_latents = None
         if gen_config.ctrl_img is not None:
+            self.sample_stage("vae")
             # same channels the dataloader gives training references
             mode = "RGBA" if self.load_rgba else "RGB"
             image = (
@@ -513,7 +515,9 @@ class MingImageModel(BaseModel):
                 [image], gen_config.height, gen_config.width
             )
 
-        return pipeline(
+        from toolkit.staged_sampling import call_sample_pipeline, map_sample
+
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -523,7 +527,8 @@ class MingImageModel(BaseModel):
             latents=gen_config.latents,
             generator=generator,
             reference_latents=reference_latents,
-        )[0]
+        )
+        return map_sample(result, lambda images: images[0])
 
     # ------------------------------------------------------------------
     # Saving / bookkeeping
