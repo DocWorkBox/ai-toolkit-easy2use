@@ -296,6 +296,7 @@ def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path(
         "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
         "Comfy-Org/Ming-Image",
         "FastVideo/FastVideo-FastH3-Comfy",
+        "black-forest-labs/flux-3-image-klein-base",
     }
 
     minimax = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
@@ -346,7 +347,10 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert 'SHEETSAGE_FILE = "./models/audio_encoders/sheetsage2_bf16.safetensors"' in yue2_tokenizer
     registry_paths = re.findall(r'"(?:name_or_path|extras_name_or_path)": "([^"]+)"', registry)
     assert registry_paths
-    assert all(path.startswith("./models/") for path in registry_paths)
+    # FLUX.3 keeps the repo selector so its loader can reuse Comfy weights
+    # while caching only configs/tokenizers under the toolkit's models folder.
+    assert all(path.startswith("./models/") or path == "black-forest-labs/flux-3-image-klein-base"
+               for path in registry_paths)
 
 
 def test_qwen3_omni_uses_local_checkpoint_and_processor_metadata():
@@ -641,6 +645,52 @@ def test_qwen_image_21_scans_comfy_weights_and_portable_configs(tmp_path, monkey
         assert results[key]["status"] == "ready"
     assert results["qwen-image-21-transformer"]["path"].startswith("<MODELS_PATH>/")
     assert results["qwen-image-21-config"]["absolute_path"] == str(config.resolve())
+
+
+def test_flux3_catalog_separates_portable_assets_from_configured_weights():
+    entries = {item['id']: item for item in _catalog()['models'] if item['id'].startswith('flux3-')}
+    assert len(entries) == 5
+    assert {item['family'] for item in entries.values()} == {'FLUX.3 Image Klein'}
+    assert entries['flux3-config']['path'] == './models/flux-3-image-klein-base'
+    assert entries['flux3-text-assets']['path'] == './models/Qwen3-VL-4B-Instruct'
+    for name in ('flux3-config', 'flux3-text-assets'):
+        assert 'root' not in entries[name]
+    for name in ('flux3-transformer', 'flux3-text-encoder', 'flux3-vae'):
+        assert entries[name]['root'] == 'configured_models'
+    transformer = entries['flux3-transformer']['required_any']
+    assert '**/flux3_image_klein_int8_convrot.safetensors' in transformer
+    assert '**/flux3_image_klein_bf16.safetensors' in transformer
+    assert not any('_sd_' in name for name in transformer)
+
+
+def test_flux3_scan_keeps_small_assets_under_toolkit_root(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    external = tmp_path / 'external-comfy/models'
+    monkeypatch.setenv('MODELS_PATH', str(external))
+    entries = {item['id']: item for item in _catalog()['models'] if item['id'].startswith('flux3-')}
+    assert len(entries) == 5
+    for key in ('flux3-config', 'flux3-text-assets'):
+        folder = tmp_path / entries[key]['path']
+        folder.mkdir(parents=True)
+        for name in entries[key]['required_all']:
+            (folder / name).write_text('{}', encoding='utf-8')
+    for relative in ('diffusion_models/subfolder/flux3_image_klein_int8_convrot.safetensors',
+                     'text_encoders/qwen3vl_4b_fp8_scaled.safetensors', 'vae/flux2-vae.safetensors'):
+        weight = external / relative
+        weight.parent.mkdir(parents=True, exist_ok=True)
+        weight.write_bytes(b'weight fixture')
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    selected = [item for item in report['models'] if item['id'] in entries]
+    assert all(item['status'] == 'ready' for item in selected), selected
+    assert len(selected) == 5
+    positions = [report['models'].index(item) for item in selected]
+    assert positions == list(range(positions[0], positions[0] + 5))
+    (tmp_path / entries['flux3-text-assets']['path'] / 'tokenizer.json').unlink()
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    assets = next(item for item in report['models'] if item['id'] == 'flux3-text-assets')
+    assert assets['status'] == 'incomplete'
+    assert 'tokenizer.json' in assets['detail']
 
 
 def test_model_scanner_detects_lfs_pointer_as_incomplete(tmp_path):

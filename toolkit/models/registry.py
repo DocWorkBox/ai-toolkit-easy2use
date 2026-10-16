@@ -58,6 +58,7 @@ ARCH_REGISTRY: Dict[str, dict] = {
     "qwen25_omni": {"modality": "text", "model": {"name_or_path": "./models/text_encoders/qwen2_5_omni_7b_convrot8.safetensors", "quantize": True, "qtype": "convrot8"}, "sample": {"width": 512, "height": 512, "num_inference_steps": 1, "guidance_scale": 1.0}},
     "yue2": {"modality": "audio", "model": {"name_or_path": "./models/checkpoints/yue2_3b_int8_convrot.safetensors", "quantize": True, "qtype": "convrot8"}, "sample": {"width": 512, "height": 512, "num_inference_steps": 32, "guidance_scale": 1.0, "duration": 120}},
     "iris3b": {"modality": "image", "model": {"name_or_path": "./models/iris-3b", "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 30, "guidance_scale": 3.0}},
+    "flux3": {"modality": "image", "model": {"name_or_path": "black-forest-labs/flux-3-image-klein-base", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8"}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 28, "guidance_scale": 3.5}},
 }
 
 OUTPUT_EXT = {"image": "png", "video": "mp4", "audio": "mp3"}
