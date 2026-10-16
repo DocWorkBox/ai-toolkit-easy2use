@@ -89,6 +89,9 @@ class StagedSampleBatch:
         self.jobs = []
 
     def add(self, config, conditional, unconditional, extra):
+        prepare = getattr(self.model, "prepare_staged_prompt_embeds", None)
+        if prepare is not None:
+            conditional, unconditional = prepare(config, conditional, unconditional)
         self.jobs.append(dict(config=config, rng=SampleRNG(),
                               inputs=sample_to_device((conditional, unconditional, extra), "cpu")))
 

@@ -86,7 +86,7 @@ def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help(
     assert '"config.process[0].train.guidance_loss_target": [4.0, undefined]' not in options
     assert "'config.process[0].model.assistant_lora_path': {" in docs
     assert "训练适配器路径" in docs
-    assert 'VERSION = "1.18.7"' in version
+    assert 'VERSION = "1.18.8"' in version
 
 
 def test_fasth3_uses_compshare_dit_and_shared_minimax_components():
@@ -145,3 +145,17 @@ def test_compshare_uses_the_project_models_folder_by_default():
     assert "legacyDefaultModelsFolder" not in settings_route
     assert "/datasets/" not in ui_paths
     assert "/datasets/" not in cron_paths
+
+
+def test_flux3_uses_compshare_qwen_assets_and_writable_project_cache():
+    source = Path(
+        "extensions_built_in/diffusion_models/flux3/src/text_encoder.py"
+    ).read_text(encoding="utf-8")
+    assert (
+        'QWEN3_VL_4B_LOCAL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"'
+        in source
+    )
+    assert 'os.path.join(TOOLKIT_ROOT, "models", "Qwen3-VL-4B-Instruct")' in source
+    assert "/datasets/ComfyUI/" not in source
+    options = OPTIONS_SOURCE.read_text(encoding="utf-8")
+    assert '"/model/ModelScope/black-forest-labs/flux-3-image-klein-comfy"' in options
