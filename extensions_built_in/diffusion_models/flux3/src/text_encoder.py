@@ -9,13 +9,18 @@ attention mask. FLUX.3 feeds the DiT zero ``timesteps_ctx`` and no pooled
 vector.
 """
 
+import json
 import math
+import os
+import shutil
+import tempfile
 from typing import List, Optional
 
 import torch
 from einops import rearrange
 
 from toolkit.models.v2.text_encoders.qwen3_vl import Qwen3VLTextEncoder
+from toolkit.paths import TOOLKIT_ROOT
 
 SELECT_LAYERS = [4, 8, 12, 16, 20, 24, 28, 32]
 CONTEXT_DIM = 20480  # len(SELECT_LAYERS) * qwen hidden (2560)
@@ -25,12 +30,41 @@ DEFAULT_PAD_MULTIPLE = 80
 DEFAULT_MAX_TOKENS = 8192
 
 QWEN3_VL_4B_REPO = "Qwen/Qwen3-VL-4B-Instruct"
+QWEN3_VL_4B_LOCAL_PATH = "/datasets/ComfyUI/models/LLM/Qwen-VL/Qwen3-VL-4B-Instruct"
+
+_TEXT_ASSET_FILES = (
+    "config.json", "generation_config.json", "tokenizer_config.json",
+    "tokenizer.json", "vocab.json", "merges.txt", "special_tokens_map.json",
+    "added_tokens.json", "preprocessor_config.json", "video_preprocessor_config.json",
+    "processor_config.json", "chat_template.json", "chat_template.jinja",
+)
+
+
+def _has_text_assets(directory):
+    def exists(filename):
+        path = os.path.join(directory, filename)
+        return os.path.isfile(path) and os.path.getsize(path) > 0
+
+    if not all(exists(name) for name in (
+        "config.json", "tokenizer_config.json", "preprocessor_config.json",
+        "video_preprocessor_config.json",
+    )):
+        return False
+    if not (exists("tokenizer.json") or (exists("vocab.json") and exists("merges.txt"))):
+        return False
+    if exists("chat_template.json") or exists("chat_template.jinja"):
+        return True
+    try:
+        with open(os.path.join(directory, "tokenizer_config.json"), encoding="utf-8") as f:
+            return bool(json.load(f).get("chat_template"))
+    except (OSError, ValueError):
+        return False
 
 
 class Flux3TextEncoder(Qwen3VLTextEncoder):
     """Qwen3-VL-4B-Instruct. The package's text_encoder/ and tokenizer/ are
-    byte-identical to the public Qwen repo, so config + tokenizer come from
-    there and the weights from the Comfy-Org single-file repack under
+    byte-identical to the public Qwen repo. Small assets are cached under
+    TOOLKIT_ROOT/models; weights use the Comfy-Org single-file repack under
     MODELS_PATH/text_encoders/."""
 
     aitk_config_repo = QWEN3_VL_4B_REPO
@@ -45,6 +79,46 @@ class Flux3TextEncoder(Qwen3VLTextEncoder):
         "text_encoders/qwen3vl_4b_fp8_scaled.safetensors",
     ]
     aitk_comfy_weight_names = {QWEN3_VL_4B_REPO: _COMFY_FILES}
+
+    @classmethod
+    def resolve_assets(cls):
+        """Keep configs and tokenizer/processor files off the read-only model mount."""
+        assets_dir = os.path.join(TOOLKIT_ROOT, "models", "Qwen3-VL-4B-Instruct")
+        if _has_text_assets(assets_dir):
+            return assets_dir
+        os.makedirs(assets_dir, exist_ok=True)
+        for filename in _TEXT_ASSET_FILES:
+            source = os.path.join(QWEN3_VL_4B_LOCAL_PATH, filename)
+            target = os.path.join(assets_dir, filename)
+            if not os.path.isfile(source) or os.path.getsize(source) == 0:
+                continue
+            if os.path.isfile(target) and os.path.getsize(target) > 0:
+                continue
+            # Publish complete files only; parallel jobs may share this cache.
+            with tempfile.NamedTemporaryFile(dir=assets_dir, suffix=".tmp", delete=False) as f:
+                temporary = f.name
+            try:
+                shutil.copyfile(source, temporary)
+                os.replace(temporary, target)
+            finally:
+                if os.path.exists(temporary):
+                    os.remove(temporary)
+        if not _has_text_assets(assets_dir):
+            from huggingface_hub import snapshot_download
+
+            snapshot_download(
+                repo_id=QWEN3_VL_4B_REPO,
+                local_dir=assets_dir,
+                allow_patterns=[
+                    name for name in _TEXT_ASSET_FILES
+                    if not os.path.isfile(os.path.join(assets_dir, name))
+                    or os.path.getsize(os.path.join(assets_dir, name)) == 0
+                ],
+                token=os.getenv("HF_TOKEN", None),
+            )
+        if not _has_text_assets(assets_dir):
+            raise FileNotFoundError(f"Incomplete Qwen3-VL config/tokenizer/processor assets: {assets_dir}")
+        return assets_dir
 
     # the fp8 repack keeps the language tower directly under ``model.``
     _COMFY_PREFIXES = (

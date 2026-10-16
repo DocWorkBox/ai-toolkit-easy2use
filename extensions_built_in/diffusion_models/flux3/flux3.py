@@ -318,14 +318,20 @@ class Flux3Model(BaseModel):
             )
         self.print_and_status_update(f"Loading Qwen3-VL text encoder from {te_path}")
         te_kwargs = self.component_load_kwargs("te")
+        processor_source = te_path if os.path.isdir(te_path) else None
+        config_kwargs = {}
+        if te_path == QWEN3_VL_4B_REPO or te_path.endswith(".safetensors"):
+            processor_source = Flux3TextEncoder.resolve_assets()
+            config_kwargs["config_path"] = processor_source
+            self.print_and_status_update(f" - config/tokenizer/processor: {processor_source}")
         text_encoder = Flux3TextEncoder.load_model(
             te_path,
             dtype=te_kwargs["dtype"],
             subfolder="",
             qtype=te_kwargs["qtype"],  # comfy candidate ranking only
             quantize_on_load=False,
+            **config_kwargs,
         )
-        processor_source = te_path if os.path.isdir(te_path) else None
         processor = Flux3TextEncoder.load_processor(processor_source)
         processor.tokenizer.padding_side = "right"
         # text-only conditioning -- drop the vision tower
