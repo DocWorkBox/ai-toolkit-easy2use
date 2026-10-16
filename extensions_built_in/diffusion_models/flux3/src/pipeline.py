@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from diffusers.utils.torch_utils import randn_tensor
+from toolkit.staged_sampling import PreparedSample
 
 from .positional import batched_prc_img, prc_img, prc_txt
 
@@ -133,6 +134,35 @@ class Flux3Pipeline:
         pass
 
     @torch.no_grad()
+    def prepare_staged_sample(self, **kwargs):
+        # Match the regular sampler's RNG order: noise before reference encode.
+        if kwargs.get("latents") is None:
+            kwargs["latents"] = randn_tensor(
+                (1, 128, kwargs.get("height", 1024) // 16, kwargs.get("width", 1024) // 16),
+                generator=kwargs.get("generator"), dtype=torch.float32,
+            )
+        kwargs["reference_latents"] = self._encode_reference_images(kwargs.pop("ctrl_imgs", None))
+        return PreparedSample(self, dict(kwargs, output_type="latent"))
+
+    def _encode_reference_images(self, images):
+        if not images:
+            return []
+        model = self.model
+        model.sample_stage("vae")
+        device, dtype = model.vae_device_torch, model.torch_dtype
+        return [model.encode_images(list(image.to(device, dtype) * 2 - 1), device=device, dtype=dtype)[0]
+                for image in images]
+
+    def decode_staged_sample(self, latents):
+        model = self.model
+        model.sample_stage("vae")
+        images = model.decode_latents(latents, device=model.vae_device_torch, dtype=model.torch_dtype)
+        images = images.float().clamp(-1.0, 1.0)
+        images = ((images + 1.0) * 127.5).round().to(torch.uint8)
+        images = images.permute(0, 2, 3, 1).cpu().numpy()
+        return [Image.fromarray(arr) for arr in images]
+
+    @torch.no_grad()
     def __call__(
         self,
         conditional_embeds,
@@ -145,6 +175,8 @@ class Flux3Pipeline:
         generator: Optional[torch.Generator] = None,
         ctrl_imgs: Optional[List[torch.Tensor]] = None,  # each (1, 3, H, W) in [0, 1]
         alpha: Optional[float] = None,
+        reference_latents: Optional[List[torch.Tensor]] = None,
+        output_type="pil",
         **kwargs,
     ):
         model = self.model
@@ -180,14 +212,10 @@ class Flux3Pipeline:
 
         # reference-image conditioning: reference i rides at l = -1 - i
         cond_kwargs = {}
-        if ctrl_imgs:
-            ref_latents = []
-            for ctrl_img in ctrl_imgs:
-                ctrl = ctrl_img.to(device, dtype) * 2 - 1
-                ref_latents.append(
-                    model.encode_images(list(ctrl), device=device, dtype=dtype)[0]
-                )
-            xc, xc_ids, xc_ts = pack_i2i_image_condition([ref_latents], device, dtype)
+        if reference_latents is None:
+            reference_latents = self._encode_reference_images(ctrl_imgs)
+        if reference_latents:
+            xc, xc_ids, xc_ts = pack_i2i_image_condition([reference_latents], device, dtype)
             cond_kwargs = {
                 "x_image_cond": xc.repeat(cfg_batch, 1, 1),
                 "x_image_cond_ids": xc_ids.repeat(cfg_batch, 1, 1),
@@ -195,6 +223,7 @@ class Flux3Pipeline:
             }
 
         # Euler integration of the flow ODE with CFG
+        model.sample_stage("denoise")
         for step_index, (t_curr, t_prev) in enumerate(zip(timesteps[:-1], timesteps[1:])):
             x_in = x.to(dtype).repeat(cfg_batch, 1, 1)
             pred = transformer(
@@ -218,8 +247,6 @@ class Flux3Pipeline:
             x = x + (t_prev - t_curr) * v
 
         img_latent = x.reshape(1, h_lat, w_lat, -1).permute(0, 3, 1, 2)
-        images = model.decode_latents(img_latent, device=device, dtype=dtype)
-        images = images.float().clamp(-1.0, 1.0)
-        images = ((images + 1.0) * 127.5).round().to(torch.uint8)
-        images = images.permute(0, 2, 3, 1).cpu().numpy()
-        return [Image.fromarray(arr) for arr in images]
+        if output_type == "latent":
+            return img_latent
+        return self.decode_staged_sample(img_latent)

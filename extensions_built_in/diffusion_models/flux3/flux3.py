@@ -28,6 +28,9 @@ Qwen/Qwen3-VL-4B-Instruct, so the text encoder loads from the Comfy-Org
 single file under MODELS_PATH/text_encoders/ (downloaded there once when
 missing) with config and tokenizer from the public Qwen repo.
 
+The vendor's config.json is cached under
+TOOLKIT_ROOT/models/flux-3-image-klein-base/ and reused without a hub request.
+
 Flow convention matches ai-toolkit exactly (t=1 noise -> t=0 clean,
 target = noise - clean), so no time flips anywhere.
 """
@@ -47,11 +50,12 @@ from torchvision.transforms.functional import to_tensor
 from toolkit.accelerator import unwrap_model
 from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
 from toolkit.basic import flush
+from toolkit.staged_sampling import call_sample_pipeline, map_sample
 from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
 from toolkit.models.v2.resolver import resolve_comfy_file
-from toolkit.paths import MODELS_PATH
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.unloader import FakeTextEncoder
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
@@ -92,6 +96,7 @@ scheduler_config = {
 
 
 class Flux3Model(BaseModel):
+    supports_staged_sampling = True
     arch = "flux3"
 
     def __init__(
@@ -170,8 +175,17 @@ class Flux3Model(BaseModel):
         from huggingface_hub import hf_hub_download
 
         try:
+            download_kwargs = {}
+            if base == BASE_REPO and filename == "config.json":
+                config_dir = os.path.join(TOOLKIT_ROOT, "models", "flux-3-image-klein-base")
+                config_path = os.path.join(config_dir, filename)
+                if os.path.isfile(config_path):
+                    return config_path
+                os.makedirs(config_dir, exist_ok=True)
+                download_kwargs["local_dir"] = config_dir
             return hf_hub_download(
-                repo_id=base, filename=filename, token=os.getenv("HF_TOKEN", None)
+                repo_id=base, filename=filename, token=os.getenv("HF_TOKEN", None),
+                **download_kwargs,
             )
         except Exception as e:
             if required:
@@ -374,33 +388,19 @@ class Flux3Model(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         sc = self.get_bucket_divisibility()
         gen_config.width = int(gen_config.width // sc * sc)
         gen_config.height = int(gen_config.height // sc * sc)
 
-        # cond and uncond were encoded separately, so their pad-to-80 windows
-        # can differ. The DiT attends to real pad-token states, not zeros, so
-        # re-encode the shorter prompt at the longer window when the TE is up
-        # (cached embeddings: the TE is an unloaded stub; the shorter side is
-        # zero-padded in build_text_conditioning instead)
-        if (
-            unconditional_embeds is not None
-            and self.text_encoder is not None
-            and not isinstance(self.text_encoder, FakeTextEncoder)
-        ):
-            cond_len = conditional_embeds.text_embeds[0].shape[0]
-            uncond_len = unconditional_embeds.text_embeds[0].shape[0]
-            if cond_len != uncond_len:
-                target = max(cond_len, uncond_len)
-                if cond_len < target:
-                    conditional_embeds = self._encode_at_length(gen_config.prompt, target)
-                else:
-                    unconditional_embeds = self._encode_at_length(
-                        gen_config.negative_prompt or "", target
-                    )
+        # Staged sampling aligns while the text encoder is resident, before
+        # queueing. The regular path keeps the upstream re-encoding behavior.
+        if getattr(self, "_staged_sampling", None) is None:
+            conditional_embeds, unconditional_embeds = self.prepare_staged_prompt_embeds(
+                gen_config, conditional_embeds, unconditional_embeds
+            )
 
         # references: ctrl_img_1 mirrors ctrl_img, so dedupe by path order
         ctrl_paths = []
@@ -423,7 +423,7 @@ class Flux3Model(BaseModel):
         alpha = self.model_config.model_kwargs.get("sample_alpha", None)
         alpha = float(alpha) if alpha is not None else None
 
-        result = pipeline(
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -435,7 +435,22 @@ class Flux3Model(BaseModel):
             ctrl_imgs=ctrl_imgs,
             alpha=alpha,
         )
-        return result[0]
+        return map_sample(result, lambda images: images[0])
+
+    def prepare_staged_prompt_embeds(self, gen_config, conditional, unconditional):
+        # Cached prompts with an unloaded encoder retain upstream zero-padding.
+        if (unconditional is not None and self.text_encoder is not None
+                and not isinstance(self.text_encoder, FakeTextEncoder)):
+            cond_len = conditional.text_embeds[0].shape[0]
+            uncond_len = unconditional.text_embeds[0].shape[0]
+            if cond_len != uncond_len:
+                self.sample_stage("text_encoder")
+                target = max(cond_len, uncond_len)
+                if cond_len < target:
+                    conditional = self._encode_at_length(gen_config.prompt, target)
+                else:
+                    unconditional = self._encode_at_length(gen_config.negative_prompt or "", target)
+        return conditional, unconditional
 
     def _fit_reference(self, img: torch.Tensor, target_pixels: int) -> torch.Tensor:
         """Size a (1, C, H, W) reference for the DiT. References keep their own
@@ -457,7 +472,7 @@ class Flux3Model(BaseModel):
         return img
 
     def _encode_at_length(self, prompt: str, length: int) -> AdvancedPromptEmbeds:
-        if self.text_encoder.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
         ctx = encode_flux3_prompt(
             self.text_encoder,
@@ -548,7 +563,7 @@ class Flux3Model(BaseModel):
     def get_prompt_embeds(self, prompt) -> AdvancedPromptEmbeds:
         if isinstance(prompt, str):
             prompt = [prompt]
-        if self.text_encoder.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
 
         ctx = encode_flux3_prompt(

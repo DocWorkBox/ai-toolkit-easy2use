@@ -1756,6 +1756,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "model.layer_offloading",
       "model.low_vram",
       "model.qie.match_target_res",
+      "model.sample_staged_offloading",
     ],
   },
   {
