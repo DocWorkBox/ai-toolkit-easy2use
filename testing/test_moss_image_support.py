@@ -38,4 +38,4 @@ def test_existing_kv_cache_control_and_help_are_localized():
 
 
 def test_upstream_sync_preserves_aigate_version_number():
-    assert (ROOT / "version.py").read_text(encoding="utf-8").strip() == 'VERSION = "1.18.8"'
+    assert (ROOT / "version.py").read_text(encoding="utf-8").strip() == 'VERSION = "1.18.9"'

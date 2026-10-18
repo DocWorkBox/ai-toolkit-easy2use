@@ -45,6 +45,10 @@ from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
 
+from .src.assets import (
+    hub_file_folder as _hub_file_folder,
+    hub_tokenizer_folder as _hub_tokenizer_folder,
+)
 from .src.checkpoints import (
     COMFY_REPO,
     QWEN35_9B_REPO,
@@ -81,40 +85,6 @@ def _is_hub_repo(path: str) -> bool:
         and not path.endswith(".safetensors")
         and path.count("/") == 1
     )
-
-
-TOKENIZER_FILES = ("tokenizer.json", "tokenizer_config.json", "chat_template.jinja")
-
-
-def _hub_tokenizer_folder(repo_id: str) -> str:
-    """The repo's tokenizer/ folder in the hub cache, downloaded when any file
-    is missing. Not transformers' local_files_only: on an empty cache 5.5.3
-    returns a 1-token tokenizer without the template instead of raising."""
-    from huggingface_hub import snapshot_download
-
-    patterns = [f"tokenizer/{name}" for name in TOKENIZER_FILES]
-    try:
-        root = snapshot_download(
-            repo_id, allow_patterns=patterns, token=HF_TOKEN, local_files_only=True
-        )
-        if all(os.path.isfile(os.path.join(root, p)) for p in patterns):
-            return os.path.join(root, "tokenizer")
-    except Exception:
-        pass
-    root = snapshot_download(repo_id, allow_patterns=patterns, token=HF_TOKEN)
-    return os.path.join(root, "tokenizer")
-
-
-def _hub_file_folder(repo_id: str, filename: str) -> str:
-    """Folder holding one hub file, cache first (loaded from the folder so no
-    other file of the repo is resolved)."""
-    from huggingface_hub import hf_hub_download
-
-    try:
-        path = hf_hub_download(repo_id, filename, token=HF_TOKEN, local_files_only=True)
-    except Exception:
-        path = hf_hub_download(repo_id, filename, token=HF_TOKEN)
-    return os.path.dirname(path)
 
 
 def _drop_repeats(images):
@@ -238,7 +208,7 @@ class MossImageModel(BaseModel):
                 te_path, hf_token=HF_TOKEN, status_fn=self.print_and_status_update
             )
         if te_path.endswith(".safetensors"):
-            config_path = QWEN35_9B_REPO
+            config_path = _hub_file_folder(QWEN35_9B_REPO, "config.json")
         self.print_and_status_update(f"Loading Qwen3.5 text encoder from {te_path}")
         # edit keeps the vision tower for the reference images
         te_cls = Qwen35VLEncoder if self.is_edit else Qwen35TextOnlyEncoder
