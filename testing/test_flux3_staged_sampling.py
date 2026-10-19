@@ -135,6 +135,21 @@ class Flux3StagedTests(unittest.TestCase):
         entry = next(block for block in re.split(r'\n    name: ', source) if block.startswith('"flux3"'))
         self.assertIn('"model.sample_staged_offloading"', entry)
 
+    def test_training_preserves_each_reference_in_stacked_control_tensors(self):
+        for references in (1, 2):
+            with self.subTest(references=references):
+                model = self.model(cached=True)
+                controls = torch.rand(1, references, 3, 32, 64, device=self.device)
+                if references == 1:
+                    controls = controls[:, 0]
+                batch = SimpleNamespace(control_tensor_list=None, control_tensor=controls)
+                latents = torch.ones(1, 128, 4, 4, device=self.device)
+                output = model.get_noise_prediction(
+                    latents, torch.tensor([500], device=self.device), self.embeds()[0], batch
+                )
+                self.assertEqual(output.shape, latents.shape)
+                self.assertEqual(model.events.count("encode"), references)
+
     def test_pipeline_can_prepare_without_denoising_or_decoding(self):
         model = self.model(cached=True)
         pipeline = self.flux.Flux3Pipeline(model)

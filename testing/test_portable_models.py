@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 from pathlib import Path
@@ -297,6 +298,8 @@ def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path(
         "Comfy-Org/Ming-Image",
         "FastVideo/FastVideo-FastH3-Comfy",
         "black-forest-labs/flux-3-image-klein-base",
+        "OpenMOSS-Team/MOSS-Image-SFT",
+        "OpenMOSS-Team/MOSS-Image-Base",
     }
 
     minimax = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3.py")
@@ -347,9 +350,11 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert 'SHEETSAGE_FILE = "./models/audio_encoders/sheetsage2_bf16.safetensors"' in yue2_tokenizer
     registry_paths = re.findall(r'"(?:name_or_path|extras_name_or_path)": "([^"]+)"', registry)
     assert registry_paths
-    # FLUX.3 keeps the repo selector so its loader can reuse Comfy weights
+    # These models keep repo selectors so their loaders can reuse Comfy weights
     # while caching only configs/tokenizers under the toolkit's models folder.
-    assert all(path.startswith("./models/") or path == "black-forest-labs/flux-3-image-klein-base"
+    comfy_selectors = {"black-forest-labs/flux-3-image-klein-base",
+                       "OpenMOSS-Team/MOSS-Image-SFT", "OpenMOSS-Team/MOSS-Image-Base"}
+    assert all(path.startswith("./models/") or path in comfy_selectors
                for path in registry_paths)
 
 
@@ -691,6 +696,67 @@ def test_flux3_scan_keeps_small_assets_under_toolkit_root(tmp_path, monkeypatch)
     assets = next(item for item in report['models'] if item['id'] == 'flux3-text-assets')
     assert assets['status'] == 'incomplete'
     assert 'tokenizer.json' in assets['detail']
+
+
+def test_flux3_catalog_tracks_current_loader_filenames():
+    source = ast.parse(_read("extensions_built_in/diffusion_models/flux3/src/checkpoints.py"))
+    candidates = next(ast.literal_eval(node.value) for node in source.body
+                      if isinstance(node, ast.Assign)
+                      and any(isinstance(target, ast.Name) and target.id == "COMFY_TRANSFORMER_FILES"
+                              for target in node.targets))
+    entry = next(item for item in _catalog()["models"] if item["id"] == "flux3-transformer")
+    assert set(entry["required_any"]) == {"**/" + name.split("/", 1)[1] for name in candidates}
+
+
+def test_moss_catalog_keeps_weights_and_small_assets_in_loader_locations():
+    entries = {item["id"]: item for item in _catalog()["models"] if item["id"].startswith("moss-image-")}
+    assert len(entries) == 7
+    assert {item["family"] for item in entries.values()} == {"MOSS-Image"}
+    for name in ("sft", "base", "text-encoder", "vae"):
+        assert entries["moss-image-" + name]["root"] == "configured_models"
+    assert entries["moss-image-vae"]["path"] == "vae/flux2-vae.safetensors"
+    for variant in ("sft", "base"):
+        entry = entries["moss-image-" + variant + "-tokenizer"]
+        assert "root" not in entry
+        assert entry["path"] == "./models/OpenMOSS-Team/MOSS-Image-" + variant.title().replace("Sft", "SFT")
+        assert set(entry["required_all"]) == {"tokenizer/tokenizer.json", "tokenizer/tokenizer_config.json",
+                                              "tokenizer/chat_template.jinja"}
+    config = entries["moss-image-text-config"]
+    assert config["path"] == "./models/Qwen/Qwen3.5-9B"
+    assert set(config["required_all"]) == {"config.json", "preprocessor_config.json"}
+
+
+def test_moss_scan_accepts_current_and_legacy_names_and_groups_assets(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    entries = {item["id"]: item for item in _catalog()["models"] if item["id"].startswith("moss-image-")}
+    assert len(entries) == 7
+    external = tmp_path / "comfy/models"
+    monkeypatch.setenv("MODELS_PATH", str(external))
+    for entry in entries.values():
+        if entry.get("root") != "configured_models":
+            for name in entry["required_all"]:
+                path = tmp_path / entry["path"] / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}", encoding="utf-8")
+    for relative in ("diffusion_models/moss_image_base_int8_convrot.safetensors",
+                     "diffusion_models/moss_image_sft_int8_convrot.safetensors",
+                     "text_encoders/qwen3.5_9b_int8_convrot.safetensors", "vae/flux2-vae.safetensors"):
+        path = external / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"weight fixture")
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    selected = {item["id"]: item for item in report["models"] if item["id"] in entries}
+    assert selected["moss-image-sft"]["status"] == "ready"
+    assert selected["moss-image-base"]["status"] == "ready"
+    for variant in ("sft", "base"):
+        current = external / f"diffusion_models/moss_image_{variant}_int8_convrot.safetensors"
+        current.rename(current.with_name(f"moss_image_{variant}_int8_convrot_attn.safetensors"))
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    selected = [item for item in report["models"] if item["id"] in entries]
+    assert all(item["status"] == "ready" for item in selected)
+    positions = [report["models"].index(item) for item in selected]
+    assert positions == list(range(positions[0], positions[0] + 7))
 
 
 def test_model_scanner_detects_lfs_pointer_as_incomplete(tmp_path):

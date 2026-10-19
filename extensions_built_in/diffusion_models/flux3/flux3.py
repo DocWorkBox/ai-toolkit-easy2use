@@ -116,6 +116,8 @@ class Flux3Model(BaseModel):
         self.target_lora_modules = ["Flux3Transformer"]
         self.supports_model_paths = True
         self.use_old_lokr_format = False
+        # references keep their own framing; _fit_reference sizes them by area
+        self.use_raw_control_images = True
 
         self.processor = None  # Qwen3-VL AutoProcessor
         self.max_text_length = int(
@@ -317,13 +319,13 @@ class Flux3Model(BaseModel):
             and not self.model_config.model_kwargs.get("model_path")
             and not os.path.isfile(os.path.join(base, "model.safetensors"))
         ):
-            # The repack now labels base checkpoints explicitly; keep older
-            # filenames working, but never consider the step-distilled _sd_ files.
-            candidates = [
-                name.replace("flux3_image_klein_", "flux3_image_klein_base_", 1)
-                for name in COMFY_TRANSFORMER_FILES
-            ] + COMFY_TRANSFORMER_FILES
-            source = self._local_comfy_file(candidates, qtype)
+            source = self._local_comfy_file(COMFY_TRANSFORMER_FILES, qtype)
+            if source is None:
+                raise FileNotFoundError(
+                    f"FLUX.3 Base checkpoint not found under {os.path.join(base, 'diffusion_models')}. "
+                    "Expected flux3-image-klein-base-*.safetensors "
+                    "(bf16, int8-convrot, nvfp4) or a legacy underscore filename."
+                )
         if source is None:
             source = self._package_file("model.safetensors")
         transformer = Flux3Transformer.load_model(
@@ -568,7 +570,11 @@ class Flux3Model(BaseModel):
                 if batch.control_tensor_list is not None:
                     control_list = batch.control_tensor_list
                 elif batch.control_tensor is not None:
-                    control_list = [[batch.control_tensor[b]] for b in range(batch_size)]
+                    # (B, C, H, W) single reference or the dataloader's
+                    # (B, N, C, H, W) stack of N references per sample
+                    control_list = [
+                        list(ct) if ct.ndim == 4 else [ct] for ct in batch.control_tensor
+                    ]
             if control_list is not None:
                 target_pixels = h_lat * w_lat * 16 * 16
                 ref_latents = []
