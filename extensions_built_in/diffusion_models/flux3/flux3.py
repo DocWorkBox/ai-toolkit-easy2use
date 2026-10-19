@@ -317,13 +317,13 @@ class Flux3Model(BaseModel):
             and not self.model_config.model_kwargs.get("model_path")
             and not os.path.isfile(os.path.join(base, "model.safetensors"))
         ):
-            # The repack now labels base checkpoints explicitly; keep older
-            # filenames working, but never consider the step-distilled _sd_ files.
-            candidates = [
-                name.replace("flux3_image_klein_", "flux3_image_klein_base_", 1)
-                for name in COMFY_TRANSFORMER_FILES
-            ] + COMFY_TRANSFORMER_FILES
-            source = self._local_comfy_file(candidates, qtype)
+            source = self._local_comfy_file(COMFY_TRANSFORMER_FILES, qtype)
+            if source is None:
+                raise FileNotFoundError(
+                    f"FLUX.3 Base checkpoint not found under {os.path.join(base, 'diffusion_models')}. "
+                    "Expected flux3-image-klein-base-*.safetensors "
+                    "(bf16, int8-convrot, nvfp4) or a legacy underscore filename."
+                )
         if source is None:
             source = self._package_file("model.safetensors")
         transformer = Flux3Transformer.load_model(

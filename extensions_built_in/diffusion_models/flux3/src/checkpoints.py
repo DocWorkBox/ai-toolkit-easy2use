@@ -7,8 +7,9 @@ ComfyUI repack, and are stored under the repack's names; a repack file already
 in the local ComfyUI models folder (int8_convrot = the toolkit's convrot8
 storage, attached as-is; bf16; nvfp4) is used instead of the package's.
 Nothing is downloaded from the repack unless it is named as `name_or_path`.
-The repack's ``_sd_`` files are the step-distilled flow-map model: never
-candidates, and a loaded one is rejected by its ``ref_time_in`` keys.
+The current hyphenated Base names and legacy underscore names are accepted.
+Step-distilled files are never candidates, and a loaded one is rejected by
+its ``ref_time_in`` keys.
 """
 
 BASE_REPO = "black-forest-labs/flux-3-image-klein-base"
@@ -18,6 +19,12 @@ COMFY_REPO = "black-forest-labs/flux-3-image-klein-comfy"
 # qtype (convrot8 -> int8, nvfp4 -> nvfp4, anything else -> bf16). The text
 # encoder stays on the Comfy-Org Qwen3-VL repack (src/text_encoder.py).
 COMFY_TRANSFORMER_FILES = [
+    "diffusion_models/flux3-image-klein-base-int8-convrot.safetensors",
+    "diffusion_models/flux3-image-klein-base-bf16.safetensors",
+    "diffusion_models/flux3-image-klein-base-nvfp4.safetensors",
+    "diffusion_models/flux3_image_klein_base_int8_convrot.safetensors",
+    "diffusion_models/flux3_image_klein_base_bf16.safetensors",
+    "diffusion_models/flux3_image_klein_base_nvfp4.safetensors",
     "diffusion_models/flux3_image_klein_int8_convrot.safetensors",
     "diffusion_models/flux3_image_klein_bf16.safetensors",
     "diffusion_models/flux3_image_klein_nvfp4.safetensors",
