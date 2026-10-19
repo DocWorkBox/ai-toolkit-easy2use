@@ -6,8 +6,8 @@ Comfy-Org/MOSS-Image repack (DiT: the vendor's keys with q/k/v fused).
 - ``OpenMOSS-Team/MOSS-Image-SFT`` / ``-Base`` (vendor, the UI defaults): a
   repack DiT file already on disk wins (best precision for the requested
   qtype; int8 only for convrot). Otherwise Base downloads the repack's bf16
-  (byte-identical to the vendor shards); SFT, which the repack has no bf16
-  of, downloads the vendor's diffusers shards once and merges them into
+  (byte-identical to the vendor shards); SFT downloads the vendor's
+  diffusers shards once and merges them into
   ``diffusion_models/moss_image_sft_bf16.safetensors`` in the Comfy layout.
   Other hub repos (fine-tunes) merge into a file named after the repo, never
   substituted.
@@ -50,13 +50,15 @@ VENDOR_VAE_FILE = "vae/diffusion_pytorch_model.safetensors"
 VENDOR_TRANSFORMER_INDEX = "transformer/diffusion_pytorch_model.safetensors.index.json"
 COMFY_VAE_FILE = "vae/flux2-vae.safetensors"
 
-# variant -> (files in the repack, extra local-only candidates). The repack
-# renamed its int8 files without changing their bytes; retain old local names.
+# variant -> (download candidates, extra local-only candidates).
+# Old _attn names remain local aliases, never obsolete Hub download targets.
 COMFY_TRANSFORMER_FILES = {
     "sft": (
         ["diffusion_models/moss_image_sft_int8_convrot.safetensors"],
-        ["diffusion_models/moss_image_sft_bf16.safetensors",
-         "diffusion_models/moss_image_sft_int8_convrot_attn.safetensors"],
+        [
+            "diffusion_models/moss_image_sft_int8_convrot_attn.safetensors",
+            "diffusion_models/moss_image_sft_bf16.safetensors",
+        ],
     ),
     "base": (
         [
