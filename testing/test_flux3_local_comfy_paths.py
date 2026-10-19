@@ -63,6 +63,47 @@ class Flux3LocalComfyPathTests(unittest.TestCase):
             self.model._load_transformer()
         self.assertEqual(Path(load.call_args.args[0]), Path(expected))
 
+    def test_hyphenated_base_names_keep_requested_precision(self):
+        files = {
+            precision: self.weight(f"diffusion_models/flux3-image-klein-base-{precision}.safetensors")
+            for precision in ("bf16", "int8-convrot", "nvfp4")
+        }
+        for precision in files:
+            self.weight(f"diffusion_models/flux3-image-klein-{precision}.safetensors")
+        for quantize, qtype, expected in (
+            (True, "convrot8", "int8-convrot"),
+            (True, "nvfp4", "nvfp4"),
+            (False, "convrot8", "bf16"),
+        ):
+            with self.subTest(qtype=qtype, quantize=quantize):
+                self.model.model_config.quantize = quantize
+                self.model.model_config.qtype = qtype
+                with patch.object(self.flux.Flux3Transformer, "load_model", return_value=Mock()) as load:
+                    with patch("huggingface_hub.hf_hub_download") as download:
+                        self.model._load_transformer()
+                self.assertEqual(Path(load.call_args.args[0]), Path(files[expected]))
+                download.assert_not_called()
+
+    def test_registered_comfy_repo_resolves_hyphenated_base_weights(self):
+        expected = self.weight("diffusion_models/flux3-image-klein-base-int8-convrot.safetensors")
+        with patch("toolkit.models.v2.resolver.MODELS_PATH", str(self.root)):
+            with patch("huggingface_hub.hf_hub_download") as download:
+                result = self.flux.Flux3Transformer.resolve_comfy_weights(
+                    self.flux.COMFY_REPO, qtype="convrot8", local_only=True
+                )
+        self.assertIsNotNone(result)
+        self.assertEqual(Path(result), Path(expected))
+        download.assert_not_called()
+
+    def test_non_base_hyphenated_weights_are_not_used_for_training(self):
+        self.weight("diffusion_models/flux3-image-klein-int8-convrot.safetensors")
+        with patch.object(self.flux.Flux3Transformer, "load_model") as load:
+            with patch("huggingface_hub.hf_hub_download") as download:
+                with self.assertRaisesRegex(FileNotFoundError, "FLUX.3 Base checkpoint.*diffusion_models"):
+                    self.model._load_transformer()
+        load.assert_not_called()
+        download.assert_not_called()
+
     def test_vae_is_read_from_local_comfy_layout_without_downloading(self):
         expected = self.weight("vae/flux2-vae.safetensors")
         with patch("huggingface_hub.hf_hub_download") as download:
