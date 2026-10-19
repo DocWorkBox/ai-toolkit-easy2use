@@ -710,7 +710,7 @@ def test_flux3_catalog_tracks_current_loader_filenames():
 
 def test_moss_catalog_keeps_weights_and_small_assets_in_loader_locations():
     entries = {item["id"]: item for item in _catalog()["models"] if item["id"].startswith("moss-image-")}
-    assert len(entries) == 7
+    assert len(entries) == 8
     assert {item["family"] for item in entries.values()} == {"MOSS-Image"}
     for name in ("sft", "base", "text-encoder", "vae"):
         assert entries["moss-image-" + name]["root"] == "configured_models"
@@ -723,14 +723,47 @@ def test_moss_catalog_keeps_weights_and_small_assets_in_loader_locations():
                                               "tokenizer/chat_template.jinja"}
     config = entries["moss-image-text-config"]
     assert config["path"] == "./models/Qwen/Qwen3.5-9B"
-    assert set(config["required_all"]) == {"config.json", "preprocessor_config.json"}
+    assert config["required_all"] == ["config.json"]
+    processor = entries["moss-image-edit-processor"]
+    assert processor["path"] == config["path"]
+    assert processor["required_all"] == ["preprocessor_config.json"]
+    assert "仅 Edit 必需" in processor["name"]
+    assert "root" not in config and "root" not in processor
+
+
+def test_moss_scan_separates_basic_config_from_edit_processor(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    monkeypatch.setenv("MODELS_PATH", str(tmp_path / "external-comfy"))
+    folder = tmp_path / "models/Qwen/Qwen3.5-9B"
+    folder.mkdir(parents=True)
+    (folder / "config.json").write_text("{}", encoding="utf-8")
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    by_id = {item["id"]: item for item in report["models"]}
+    assert by_id["moss-image-text-config"]["status"] == "ready"
+    assert by_id["moss-image-edit-processor"]["status"] == "incomplete"
+    assert "preprocessor_config.json" in by_id["moss-image-edit-processor"]["detail"]
+    ordered_ids = [item["id"] for item in report["models"]]
+    assert ordered_ids.index("moss-image-edit-processor") == ordered_ids.index("moss-image-text-config") + 1
+
+    (folder / "preprocessor_config.json").write_text("{}", encoding="utf-8")
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    by_id = {item["id"]: item for item in report["models"]}
+    assert by_id["moss-image-text-config"]["status"] == "ready"
+    assert by_id["moss-image-edit-processor"]["status"] == "ready"
+
+    (folder / "config.json").unlink()
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    by_id = {item["id"]: item for item in report["models"]}
+    assert by_id["moss-image-text-config"]["status"] == "incomplete"
+    assert by_id["moss-image-edit-processor"]["status"] == "ready"
 
 
 def test_moss_scan_accepts_current_and_legacy_names_and_groups_assets(tmp_path, monkeypatch):
     from manager.models import scan_models
 
     entries = {item["id"]: item for item in _catalog()["models"] if item["id"].startswith("moss-image-")}
-    assert len(entries) == 7
+    assert len(entries) == 8
     external = tmp_path / "comfy/models"
     monkeypatch.setenv("MODELS_PATH", str(external))
     for entry in entries.values():
@@ -756,7 +789,7 @@ def test_moss_scan_accepts_current_and_legacy_names_and_groups_assets(tmp_path, 
     selected = [item for item in report["models"] if item["id"] in entries]
     assert all(item["status"] == "ready" for item in selected)
     positions = [report["models"].index(item) for item in selected]
-    assert positions == list(range(positions[0], positions[0] + 7))
+    assert positions == list(range(positions[0], positions[0] + 8))
 
 
 def test_model_scanner_detects_lfs_pointer_as_incomplete(tmp_path):
