@@ -35,6 +35,7 @@ from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
 from toolkit.basic import flush
 from toolkit.config_modules import GenerateImageConfig, ModelConfig
 from toolkit.metadata import get_meta_for_safetensors
+from toolkit.staged_sampling import call_sample_pipeline, map_sample
 from toolkit.models.base_model import BaseModel
 from toolkit.models.v2.text_encoders.qwen35 import (
     Qwen35TextOnlyEncoder,
@@ -104,6 +105,7 @@ def _drop_repeats(images):
 
 class MossImageModel(BaseModel):
     arch = "moss_image"
+    supports_staged_sampling = True
 
     def __init__(
         self,
@@ -311,7 +313,7 @@ class MossImageModel(BaseModel):
         generator: torch.Generator,
         extra: dict,
     ):
-        if self.model.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.model.device == torch.device("cpu"):
             self.model.to(self.device_torch)
 
         sc = self.get_bucket_divisibility()
@@ -339,7 +341,7 @@ class MossImageModel(BaseModel):
                     )
                 ]
 
-        result = pipeline(
+        result = call_sample_pipeline(self, pipeline,
             conditional_embeds=conditional_embeds,
             unconditional_embeds=unconditional_embeds,
             height=gen_config.height,
@@ -353,7 +355,7 @@ class MossImageModel(BaseModel):
             ref_latents=ref_latents,
             isolate_refs=self.kv_cache,
         )
-        return result[0]
+        return map_sample(result, lambda images: images[0])
 
     # ------------------------------------------------------------------
     # Reference images (edit)
@@ -374,11 +376,12 @@ class MossImageModel(BaseModel):
         sc = self.get_bucket_divisibility()
         budget = self._ref_target_pixels(target_pixels)
         match = self.model_config.model_kwargs.get("match_target_res", False)
+        device = self.vae_device_torch if getattr(self, "_staged_sampling", None) is not None else self.device_torch
         latents = []
         for img in control_tensors:
             if img.dim() == 3:
                 img = img.unsqueeze(0)
-            img = img.to(self.device_torch, dtype=torch.float32)
+            img = img.to(device, dtype=torch.float32)
             h, w = img.shape[2], img.shape[3]
             if match or h * w > budget:
                 ratio = h / w
@@ -391,7 +394,7 @@ class MossImageModel(BaseModel):
             if (new_h, new_w) != (h, w):
                 img = F.interpolate(img, size=(new_h, new_w), mode="bilinear")
             latent = self.encode_images(
-                img * 2 - 1, device=self.device_torch, dtype=self.torch_dtype
+                img * 2 - 1, device=device, dtype=self.torch_dtype
             )
             latents.append(latent[0])
         return latents
@@ -509,9 +512,10 @@ class MossImageModel(BaseModel):
 
     @torch.no_grad()
     def get_prompt_embeds(self, prompt, control_images=None) -> AdvancedPromptEmbeds:
+        self.sample_stage("text_encoder")
         if isinstance(prompt, str):
             prompt = [prompt]
-        if self.text_encoder.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
 
         # control images -> one list per prompt: a (B, C, H, W) batch, a list of
@@ -563,22 +567,24 @@ class MossImageModel(BaseModel):
     @torch.no_grad()
     def encode_images(self, image_list, device=None, dtype=None):
         """Images (C, H, W) in [-1, 1] -> normalized latents (B, 128, H/16, W/16)."""
+        self.sample_stage("vae")
         if device is None:
             device = self.vae_device_torch
         if dtype is None:
             dtype = self.vae_torch_dtype
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(device)
         batch = torch.stack([img.to(device, dtype=self.vae.dtype) for img in image_list])
         return self.vae.encode(batch).to(device, dtype=dtype)
 
     @torch.no_grad()
     def decode_latents(self, latents: torch.Tensor, device=None, dtype=None):
+        self.sample_stage("vae")
         if device is None:
             device = self.vae_device_torch
         if dtype is None:
             dtype = self.vae_torch_dtype
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(device)
         images = self.vae.decode(latents.to(device, self.vae.dtype))
         return images.to(device, dtype)
