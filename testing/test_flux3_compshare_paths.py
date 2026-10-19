@@ -124,20 +124,69 @@ class Flux3CompsharePathTests(unittest.TestCase):
                     self.model._load_transformer()
                 self.assertEqual(Path(load.call_args.args[0]), Path(expected))
 
-    def test_text_encoder_uses_local_comfy_weight_and_project_assets(self):
-        self.weight("text_encoders/qwen3vl_4b_bf16.safetensors")
-        expected = self.weight("text_encoders/qwen3vl_4b_int8_convrot.safetensors")
+    def test_text_encoder_prefers_bf16_regardless_of_requested_quantization(self):
+        expected = self.weight("text_encoders/qwen3vl_4b_bf16.safetensors")
+        self.weight("text_encoders/qwen3vl_4b_int8_convrot.safetensors")
+        self.weight("text_encoders/qwen3vl_4b_fp8_scaled.safetensors")
         cache = str(self.root / "project/models/Qwen3-VL-4B-Instruct")
         processor = SimpleNamespace(tokenizer=SimpleNamespace(padding_side="left"))
         cls = self.flux.Flux3TextEncoder
-        with patch.object(cls, "resolve_assets", return_value=cache):
+        for qtype in ("convrot8", "qfloat8", "nvfp4", None):
+            with self.subTest(qtype=qtype):
+                self.model.component_load_kwargs = lambda _: {"dtype": torch.bfloat16, "qtype": qtype}
+                with patch.object(cls, "resolve_assets", return_value=cache):
+                    with patch.object(cls, "load_model", return_value=Mock()) as load:
+                        with patch.object(cls, "load_processor", return_value=processor) as load_processor:
+                            with patch.object(self.flux, "flush"):
+                                self.model._load_text_encoder()
+                self.assertEqual(Path(load.call_args.args[0]), Path(expected))
+                self.assertEqual(load.call_args.kwargs["config_path"], cache)
+                self.assertIsNone(load.call_args.kwargs["qtype"])
+                self.assertFalse(load.call_args.kwargs["quantize_on_load"])
+                load_processor.assert_called_once_with(cache)
+
+    def test_text_encoder_uses_fp8_only_when_bf16_is_absent(self):
+        expected = self.weight("text_encoders/qwen3vl_4b_fp8_scaled.safetensors")
+        self.weight("text_encoders/qwen3vl_4b_int8_convrot.safetensors")
+        cls = self.flux.Flux3TextEncoder
+        processor = SimpleNamespace(tokenizer=SimpleNamespace(padding_side="left"))
+        with patch.object(cls, "resolve_assets", return_value="cached-assets"):
             with patch.object(cls, "load_model", return_value=Mock()) as load:
-                with patch.object(cls, "load_processor", return_value=processor) as load_processor:
+                with patch.object(cls, "load_processor", return_value=processor):
                     with patch.object(self.flux, "flush"):
                         self.model._load_text_encoder()
         self.assertEqual(Path(load.call_args.args[0]), Path(expected))
-        self.assertEqual(load.call_args.kwargs["config_path"], cache)
-        load_processor.assert_called_once_with(cache)
+
+    def test_text_encoder_does_not_automatically_select_bundle_int8(self):
+        self.weight("text_encoders/qwen3vl_4b_int8_convrot.safetensors")
+        cls = self.flux.Flux3TextEncoder
+        processor = SimpleNamespace(tokenizer=SimpleNamespace(padding_side="left"))
+        with patch.object(cls, "resolve_assets", return_value="cached-assets"):
+            with patch.object(cls, "load_model", return_value=Mock()) as load:
+                with patch.object(cls, "load_processor", return_value=processor):
+                    with patch.object(self.flux, "flush"):
+                        self.model._load_text_encoder()
+        self.assertEqual(load.call_args.args[0], self.flux.QWEN3_VL_4B_REPO)
+        self.assertIsNone(load.call_args.kwargs["qtype"])
+
+    def test_shared_comfy_folder_also_prefers_bf16(self):
+        repo = self.root / "model-package"
+        repo.mkdir()
+        self.model.model_config.name_or_path = str(repo)
+        shared = self.root / "shared-models"
+        expected = self.weight("shared-models/text_encoders/qwen3vl_4b_bf16.safetensors")
+        self.weight("shared-models/text_encoders/qwen3vl_4b_fp8_scaled.safetensors")
+        cls = self.flux.Flux3TextEncoder
+        processor = SimpleNamespace(tokenizer=SimpleNamespace(padding_side="left"))
+        with patch("toolkit.models.v2.resolver.MODELS_PATH", str(shared)):
+            with patch.object(cls, "resolve_assets", return_value="cached-assets"):
+                with patch.object(cls, "_load_single_file", return_value=Mock()) as load:
+                    with patch.object(cls, "load_processor", return_value=processor):
+                        with patch("huggingface_hub.hf_hub_download") as download:
+                            with patch.object(self.flux, "flush"):
+                                self.model._load_text_encoder()
+        self.assertEqual(Path(load.call_args.args[0]), Path(expected))
+        download.assert_not_called()
 
     def test_explicit_text_encoder_override_is_not_replaced_by_local_weight(self):
         self.weight("text_encoders/qwen3vl_4b_int8_convrot.safetensors")

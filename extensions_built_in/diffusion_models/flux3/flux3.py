@@ -345,10 +345,7 @@ class Flux3Model(BaseModel):
         if te_path is None:
             te_path = self.model_config.model_kwargs.get("text_encoder_path")
         if te_path is None:
-            te_path = self._local_comfy_file(
-                ["text_encoders/qwen3vl_4b_int8_convrot.safetensors", *Flux3TextEncoder._COMFY_FILES],
-                te_kwargs["qtype"],
-            ) or QWEN3_VL_4B_REPO
+            te_path = self._local_comfy_file(Flux3TextEncoder._COMFY_FILES) or QWEN3_VL_4B_REPO
         self.print_and_status_update(f"Loading Qwen3-VL text encoder from {te_path}")
         processor_source = te_path if os.path.isdir(te_path) else None
         config_kwargs = {}
@@ -360,7 +357,7 @@ class Flux3Model(BaseModel):
             te_path,
             dtype=te_kwargs["dtype"],
             subfolder="",
-            qtype=te_kwargs["qtype"],  # comfy candidate ranking only
+            qtype=None,  # prefer BF16; qtype_te is applied later by aitk_post_load
             quantize_on_load=False,
             **config_kwargs,
         )

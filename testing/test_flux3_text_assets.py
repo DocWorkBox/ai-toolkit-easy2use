@@ -124,7 +124,7 @@ class Flux3TextAssetTests(unittest.TestCase):
                     with patch.object(cls, "load_processor", return_value=processor) as load_processor:
                         with patch.object(self.flux, "flush"):
                             result = self.make_model()._load_text_encoder()
-        resolve.assert_called_once_with(self.flux.QWEN3_VL_4B_REPO, subfolder=None, qtype="float8")
+        resolve.assert_called_once_with(self.flux.QWEN3_VL_4B_REPO, subfolder=None, qtype=None)
         self.assertEqual(load.call_args.kwargs["config_path"], str(self.cache))
         load_processor.assert_called_once_with(str(self.cache))
         self.assertEqual(result, (processor, encoder))
