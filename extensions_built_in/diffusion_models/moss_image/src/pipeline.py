@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from diffusers.utils.torch_utils import randn_tensor
+from toolkit.staged_sampling import PreparedSample
 
 DEFAULT_SHIFT = 5.0
 DEFAULT_GUIDANCE = 3.0
@@ -83,6 +84,26 @@ class MossImagePipeline:
         pass
 
     @torch.no_grad()
+    def prepare_staged_sample(self, **kwargs):
+        # Reference encoding happens first in generate_single_image, as in serial sampling.
+        if kwargs.get("latents") is None:
+            kwargs["latents"] = randn_tensor(
+                (1, self.model.transformer.params.latent_channels,
+                 kwargs.get("height", 1024) // 16, kwargs.get("width", 1024) // 16),
+                generator=kwargs.get("generator"), device=self.model.device_torch, dtype=torch.float32,
+            )
+        return PreparedSample(self, dict(kwargs, output_type="latent"))
+
+    def decode_staged_sample(self, latents):
+        model = self.model
+        model.sample_stage("vae")
+        images = model.decode_latents(latents, device=model.vae_device_torch, dtype=torch.float32)
+        images = images.float().clamp(-1.0, 1.0)
+        images = ((images + 1.0) * 127.5).round().to(torch.uint8)
+        images = images.permute(0, 2, 3, 1).cpu().numpy()
+        return [Image.fromarray(arr) for arr in images]
+
+    @torch.no_grad()
     def __call__(
         self,
         conditional_embeds,
@@ -97,9 +118,11 @@ class MossImagePipeline:
         uncond_skip_layers: Sequence[int] = DEFAULT_UNCOND_SKIP_LAYERS,
         ref_latents: Optional[List[List[torch.Tensor]]] = None,
         isolate_refs: bool = False,
+        output_type="pil",
         **kwargs,
     ):
         model = self.model
+        model.sample_stage("denoise")
         device = model.device_torch
         dtype = model.torch_dtype
         transformer = model.transformer
@@ -154,8 +177,6 @@ class MossImagePipeline:
                 model._emit_sample_step(latents - sigma * pred, step_index, num_steps)
             latents = latents + (sigma_next - sigma) * pred
 
-        images = model.decode_latents(latents, device=device, dtype=torch.float32)
-        images = images.float().clamp(-1.0, 1.0)
-        images = ((images + 1.0) * 127.5).round().to(torch.uint8)
-        images = images.permute(0, 2, 3, 1).cpu().numpy()
-        return [Image.fromarray(arr) for arr in images]
+        if output_type == "latent":
+            return latents
+        return self.decode_staged_sample(latents)

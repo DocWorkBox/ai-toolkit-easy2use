@@ -269,7 +269,7 @@ MODEL_TESTS = {
         # the Comfy-Org repack files named outright (a bare repo id prefers any
         # local bf16): int8 convrot SFT DiT + Qwen3.5-9B TE attach as-is
         "model": {
-            "name_or_path": "Comfy-Org/MOSS-Image/diffusion_models/moss_image_sft_int8_convrot_attn.safetensors",
+            "name_or_path": "Comfy-Org/MOSS-Image/diffusion_models/moss_image_sft_int8_convrot.safetensors",
             "te_name_or_path": "Comfy-Org/MOSS-Image/text_encoders/qwen3.5_9b_int8_convrot.safetensors",
             "quantize": True,
             "quantize_te": True,

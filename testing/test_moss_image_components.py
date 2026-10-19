@@ -80,6 +80,7 @@ class MossImageComponentTests(unittest.TestCase):
         transformer = self.tiny_transformer()
         model = SimpleNamespace(
             transformer=transformer, device_torch=torch.device("cpu"), torch_dtype=torch.float32,
+            vae_device_torch=torch.device("cpu"), sample_stage=lambda _: None,
             decode_latents=lambda x, **_: F.interpolate(x[:, :3], scale_factor=16),
         )
         pipeline = self.pipeline.MossImagePipeline(model)
