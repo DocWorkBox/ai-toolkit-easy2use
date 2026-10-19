@@ -138,10 +138,14 @@ class Flux3TextEncoder(Qwen3VLTextEncoder):
                         break
                 converted[key] = value
             state_dict = converted
-        # comfy files drop the tied lm_head; strict load wants the key
+        # Tied heads need the embedding's quantization metadata as well as
+        # its weight; otherwise raw int8 storage is loaded as a float Parameter.
         embed = state_dict.get("model.language_model.embed_tokens.weight")
         if embed is not None and "lm_head.weight" not in state_dict:
-            state_dict["lm_head.weight"] = embed
+            prefix = "model.language_model.embed_tokens."
+            for key, value in list(state_dict.items()):
+                if key.startswith(prefix):
+                    state_dict["lm_head." + key[len(prefix):]] = value
         return state_dict
 
     @classmethod
