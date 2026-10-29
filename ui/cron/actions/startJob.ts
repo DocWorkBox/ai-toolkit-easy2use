@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { TOOLKIT_ROOT, getTrainingFolder, getHFToken, getModelsPath } from '../paths';
 import { resolveDetachedPythonPath } from '../pythonPath';
+import { isProcessAlive, finishJobProcess } from '../jobLifecycle';
 const isWindows = process.platform === 'win32';
 
 const appendJobLog = (logPath: string, message: string) => {
@@ -95,16 +96,6 @@ const readRelayPid = (relay: ChildProcess, pidPath: string): Promise<RelayResult
   });
 };
 
-const isProcessAlive = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e: any) {
-    // EPERM means it exists but belongs to someone else, which still counts.
-    return e?.code === 'EPERM';
-  }
-};
-
 // We cannot read an exit code off a process that is not our child, so pull the
 // last thing it said instead -- for a job that dies on startup (bad venv,
 // missing CUDA libs) that traceback line is the whole diagnosis.
@@ -158,13 +149,9 @@ const watchDetachedJob = (pid: number, jobID: string, logPath: string) => {
     const message = tail
       ? `Job process exited unexpectedly. Last log line: ${tail}`
       : 'Job process exited unexpectedly.';
-    void prisma.job
-      .updateMany({
-        where: { id: jobID, status: 'running' },
-        data: { status: 'error', info: message, pid: null },
-      })
+    void finishJobProcess(prisma, jobID, pid, message)
       .then(result => {
-        if (result.count > 0) appendJobLog(logPath, `\n${message}\n`);
+        if (result.unexpected) appendJobLog(logPath, `\n${message}\n`);
       })
       .catch(updateError => {
         console.error('Error updating job after process disappeared:', updateError);
@@ -350,7 +337,7 @@ const startAndWatchJob = (job: Job) => {
           appendJobLog(logPath, `\n${message}\n`);
           void prisma.job
             .updateMany({
-              where: { id: jobID, status: 'running' },
+              where: { id: jobID, pid, status: 'running', stop: false, return_to_queue: false },
               data: { status: 'error', info: message, pid: null },
             })
             .catch(updateError => {
@@ -410,16 +397,19 @@ export default async function startJob(jobID: string) {
     console.error(`Job with ID ${jobID} not found`);
     return;
   }
+  if (job.pid != null && isProcessAlive(job.pid)) return;
   // update job status to 'running', this will run sync so we don't start multiple jobs.
-  await prisma.job.update({
-    where: { id: jobID },
+  const claimed = await prisma.job.updateMany({
+    where: { id: jobID, status: 'queued', pid: job.pid },
     data: {
       status: 'running',
       stop: false,
       return_to_queue: false,
       info: 'Starting job...',
+      pid: null,
     },
   });
+  if (claimed.count === 0) return;
   // start and watch the job asynchronously so the cron can continue
   startAndWatchJob(job);
 }

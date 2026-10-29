@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/server/prisma';
-import {
-  normalizeTrainingSetting,
-  normalizeDatasetsSetting,
-  defaultModelsFolder,
-} from '@/paths';
+import { normalizeTrainingSetting, normalizeDatasetsSetting, defaultModelsFolder } from '@/paths';
 import { flushCache } from '@/server/settings';
+import { settingsError } from '@/server/settingsError';
 
 export async function GET() {
   try {
@@ -25,17 +22,27 @@ export async function GET() {
     }
     return NextResponse.json(settingsObject);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    const detail = settingsError(error);
+    console.error('[settings:read]', detail);
+    return NextResponse.json({ error: `读取设置失败：${detail}` }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const keys = ['HF_TOKEN', 'TRAINING_FOLDER', 'DATASETS_FOLDER', 'MODELS_PATH'];
+    const invalid = keys.filter(key => typeof body?.[key] !== 'string');
+    if (invalid.length) {
+      return NextResponse.json(
+        { error: `设置数据不完整：${invalid.join(', ')} 必须为字符串；请重新读取设置后再保存` },
+        { status: 400 },
+      );
+    }
     const { HF_TOKEN, TRAINING_FOLDER, DATASETS_FOLDER, MODELS_PATH } = body;
 
-    // Upsert both settings
-    await Promise.all([
+    // A failed write must not leave a mixture of old and new settings.
+    await prisma.$transaction([
       prisma.settings.upsert({
         where: { key: 'HF_TOKEN' },
         update: { value: HF_TOKEN },
@@ -62,6 +69,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: '设置请求不是有效的 JSON，请刷新设置页后重试' }, { status: 400 });
+    }
+    const detail = settingsError(error);
+    console.error('[settings:write]', detail);
+    return NextResponse.json({ error: `保存设置失败：${detail}` }, { status: 500 });
   }
 }

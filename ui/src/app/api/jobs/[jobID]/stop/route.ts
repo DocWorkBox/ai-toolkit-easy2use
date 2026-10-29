@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/server/prisma';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { isProcessAlive, finishJobProcess } from '../../../../../../cron/jobLifecycle';
 
 const execAsync = promisify(exec);
 const isWindows = process.platform === 'win32';
@@ -11,16 +12,6 @@ const isWindows = process.platform === 'win32';
 const GRACEFUL_STOP_TIMEOUT_MS = 60_000;
 const BACKSTOP_POLL_MS = 2_000;
 
-const isProcessAlive = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e: any) {
-    // EPERM means it exists but belongs to someone else, which still counts.
-    return e?.code === 'EPERM';
-  }
-};
-
 // Windows: the trainer's stop watcher sees the `stop` flag and raises SIGINT
 // inside the process, so the graceful path runs without us sending anything.
 // This backstop only exists for a job that is too hung to notice the flag.
@@ -28,22 +19,39 @@ const isProcessAlive = (pid: number): boolean => {
 // dies and never touch a recycled pid.
 const scheduleForceKillBackstop = (pid: number, jobID: string) => {
   const startedAt = Date.now();
-  const timer = setInterval(() => {
-    if (!isProcessAlive(pid)) {
+  let checking = false;
+  const timer = setInterval(async () => {
+    if (checking) return;
+    checking = true;
+    try {
+      if (!isProcessAlive(pid)) {
+        clearInterval(timer);
+        await finishJobProcess(prisma, jobID, pid);
+        return;
+      }
+      const job = await prisma.job.findUnique({ where: { id: jobID } });
+      if (!job || job.pid !== pid || !job.stop) {
+        clearInterval(timer);
+        return;
+      }
+      if (Date.now() - startedAt < GRACEFUL_STOP_TIMEOUT_MS) return;
       clearInterval(timer);
-      return;
+      console.warn(
+        `Job ${jobID} (pid ${pid}) still alive ${GRACEFUL_STOP_TIMEOUT_MS / 1000}s after stop request, force killing`,
+      );
+      execAsync(`taskkill /PID ${pid} /T /F`, { windowsHide: true }).catch(() => {
+        // already gone
+      });
+    } catch (error) {
+      console.error('Error checking stopping job:', error);
+    } finally {
+      checking = false;
     }
-    if (Date.now() - startedAt < GRACEFUL_STOP_TIMEOUT_MS) return;
-    clearInterval(timer);
-    console.warn(`Job ${jobID} (pid ${pid}) still alive ${GRACEFUL_STOP_TIMEOUT_MS / 1000}s after stop request, force killing`);
-    execAsync(`taskkill /PID ${pid} /T /F`, { windowsHide: true }).catch(() => {
-      // already gone
-    });
   }, BACKSTOP_POLL_MS);
   timer.unref?.();
 };
 
-export async function GET(request: NextRequest, { params }: { params: { jobID: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jobID: string }> }) {
   const { jobID } = await params;
 
   const job = await prisma.job.findUnique({
@@ -54,16 +62,23 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
-  await prisma.job.update({
-    where: { id: jobID },
+  const stillExiting = job.pid != null ? isProcessAlive(job.pid) : ['running', 'stopping'].includes(job.status);
+  const result = await prisma.job.updateMany({
+    where: { id: jobID, pid: job.pid, status: job.status },
     data: {
       stop: true,
-      info: 'Stopping job...',
+      return_to_queue: false,
+      status: stillExiting ? 'stopping' : 'stopped',
+      info: stillExiting ? 'Stopping job...' : 'Job stopped',
+      ...(!stillExiting ? { pid: null } : {}),
     },
   });
+  if (result.count === 0) {
+    return NextResponse.json({ error: '任务状态已变化，请刷新后重试' }, { status: 409 });
+  }
 
   // Send SIGINT to the process if we have a PID
-  if (job.pid != null) {
+  if (job.pid != null && stillExiting) {
     console.log(`Attempting to stop job ${jobID} with PID ${job.pid}`);
     try {
       if (isWindows) {
@@ -76,14 +91,6 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
       } else {
         process.kill(job.pid, 'SIGINT');
       }
-      // if it killed it, mark it stopped in the database
-      await prisma.job.update({
-        where: { id: jobID },
-        data: {
-          status: 'stopped',
-          info: 'Job stopped',
-        },
-      });
     } catch (e) {
       // Process may have already exited — that's fine
       console.error('Error sending signal to process:', e);
@@ -92,5 +99,5 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
     console.warn(`No PID found for job ${jobID}, cannot send stop signal`);
   }
 
-  return NextResponse.json(job);
+  return NextResponse.json(await prisma.job.findUnique({ where: { id: jobID } }));
 }

@@ -8,6 +8,7 @@ import {
   SampleTags,
 } from './options';
 import { useModelArchs } from '@/extensions/modelArchs';
+import ModelLoadErrors from '@/components/ModelLoadErrors';
 import { defaultCompileOptions, defaultDatasetConfig } from './jobConfig';
 import { GroupedSelectOption, JobConfig, SelectOption } from '@/types';
 import { objectCopy, tagsToObj, objToTags } from '@/utils/basic';
@@ -60,7 +61,7 @@ export default function SimpleJob({
   datasetOptions,
   isLoading,
 }: Props) {
-  const { archs: modelArchs, groupedModelOptions } = useModelArchs();
+  const { archs: modelArchs, groupedModelOptions, errors: modelErrors, refresh: reloadModels } = useModelArchs();
   const modelArch = useMemo(() => {
     return modelArchs.find(a => a.name === jobConfig.config.process[0].model.arch) as ModelArch;
   }, [modelArchs, jobConfig.config.process[0].model.arch]);
@@ -225,6 +226,7 @@ export default function SimpleJob({
   }
   return (
     <>
+      <ModelLoadErrors errors={modelErrors} onRetry={reloadModels} />
       <form
         onSubmit={handleSubmit}
         className={`space-y-8 relative ${isLoading ? 'pointer-events-none opacity-50' : ''}`}

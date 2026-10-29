@@ -2,6 +2,7 @@ import prisma from '../prisma';
 
 import { Job, Queue } from '@prisma/client';
 import startJob from './startJob';
+import { isProcessAlive, finishJobProcess } from '../jobLifecycle';
 
 export default async function processQueue() {
   const queues: Queue[] = await prisma.queue.findMany({
@@ -11,11 +12,18 @@ export default async function processQueue() {
   });
 
   for (const queue of queues) {
+    const processes = await prisma.job.findMany({ where: { gpu_ids: queue.gpu_ids, pid: { not: null } } });
+    let hasLiveProcess = false;
+    for (const job of processes) {
+      if (isProcessAlive(job.pid!)) hasLiveProcess = true;
+      else await finishJobProcess(prisma, job.id, job.pid!);
+    }
     if (!queue.is_running) {
       // stop any running jobs first
       const runningJobs: Job[] = await prisma.job.findMany({
         where: {
           status: 'running',
+          stop: false,
           gpu_ids: queue.gpu_ids,
         },
       });
@@ -32,6 +40,7 @@ export default async function processQueue() {
       }
     }
     if (queue.is_running) {
+      if (hasLiveProcess) continue;
       // first see if one is already running, status of running or stopping
       const runningJob: Job | null = await prisma.job.findFirst({
         where: {
@@ -58,11 +67,16 @@ export default async function processQueue() {
           console.log(`Starting job ${nextJob.id} on GPU(s) ${nextJob.gpu_ids}`);
           await startJob(nextJob.id);
         } else {
-          // no more jobs, stop the queue
-          console.log(`No more jobs in queue for GPU(s) ${queue.gpu_ids}, stopping queue`);
-          await prisma.queue.update({
-            where: { id: queue.id },
-            data: { is_running: false },
+          // Recheck atomically: a resume may have arrived since findFirst.
+          await prisma.$transaction(async tx => {
+            const occupied = await tx.job.count({
+              where: {
+                gpu_ids: queue.gpu_ids,
+                OR: [{ status: { in: ['queued', 'running', 'stopping'] } }, { pid: { not: null } }],
+              },
+            });
+            if (occupied) return;
+            await tx.queue.updateMany({ where: { id: queue.id, is_running: true }, data: { is_running: false } });
           });
         }
       }

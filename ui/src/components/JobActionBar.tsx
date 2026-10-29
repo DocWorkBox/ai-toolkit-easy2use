@@ -18,6 +18,7 @@ import { startQueue } from '@/utils/queue';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { redirect } from 'next/navigation';
 import { openCaptionDatasetModal } from '@/components/CaptionDatasetModal';
+import { getApiErrorMessage } from '@/utils/errors';
 
 interface JobActionBarProps {
   job: Job;
@@ -54,6 +55,7 @@ export default function JobActionBar({
   // and the pending one shows a spinner. It is cleared once the job comes back
   // in a different state (status / stop flag), on error, or after a timeout.
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   // Job state key captured when the pending action was fired. null means the
   // action does not change job state and clears as soon as the request resolves.
   const pendingStateKeyRef = useRef<string | null>(null);
@@ -80,6 +82,7 @@ export default function JobActionBar({
 
   const runAction = async (action: PendingAction, fn: () => Promise<void>, waitForJobUpdate = true) => {
     if (pending) return;
+    setActionError(null);
     pendingStateKeyRef.current = waitForJobUpdate ? jobStateKey : null;
     setPending(action);
     try {
@@ -87,6 +90,7 @@ export default function JobActionBar({
       if (!waitForJobUpdate) clearPending();
     } catch (e) {
       console.error(`Error running job action "${action}":`, e);
+      setActionError(getApiErrorMessage(e));
       clearPending();
     }
   };
@@ -103,6 +107,7 @@ export default function JobActionBar({
 
   return (
     <div className={`flex items-center flex-shrink-0 ${className ?? ''}`}>
+      {actionError && <span role="alert" className="mr-2 max-w-xs break-words text-sm text-red-400">{actionError}</span>}
       {canStart && (
         <Button
           disabled={isBusy}

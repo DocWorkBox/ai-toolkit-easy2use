@@ -15,6 +15,7 @@ import { apiClient } from '@/utils/api';
 import * as options from '@/app/jobs/new/options';
 import { ModelArch } from '@/app/jobs/new/options';
 import { GroupedSelectOption } from '@/types';
+import { getApiErrorMessage } from '@/utils/errors';
 
 // what `import ... from '<name>'` resolves to inside an extension ui module
 const SHIM: { [name: string]: any } = {
@@ -67,13 +68,13 @@ export const loadModelArchs = async (): Promise<void> => {
     try {
       const res = await apiClient.get('/api/model_archs');
       const modules: UiModule[] = res.data?.modules || [];
-      const errors: string[] = (res.data?.errors || []).map((e: any) => `${e.id}: ${e.error}`);
+      const errors: string[] = (res.data?.errors || []).map((e: any) => `${e.id}${e.file ? ` (${e.file})` : ''}: ${e.error}`);
       const byName = new Map<string, ModelArch>();
       for (const mod of modules) {
         try {
           for (const arch of evaluateModule(mod)) byName.set(arch.name, arch);
         } catch (e: any) {
-          errors.push(`${mod.id}: ${e?.message || e}`);
+          errors.push(`${mod.id} (${mod.file}): ${e?.message || e}`);
         }
       }
       for (const err of errors) console.error('[model_archs]', err);
@@ -82,7 +83,7 @@ export const loadModelArchs = async (): Promise<void> => {
       );
       state.set({ archs, errors, isLoaded: true });
     } catch (e: any) {
-      const msg = e?.response?.data?.error || e?.message || String(e);
+      const msg = getApiErrorMessage(e);
       console.error('[model_archs]', msg);
       state.set({ ...state.get(), errors: [msg], isLoaded: true });
     } finally {

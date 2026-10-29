@@ -38,6 +38,7 @@ import { latentToImage, payloadToFloat32, readEngineFrames, PreviewInfo } from '
 import { isMac } from '@/helpers/basic';
 import { getGenerateDefaults, GenerateDefaults } from '@/app/jobs/new/options';
 import { useModelArchs } from '@/extensions/modelArchs';
+import ModelLoadErrors from '@/components/ModelLoadErrors';
 import GenerateFooter from '@/components/generate/GenerateFooter';
 import LoraBrowserModal, { LoraPick } from '@/components/generate/LoraBrowserModal';
 
@@ -297,7 +298,7 @@ function GeneratePageInner() {
 
   // ---- models: the same arch list the training UI uses (jobs/new/options.tsx) ----
   // text-generating archs have no Generate page path yet
-  const { archs: modelArchs } = useModelArchs();
+  const { archs: modelArchs, errors: modelErrors, refresh: reloadModels } = useModelArchs();
   const archs: GenerateDefaults[] = useMemo(
     () => modelArchs.filter(a => a.group !== 'llm').map(getGenerateDefaults),
     [modelArchs],
@@ -760,6 +761,7 @@ function GeneratePageInner() {
         </div>
       </TopBar>
       <MainContent belowTopBar className="overflow-hidden">
+        <ModelLoadErrors errors={modelErrors} onRetry={reloadModels} />
         {!ready && (
           <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
             <div className="bg-gray-900/95 backdrop-blur border border-gray-700 rounded-2xl shadow-2xl px-8 py-8 max-w-md w-full text-center">

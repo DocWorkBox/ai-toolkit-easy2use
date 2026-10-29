@@ -14,7 +14,7 @@ function harness(value, trainingValue, job) {
   const rows = value === undefined ? [] : [{ key: 'DATASETS_FOLDER', value }];
   if (trainingValue !== undefined) rows.push({ key: 'TRAINING_FOLDER', value: trainingValue });
   const writes = [];
-  const prisma = { settings: {
+  const prisma = { $transaction: operations => Promise.all(operations), settings: {
     findMany: async () => rows,
     findFirst: async ({ where }) => rows.find(row => row.key === where.key),
     upsert: async args => writes.push(args),
@@ -33,6 +33,7 @@ function harness(value, trainingValue, job) {
       if (name === 'next/server') return { NextResponse: { json: data => data } };
       if (name === '@/paths') return load('src/paths.ts');
       if (name === '@/server/settings') return load('src/server/settings.ts');
+      if (name === '@/server/settingsError') return load('src/server/settingsError.ts');
       if (name.startsWith('.')) {
         return load(path.relative(path.join(root, 'ui'), path.resolve(path.dirname(filename), name + '.ts')));
       }
