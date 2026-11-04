@@ -545,6 +545,47 @@ const docs: { [key: string]: ConfigDoc } = {
       </>
     ),
   },
+  'config.process[0].caption.video_fps': {
+    title: '视频采样帧率',
+    description: <>打标时每秒提取的视频帧数，不会修改原视频帧率。默认每秒 2 帧；提高数值可保留更多时序细节，但会增加视觉 token、显存占用和处理时间。</>,
+  },
+  'config.process[0].caption.mtp': {
+    title: 'MTP 推测解码',
+    description: <>使用 Qwen3.8 的多 token 预测草稿头先生成候选 token，再由模型验证，以减少逐 token 解码的开销。关闭后采用普通解码。</>,
+  },
+  'config.process[0].caption.mtp_depth': {
+    title: 'MTP 草稿深度',
+    description: <>每次推测解码的草稿深度，默认 3。更深的草稿可能减少验证轮数，但也增加计算开销，实际速度取决于候选 token 的接受率。</>,
+  },
+  'config.process[0].caption.cuda_graph': {
+    title: 'CUDA 图解码',
+    description: <>捕获并复用逐 token 解码的 GPU 操作，降低重复调度开销。关闭后使用普通即时执行，适合排查 CUDA Graph 相关问题。</>,
+  },
+  'config.process[0].caption.vision_bf16': {
+    title: '视觉编码器使用 bf16',
+    description: <>默认将视觉编码器权重解量化为 bf16，以减少 int8 激活对图像嵌入的数值偏差。其余文本模型仍保留所选量化格式。</>,
+  },
+  'config.process[0].caption.system_prompt': {
+    title: '系统提示词',
+    description: <>可选的系统级指令，用于约束模型角色、输出格式或语言。留空时不额外发送系统消息；每个文件的具体任务仍由打标提示词指定。</>,
+  },
+  'config.process[0].caption.caption_prompt': {
+    title: '打标提示词',
+    description: (
+      <>
+        每个文件发送给打标模型的指令。可以使用特殊占位符，在发送前按当前文件替换：
+        <br />
+        <br />
+        <code>&lt;caption.ext&gt;</code>：插入媒体文件旁边、同名且扩展名为 ext 的文本文件内容。
+        例如当前媒体为 <code>/data/subfolder/img01.webp</code> 时，<code>&lt;caption.json&gt;</code> 会插入
+        <code>/data/subfolder/img01.json</code>，<code>&lt;caption.txt&gt;</code> 则插入 <code>img01.txt</code>。
+        文件内容按原样作为纯文本插入，包括 JSON；文件不存在时，占位符替换为空。
+        <br />
+        <br />
+        示例：<code>将下面的打标内容改写为一句话：&lt;caption.txt&gt;</code>
+      </>
+    ),
+  },
 };
 
 export const getDoc = (key: string | null | undefined): ConfigDoc | null => {

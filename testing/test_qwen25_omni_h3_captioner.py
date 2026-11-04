@@ -13,7 +13,7 @@ def test_qwen25_omni_h3_builds_system_prompt_video_messages():
     ).read_text(encoding="utf-8")
 
     assert '"role": "system"' in source
-    assert '{"type": "text", "text": self.caption_config.caption_prompt}' in source
+    assert '"text": self.resolve_prompt(self.caption_config.caption_prompt, file_path)' in source
     assert '"role": "user"' in source
     assert '{"type": "video", "video": file_path}' in source
     assert "use_audio_in_video=use_audio" in source

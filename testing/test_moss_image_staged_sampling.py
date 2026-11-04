@@ -43,9 +43,17 @@ class Tokenizer:
         return messages[0]["content"]
 
     def __call__(self, text, **kwargs):
-        image_tokens = [9] * text.count("<|image_pad|>")
-        tokens = [3, 1, 4] if "positive" in text else [1, 0, 2]
-        return {"input_ids": torch.tensor([image_tokens + tokens])}
+        texts = [text] if isinstance(text, str) else text
+        rows = []
+        for item in texts:
+            image_tokens = [9] * item.count("<|image_pad|>")
+            tokens = [3, 1, 4] if "positive" in item else [1, 0, 2]
+            rows.append(image_tokens + tokens)
+        width = max(map(len, rows))
+        return {
+            "input_ids": torch.tensor([row + [0] * (width - len(row)) for row in rows]),
+            "attention_mask": torch.tensor([[1] * len(row) + [0] * (width - len(row)) for row in rows]),
+        }
 
 
 class ImageProcessor:
@@ -165,6 +173,45 @@ class MossStagedSamplingTests(unittest.TestCase):
             self.assertIn('"model.sample_staged_offloading"', entry, name)
         docs = (ROOT / "ui/src/docs.tsx").read_text(encoding="utf-8")
         self.assertIn("'model.sample_staged_offloading':", docs)
+
+    def test_batch_text_encoding_uses_one_forward_and_unpads_each_prompt(self):
+        calls = []
+
+        class CausalEncoder:
+            def __call__(self, input_ids, **kwargs):
+                calls.append(kwargs)
+                states = input_ids.float().cumsum(dim=1).unsqueeze(-1)
+                return SimpleNamespace(last_hidden_state=states)
+
+        tokenizer = Tokenizer()
+        encoder = CausalEncoder()
+        texts = ["positive", "negative <|image_pad|><|image_pad|>"]
+        actual = self.moss.encode_text_batch(encoder, tokenizer, texts, 128, "cpu")
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("attention_mask", calls[0])
+        self.assertEqual([len(item) for item in actual], [3, 5])
+        for text, states in zip(texts, actual):
+            tokens = tokenizer(text)["input_ids"]
+            torch.testing.assert_close(states, tokens.float().cumsum(1)[0, :, None])
+
+    def test_mixed_reference_batch_preserves_prompt_order(self):
+        model = self.model(edit=True, device=torch.device("cpu"))
+        reference = torch.ones(3, 32, 32)
+        result = model.get_prompt_embeds(
+            ["positive", "negative", "positive"], control_images=[[], [reference], []]
+        )
+        self.assertEqual(model.events, ["text", "text"])
+        self.assertEqual(len(result.text_embeds), 3)
+        torch.testing.assert_close(result.text_embeds[0], result.text_embeds[2])
+        self.assertEqual(result.text_embeds[1][0, 0].item(), 9)
+
+    def test_decode_retains_gradients_for_feature_extraction(self):
+        model = self.model(device=torch.device("cpu"))
+        latents = torch.ones(1, 4, 4, 4, requires_grad=True)
+        model.decode_latents(latents).sum().backward()
+        self.assertIsNotNone(latents.grad)
+        self.assertTrue(torch.isfinite(latents.grad).all())
+        self.assertGreater(latents.grad.abs().sum().item(), 0)
 
     def test_preparation_queues_cpu_data_without_denoising_or_decoding(self):
         model = self.model(cached=True, edit=True)

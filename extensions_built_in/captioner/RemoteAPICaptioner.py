@@ -51,7 +51,7 @@ class RemoteAPICaptioner(BaseCaptioner):
     def get_caption_for_file(self, file_path: str) -> str:
         img = self.load_pil_image(file_path, max_res=self.caption_config.max_res)
         image_base64 = encode_image_to_jpeg_base64(img)
-        prompt = self.build_prompt_for_file(file_path)
+        prompt = self.resolve_prompt(self.build_prompt_for_file(file_path), file_path)
         protocol = self.caption_config.api_protocol
         if protocol == "anthropic":
             payload = build_anthropic_payload(

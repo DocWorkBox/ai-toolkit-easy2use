@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 
@@ -17,8 +18,13 @@ def test_minimax_h3_is_registered_with_custom_training_components():
     registry = REGISTRY_SOURCE.read_text(encoding="utf-8")
     model = MODEL_SOURCE.read_text(encoding="utf-8")
 
-    assert registry.count("from .minimax_h3 import MinimaxH3Model") == 1
-    assert registry.count("    MinimaxH3Model,") == 1
+    tree = ast.parse(registry)
+    imports = [node for node in ast.walk(tree)
+               if isinstance(node, ast.ImportFrom) and node.module == "minimax_h3"]
+    assert sum(alias.name == "MinimaxH3Model" for node in imports for alias in node.names) == 1
+    models = next(node.value for node in tree.body if isinstance(node, ast.Assign)
+                  and any(isinstance(target, ast.Name) and target.id == "AI_TOOLKIT_MODELS" for target in node.targets))
+    assert sum(isinstance(node, ast.Name) and node.id == "MinimaxH3Model" for node in models.elts) == 1
     assert 'arch = "minimax_h3"' in model
     assert 'COMFY_REPO = "Comfy-Org/MiniMax-H3"' in model
     assert 'ORIGINAL_REPO = "/datasets/studio/huggingface/models/MiniMax-H3"' in model
