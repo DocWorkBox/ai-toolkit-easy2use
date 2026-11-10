@@ -49,6 +49,7 @@ from toolkit.util.ostris_quant import OstrisLinear
 
 from .minimax_h3 import MiniMaxH3VaeBundle, MinimaxH3Ref2VAModel
 from .src import packing
+from .src.ph3_assets import resolve_ph3_assets
 from .src.vae import PH3ImageVideoVAE
 
 PH3_REPO = "PrunaAI/P-H3-Image-Comfy"
@@ -181,11 +182,13 @@ class PH3ImageModel(MinimaxH3Ref2VAModel):
         from accelerate import init_empty_weights
         from transformers import AutoConfig, AutoProcessor, AutoTokenizer
 
+        self.print_and_status_update("Loading P-H3-Image tokenizer/processor configuration")
+        assets = resolve_ph3_assets(PH3_ORIGINAL_REPO, status_fn=self.print_and_status_update)
         tokenizer = AutoTokenizer.from_pretrained(
-            PH3_ORIGINAL_REPO, subfolder="tokenizer"
+            assets, subfolder="tokenizer", local_files_only=True
         )
         processor = AutoProcessor.from_pretrained(
-            PH3_ORIGINAL_REPO, subfolder="processor"
+            assets, subfolder="processor", local_files_only=True
         )
 
         te_path = self.model_config.te_name_or_path
@@ -224,7 +227,7 @@ class PH3ImageModel(MinimaxH3Ref2VAModel):
                 f"Loading Qwen3-VL-4B text encoder from {te_file}"
             )
             config = AutoConfig.from_pretrained(
-                PH3_ORIGINAL_REPO, subfolder="text_encoder"
+                assets, subfolder="text_encoder", local_files_only=True
             )
             config.tie_word_embeddings = False
             with init_empty_weights():

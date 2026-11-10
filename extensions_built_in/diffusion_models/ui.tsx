@@ -1515,6 +1515,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "datasets.multi_control_paths",
       "sample.multi_ctrl_imgs",
       "model.low_vram",
@@ -1606,6 +1607,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     },
     disableSections: ["network.conv"],
     additionalSections: [
+      "model.sample_staged_offloading",
       "sample.multi_ctrl_imgs",
       "datasets.multi_control_paths",
       "datasets.num_frames",

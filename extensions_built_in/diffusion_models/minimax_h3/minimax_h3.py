@@ -554,9 +554,10 @@ class MinimaxH3Model(BaseModel):
         return image
 
     def get_prompt_embeds(self, prompt, control_images=None) -> AdvancedPromptEmbeds:
+        self.sample_stage("text_encoder")
         if isinstance(prompt, str):
             prompt = [prompt]
-        if self.text_encoder.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
 
         # control tensors arrive in [0, 1]; the Qwen3-VL processor wants PIL
@@ -629,11 +630,12 @@ class MinimaxH3Model(BaseModel):
         """Images (C, H, W) or videos (T, C, H, W) in [-1, 1] -> normalized
         video latents (B, 24, t, h, w). Video frame counts are trimmed down to
         the VAE's 17n+5 grid when needed."""
+        self.sample_stage("vae")
         if device is None:
             device = self.vae_device_torch
         if dtype is None:
             dtype = self.vae_torch_dtype
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
 
         items = []
@@ -667,7 +669,8 @@ class MinimaxH3Model(BaseModel):
         with the released conditioning recipe: seeded posterior sample (seed
         42, independent of the request seed) rounded to fp16 before
         normalization."""
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         generator = torch.Generator(device="cpu").manual_seed(KEYFRAME_ENCODE_SEED)
         latents = self.video_vae.encode(
@@ -680,7 +683,8 @@ class MinimaxH3Model(BaseModel):
 
     def decode_latents(self, latents: torch.Tensor, device=None, dtype=None):
         # differentiable: pixel-space losses backprop through the video VAE
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         video = self.video_vae.decode(latents.to(self.vae.device, self.video_vae.dtype))
         if device is not None:
@@ -690,7 +694,8 @@ class MinimaxH3Model(BaseModel):
     def decode_audio_latents(self, latents: torch.Tensor):
         # differentiable, like decode_latents
         """(B, 32, T) normalized -> waveform (B, 1, T*800) at 32 kHz."""
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         return self.audio_vae.decode(latents.to(self.audio_vae.device, torch.float32))
 
@@ -715,9 +720,10 @@ class MinimaxH3Model(BaseModel):
     def encode_audio(self, audio_data_list):
         """[{"waveform": (C, L), "sample_rate": int}, ...] -> packed audio
         rows (B, 2*T, 32), normalized, channel-major stereo."""
+        self.sample_stage("vae")
         import torchaudio
 
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.device_torch)
 
         packed = []
