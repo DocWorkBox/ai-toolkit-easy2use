@@ -41,14 +41,14 @@ from toolkit.print import print_acc
 
 from .src.thinker import attach_fast_paths, load_thinker_single_file, prepare_thinker
 
-BASE_REPO = "/model/ModelScope/Qwen/Qwen2.5-Omni-7B"
+BASE_REPO = "Qwen/Qwen2.5-Omni-7B"
 # thinker hidden size -> config/processor repo; single-file checkpoints carry no config
 BASE_REPO_BY_HIDDEN = {
-    3584: "/model/ModelScope/Qwen/Qwen2.5-Omni-7B",
+    3584: "Qwen/Qwen2.5-Omni-7B",
     2048: "Qwen/Qwen2.5-Omni-3B",
 }
 # single-file convrot8 thinker written by scripts/convert_vllm_to_comfy.py
-DEFAULT_CHECKPOINT = "/model/HuggingFace/ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors"
+DEFAULT_CHECKPOINT = "ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors"
 DEFAULT_INSTRUCTION = "Describe this in detail."
 SAMPLE_RATE = 16000
 

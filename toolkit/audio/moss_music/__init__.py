@@ -4,7 +4,7 @@ from .configuration import MossMusicConfig, MossMusicEncoderConfig
 from .modeling import MossMusicModel
 from .processing import MelConfig, MossMusicProcessor
 
-HF_REPO = "/model/HuggingFace/OpenMOSS-Team/MOSS-Music-8B-Instruct"
+HF_REPO = "OpenMOSS-Team/MOSS-Music-8B-Instruct"
 
 
 def load_moss_music(
@@ -16,6 +16,9 @@ def load_moss_music(
     """Model + processor from a hub id or local checkpoint dir. Time markers
     (elapsed seconds interleaved into the audio tokens) are what the model was
     trained with and keep long transcriptions from looping; leave them on."""
+    from toolkit.chengyu_model_storage import resolve_hf_source
+
+    name_or_path = resolve_hf_source(name_or_path)
     model = MossMusicModel.from_pretrained(name_or_path, dtype=dtype, device_map=device)
     model.eval()
     processor = MossMusicProcessor.from_pretrained(

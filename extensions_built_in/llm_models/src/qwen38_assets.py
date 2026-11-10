@@ -70,6 +70,12 @@ def resolve_qwen38_assets(source: str, status_fn=None) -> str:
         return directory
     os.makedirs(directory, exist_ok=True)
 
+    from toolkit.chengyu_model_storage import seed_project_assets
+
+    seed_project_assets(source, directory)
+    if _has_assets(directory):
+        return directory
+
     from huggingface_hub import snapshot_download
 
     token = os.getenv("HF_TOKEN", None)

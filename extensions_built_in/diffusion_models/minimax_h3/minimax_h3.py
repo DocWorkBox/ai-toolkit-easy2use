@@ -128,7 +128,7 @@ FASTH3_REPO = "FastVideo/FastVideo-FastH3-Comfy"
 # FastH3 Omni (8-step ref2va distill, 32 PDD heads) comfy repack, same layout
 FASTH3_OMNI_REPO = "FastVideo/FastH3-Omni-Comfy"
 # tokenizer/processor/text-encoder config come from the original repo (tiny files)
-ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"
+ORIGINAL_REPO = "/chenyudata/Other/MiniMax/MiniMax-H3"
 REF2VA_TRAINING_ADAPTER_REPO_PATH = (
     "ostris/minimax_h3_training_adapter/"
     "minimax_h3_ref2va_training_adapter_v1.safetensors"
@@ -319,7 +319,7 @@ class MinimaxH3Model(BaseModel):
         Path resolution: a local path is used as-is; otherwise the toolkit's
         persistent adapter folder is searched for the filename;
         otherwise a ``user/repo/file.safetensors`` hub path downloads into
-        <TOOLKIT_ROOT>/models/loras/training_adapters/.
+        <MODELS_PATH>/loras/training_adapters/.
         """
         from toolkit.config_modules import NetworkConfig
         from toolkit.lora_special import LoRASpecialNetwork
@@ -329,7 +329,7 @@ class MinimaxH3Model(BaseModel):
         if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:
             lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH
         adapter_root = os.path.join(
-            TOOLKIT_ROOT, "models", "loras", "training_adapters"
+            MODELS_PATH, "loras", "training_adapters"
         )
         lora_path = resolve_lora_file(
             lora_path,

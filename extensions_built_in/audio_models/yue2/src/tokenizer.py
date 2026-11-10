@@ -19,10 +19,10 @@ from toolkit.basic import UnusableFileError
 
 from .model import ABC_END, ABC_START, CODEC_SIZE, EOD, INSTRUCTIONS, MUSIC_START
 
-MERT_REPO = "/model/ModelScope/m-a-p/MERT-v2-FullSong"
+MERT_REPO = "m-a-p/MERT-v2-FullSong"
 MERT_SAMPLE_RATE = 24000
 MERT_LAYER = 20
-HEAD_REPO = "/model/ModelScope/Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4"
+HEAD_REPO = "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4"
 HEAD_FILE = "tokenizer_head_joint_v4.pt"
 NAR_LORA_FILE = "nar_lora_joint_v4.pt"
 HEAD_WINDOW = 512
@@ -93,7 +93,7 @@ def _rebuild_rotary(model: nn.Module) -> int:
 
 
 SHEETSAGE_REPO = "m-a-p/SheetSage2"
-SHEETSAGE_FILE = "/model/ModelScope/Comfy-Org/Yue2/audio_encoders/sheetsage2_bf16.safetensors"
+SHEETSAGE_FILE = "Comfy-Org/YuE2/audio_encoders/sheetsage2_bf16.safetensors"
 # tied to token_embedding.weight (loaded); everything else in the Comfy file maps 1:1 onto upstream
 NONPERSISTENT_OK = {"decoder.embed_tokens.weight"}
 SHEETSAGE_SAMPLE_RATE = 24000
@@ -106,7 +106,10 @@ class SheetSage2Transcriber:
     def __init__(self, weights_path: str, repo: str = SHEETSAGE_REPO):
         """``weights_path``: the Comfy repack ``audio_encoders/sheetsage2_bf16.safetensors`` (merged
         weights); ``repo`` supplies config + code (transformers remote code) only."""
+        from toolkit.chengyu_model_storage import resolve_hf_source
         from .shims import install_shims
+
+        repo = resolve_hf_source(repo)
 
         install_shims()  # mir_eval.chord / pretty_midi stand-ins unless the real packages exist
         import importlib
@@ -185,6 +188,9 @@ class SemanticTokenizer(nn.Module):
         super().__init__()
         self.debug = debug
         from transformers import AutoFeatureExtractor, AutoModel
+        from toolkit.chengyu_model_storage import resolve_hf_source
+
+        mert_repo = resolve_hf_source(mert_repo)
 
         self.processor = AutoFeatureExtractor.from_pretrained(mert_repo, trust_remote_code=True)
         self.mert = AutoModel.from_pretrained(mert_repo, trust_remote_code=True).eval()

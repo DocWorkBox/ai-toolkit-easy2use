@@ -18,7 +18,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_xl_base_aio.safetensors",
+        "ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_xl_base_aio.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -79,7 +79,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Comfy-Org/Yue2/checkpoints/yue2_3b_int8_convrot.safetensors",
+        "Comfy-Org/YuE2/checkpoints/yue2_3b_int8_convrot.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -192,7 +192,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_base_aio.safetensors",
+        "ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_base_aio.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],

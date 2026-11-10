@@ -2,8 +2,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_REPO = "/model/ModelScope/Qwen/Qwen-Image-2.1"
-COMFY_MODEL_DIR = "/model/ModelScope/Comfy-Org/Qwen-Image-2.1"
+CONFIG_REPO = "/chenyudata/Other/Qwen-Image-2.1"
+COMFY_MODEL_DIR = "/chenyudata/Other/Comfy-Org/Qwen-Image-2.1"
 
 
 def _source(path: str) -> str:
@@ -106,4 +106,4 @@ def test_new_model_adapters_share_local_first_resolver():
     ):
         source = _source(path)
         assert "resolve_lora_file(" in source
-        assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in source
+        assert 'MODELS_PATH, "loras", "training_adapters"' in source

@@ -1,4 +1,5 @@
 import os
+from toolkit.models.v2.resolver import resolve_lora_file
 from typing import List, Optional
 
 import torch
@@ -63,7 +64,7 @@ scheduler_config = {
 FP8_SCALE_SUFFIX = ".weight_scale"
 
 # The text encoder is frozen, stock Qwen3-VL-8B-Instruct.
-QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct"
+QWEN3_VL_PATH = "/chenyudata/Other/Qwen3-VL-8B-Instruct"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
@@ -284,25 +285,10 @@ class Ideogram4Model(BaseModel):
         lora_path = self.model_config.unconditional_lora_path
         self.print_and_status_update(f"Loading unconditional LoRA from {lora_path}")
 
-        if not os.path.exists(lora_path):
-            # assume it is a "repo/owner/filename.safetensors" hub path
-            lora_splits = lora_path.split("/")
-            if len(lora_splits) != 3:
-                raise ValueError(
-                    f"Unconditional LoRA path {lora_path} is not a valid local path "
-                    "or hub path."
-                )
-            repo_id = "/".join(lora_splits[:2])
-            filename = lora_splits[2]
-            try:
-                lora_path = huggingface_hub.hf_hub_download(
-                    repo_id=repo_id, filename=filename, token=HF_TOKEN
-                )
-                self.model_config.unconditional_lora_path = lora_path
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to download unconditional LoRA from {lora_path}: {e}"
-                )
+        lora_path = resolve_lora_file(
+            lora_path, hf_token=HF_TOKEN, status_fn=self.print_and_status_update,
+        )
+        self.model_config.unconditional_lora_path = lora_path
 
         # Detect the LoRA rank from the first down-projection weight in the file.
         lora_state_dict = load_file(lora_path)

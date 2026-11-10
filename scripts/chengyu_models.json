@@ -1,0 +1,30 @@
+{
+  "root": "/poddata/ai-toolkit-models",
+  "reuse_roots": ["/chenyudata/ComfyUI/models", "/chenyudata/Other", "/poddata/ComfyUI/models"],
+  "groups": [
+    {"repo_id": "PrunaAI/P-H3-Image-Comfy", "local_dir": "", "files": ["diffusion_models/p-h3-image_int8_convrot.safetensors", "text_encoders/p-h3-image_text_encoder_int8_convrot.safetensors", "vae/p-h3-image_vae_int8_convrot.safetensors"]},
+    {"repo_id": "FastVideo/FastVideo-FastH3-Comfy", "local_dir": "", "files": ["diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors"]},
+    {"repo_id": "FastVideo/FastH3-Omni-Comfy", "local_dir": "", "files": ["diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors"]},
+    {"repo_id": "zhen-nan/L2P", "local_dir": "diffusion_models", "files": ["model-1k-merge.safetensors"]},
+    {"repo_id": "Comfy-Org/Qwen3.8-27B", "local_dir": "", "files": ["text_encoders/qwen3.8_27b_w4a8.safetensors"]},
+    {"repo_id": "ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated", "local_dir": "text_encoders", "files": ["huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors"]},
+    {"repo_id": "Comfy-Org/YuE2", "local_dir": "", "files": ["checkpoints/yue2_3b_int8_convrot.safetensors", "audio_encoders/sheetsage2_bf16.safetensors"]},
+    {"repo_id": "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4", "local_dir": "ai_toolkit", "files": ["tokenizer_head_joint_v4.pt", "nar_lora_joint_v4.pt"]},
+    {"repo_id": "ostris/ace_step_1.5_ComfyUI_files", "local_dir": "checkpoints", "files": ["ace_step_1.5_base_aio.safetensors", "ace_step_1.5_xl_base_aio.safetensors"]},
+    {"repo_id": "ostris/minimax_h3_training_adapter", "local_dir": "loras/training_adapters", "files": ["minimax_h3_training_adapter_v3.safetensors", "minimax_h3_ref2va_training_adapter_v2.safetensors", "p_h3_image_training_adapter_v1.safetensors", "fastvideo_fasth3_omni_training_adapter_v1.safetensors", "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors"]},
+    {"repo_id": "ostris/qwen_image_2_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["qwen_image_2_turbo_training_adapter_v1.safetensors"]},
+    {"repo_id": "ostris/zimage_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["zimage_turbo_training_adapter_v2.safetensors"]},
+    {"repo_id": "ostris/krea2_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["krea2_turbo_training_adapter_v1.safetensors"]},
+    {"repo_id": "ostris/ming_image_training_adapter", "local_dir": "loras/training_adapters", "files": ["ming_image_01_design_training_adapter_v1.safetensors"]},
+    {"repo_id": "ostris/ideogram_4_unconditional_lora", "local_dir": "loras", "files": ["ideogram_4_unconditional_lora_r16.safetensors"]},
+    {"repo_id": "ai-toolkit/melbandroformer", "local_dir": "checkpoints", "files": ["melbandroformer_vocals_kj.safetensors"]},
+    {"repo_id": "m-a-p/MERT-v2-FullSong", "kind": "snapshot", "local_dir": "huggingface/m-a-p/MERT-v2-FullSong"},
+    {"repo_id": "OpenMOSS-Team/MOSS-Music-8B-Instruct", "kind": "snapshot", "local_dir": "huggingface/OpenMOSS-Team/MOSS-Music-8B-Instruct"},
+    {"repo_id": "ACE-Step/acestep-captioner", "kind": "snapshot", "local_dir": "huggingface/ACE-Step/acestep-captioner"},
+    {"repo_id": "ACE-Step/acestep-transcriber", "kind": "snapshot", "local_dir": "huggingface/ACE-Step/acestep-transcriber"},
+    {"repo_id": "m-a-p/SheetSage2", "kind": "code", "local_dir": "huggingface/m-a-p/SheetSage2"},
+    {"repo_id": "PrunaAI/P-H3-Image", "kind": "assets", "local_dir": "configs/P-H3-Image", "files": ["tokenizer/tokenizer.json", "tokenizer/tokenizer_config.json", "tokenizer/chat_template.jinja", "processor/processor_config.json", "processor/tokenizer.json", "processor/tokenizer_config.json", "processor/chat_template.jinja", "text_encoder/config.json", "text_encoder/generation_config.json"]},
+    {"repo_id": "Qwen/Qwen3.8-27B", "kind": "assets", "local_dir": "configs/Qwen3.8-27B"},
+    {"repo_id": "Qwen/Qwen3-Omni-30B-A3B-Thinking", "kind": "assets", "local_dir": "configs/Qwen3-Omni-30B-A3B-Thinking"}
+  ]
+}

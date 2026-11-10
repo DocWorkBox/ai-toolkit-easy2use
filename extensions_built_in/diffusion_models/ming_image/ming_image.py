@@ -37,7 +37,7 @@ from toolkit.lora_special import LoRASpecialNetwork
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
 from toolkit.models.v2.resolver import resolve_lora_file
-from toolkit.paths import TOOLKIT_ROOT
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
@@ -214,7 +214,7 @@ class MingImageModel(BaseModel):
             self.model_config.assistant_lora_path,
             status_fn=self.print_and_status_update,
             download_dir=os.path.join(
-                TOOLKIT_ROOT, "models", "loras", "training_adapters"
+                MODELS_PATH, "loras", "training_adapters"
             ),
         )
         self.model_config.assistant_lora_path = lora_path

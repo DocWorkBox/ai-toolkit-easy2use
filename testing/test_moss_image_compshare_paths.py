@@ -42,7 +42,7 @@ class MossImageCompsharePathsTests(unittest.TestCase):
 
     def test_branch_default_points_to_server_bundle(self):
         source = Path(self.checkpoints.__file__).read_text(encoding="utf-8")
-        self.assertIn('MOSS_COMFY_LOCAL_PATH = "/model/ModelScope/Comfy-Org/MOSS-Image"', source)
+        self.assertIn('MOSS_COMFY_LOCAL_PATH = "/chenyudata/ComfyUI/models"', source)
 
     def test_sft_and_base_keep_their_own_precision_candidates(self):
         for variant in ("sft", "base"):

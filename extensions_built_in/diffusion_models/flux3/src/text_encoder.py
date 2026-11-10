@@ -30,7 +30,7 @@ DEFAULT_PAD_MULTIPLE = 80
 DEFAULT_MAX_TOKENS = 8192
 
 QWEN3_VL_4B_REPO = "Qwen/Qwen3-VL-4B-Instruct"
-QWEN3_VL_4B_LOCAL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"
+QWEN3_VL_4B_LOCAL_PATH = "/chenyudata/Other/Qwen3-VL-4B-Instruct"
 
 _TEXT_ASSET_FILES = (
     "config.json", "generation_config.json", "tokenizer_config.json",

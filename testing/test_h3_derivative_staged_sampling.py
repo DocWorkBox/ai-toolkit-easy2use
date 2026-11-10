@@ -47,7 +47,7 @@ class H3DerivativeSamplingTests(unittest.TestCase):
         self.reference = str(Path(temporary.name) / "reference.png")
         Image.new("RGB", (32, 32), (128, 64, 96)).save(self.reference)
 
-    def test_training_adapters_use_inherited_project_lora_cache(self):
+    def test_training_adapters_use_inherited_creator_lora_cache(self):
         for cls, filename in (
             (PH3ImageModel, "p_h3_image_training_adapter_v1.safetensors"),
             (h3.MinimaxH3OmniModel, "fastvideo_fasth3_omni_training_adapter_v1.safetensors"),
@@ -59,15 +59,16 @@ class H3DerivativeSamplingTests(unittest.TestCase):
                 model.model_config = SimpleNamespace(assistant_lora_path=reference)
                 model.print_and_status_update = Mock()
                 project = str(Path(self.reference).parent)
-                cached = str(Path(project) / "models" / "loras" / "training_adapters" / filename)
-                with patch.object(h3, "TOOLKIT_ROOT", project), patch.object(
+                store = str(Path(project) / "creator-models")
+                cached = str(Path(store) / "loras" / "training_adapters" / filename)
+                with patch.object(h3, "MODELS_PATH", store), patch.object(
                     h3, "resolve_lora_file", return_value=cached
                 ) as resolve, patch.object(h3, "load_file", side_effect=RuntimeError("resolved adapter")) as load:
                     with self.assertRaisesRegex(RuntimeError, "resolved adapter"):
                         model.load_training_adapter(Mock())
                 resolve.assert_called_once_with(
                     reference, status_fn=model.print_and_status_update,
-                    download_dir=str(Path(project) / "models" / "loras" / "training_adapters"),
+                    download_dir=str(Path(store) / "loras" / "training_adapters"),
                 )
                 load.assert_called_once_with(cached)
                 self.assertEqual(model.model_config.assistant_lora_path, cached)

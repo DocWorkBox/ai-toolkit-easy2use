@@ -1,4 +1,4 @@
-"""Compshare weight defaults must not redirect small assets into read-only mounts."""
+"""Missing chengyu models retain repo defaults and writable small-asset caches."""
 
 import ast
 from pathlib import Path
@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 QWEN38_CHECKPOINT = (
-    "/model/ModelScope/Comfy-Org/Qwen3.8-27B/"
+    "Comfy-Org/Qwen3.8-27B/"
     "text_encoders/qwen3.8_27b_w4a8.safetensors"
 )
 
@@ -35,24 +35,24 @@ def selected_default(block, key):
     return match.group(1)
 
 
-class Compshare119ModelPathTests(unittest.TestCase):
-    def test_ph3_defaults_to_compshare_local_bundle(self):
+class Chengyu119ModelPathTests(unittest.TestCase):
+    def test_missing_ph3_defaults_to_official_repo(self):
         block = model_block("extensions_built_in/diffusion_models/ui.tsx", "p_h3_image")
         self.assertEqual(
             selected_default(block, "config.process[0].model.name_or_path"),
-            "/model/HuggingFace/PrunaAI/P-H3-Image-Comfy",
+            "PrunaAI/P-H3-Image-Comfy",
         )
         self.assertIn("p_h3_image_training_adapter_v1.safetensors", block)
 
-    def test_fasth3_omni_defaults_to_compshare_local_bundle(self):
+    def test_missing_fasth3_omni_defaults_to_official_repo(self):
         block = model_block("extensions_built_in/diffusion_models/ui.tsx", "minimax_h3_omni")
         self.assertEqual(
             selected_default(block, "config.process[0].model.name_or_path"),
-            "/model/ModelScope/FastVideo/FastH3-Omni-Comfy",
+            "FastVideo/FastH3-Omni-Comfy",
         )
         self.assertIn("fastvideo_fasth3_omni_training_adapter_v1.safetensors", block)
 
-    def test_qwen38_training_captioning_and_backend_share_local_w4a8_file(self):
+    def test_qwen38_training_captioning_and_backend_share_repo_w4a8_file(self):
         train = model_block("extensions_built_in/llm_models/ui.tsx", "qwen38")
         caption = model_block("ui/src/helpers/captionOptions.ts", "Qwen38Captioner")
         self.assertEqual(selected_default(train, "config.process[0].model.name_or_path"), QWEN38_CHECKPOINT)

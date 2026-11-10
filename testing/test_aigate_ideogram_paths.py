@@ -7,8 +7,8 @@ def test_compshare_ideogram4_uses_local_model_paths():
         encoding="utf-8"
     )
 
-    assert '"/model/ModelScope/ideogram-ai/ideogram-4-fp8"' in options_source
-    assert 'QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct"' in ideogram_source
+    assert '"/chenyudata/Other/ideogram-4-fp8"' in options_source
+    assert 'QWEN3_VL_PATH = "/chenyudata/Other/Qwen3-VL-8B-Instruct"' in ideogram_source
 
 
 def test_compshare_model_paths_do_not_use_aigate_dataset_roots():
@@ -25,14 +25,14 @@ def test_compshare_model_paths_do_not_use_aigate_dataset_roots():
     assert "/datasets/ComfyUI/models/prompt_generator" not in options_source
     assert 'flux2_vae_path: str = "ai-toolkit/flux2_vae"' in flux2_klein_source
     assert '_wan_vae_path = "ai-toolkit/wan2.1-vae"' in wan22_source
-    assert 'default="/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct"' in upsample_source
+    assert 'default="/chenyudata/Other/Qwen3-VL-8B-Instruct"' in upsample_source
 
 
 def test_compshare_boogu_keeps_repo_defaults():
     options_source = Path("extensions_built_in/diffusion_models/ui.tsx").read_text(encoding="utf-8")
 
-    assert '"Boogu/Boogu-Image-0.1-Base"' in options_source
-    assert '"Boogu/Boogu-Image-0.1-Edit"' in options_source
+    assert '"/chenyudata/Other/Boogu-Image-0.1-Base"' in options_source
+    assert '"/chenyudata/Other/Boogu-Image-0.1-Edit"' in options_source
 
 
 def test_compshare_krea2_uses_local_model_paths():
@@ -42,16 +42,16 @@ def test_compshare_krea2_uses_local_model_paths():
         encoding="utf-8"
     )
 
-    assert '"/model/ModelScope/krea/Krea-2-Raw"' in options_source
-    assert '"/model/ModelScope/krea/Krea-2-Turbo"' in options_source
-    assert '"/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"' in options_source
+    assert '"/chenyudata/Other/Krea-2-Raw"' in options_source
+    assert '"/chenyudata/Other/Krea-2-Turbo"' in options_source
+    assert '"ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"' in options_source
     assert 'name: "krea2:o_edit"' in options_source
     assert 'name: "krea2:o_edit_turbo"' in options_source
-    assert options_source.count('"/model/ModelScope/krea/Krea-2-Raw"') >= 2
-    assert options_source.count('"/model/ModelScope/krea/Krea-2-Turbo"') >= 2
-    assert options_source.count('"/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"') >= 2
-    assert 'QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"' in krea2_source
-    assert 'QWEN_IMAGE_VAE_PATH = "/model/ModelScope/Qwen/Qwen-Image-2512"' in krea2_source
+    assert options_source.count('"/chenyudata/Other/Krea-2-Raw"') >= 2
+    assert options_source.count('"/chenyudata/Other/Krea-2-Turbo"') >= 2
+    assert options_source.count('"ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"') >= 2
+    assert 'QWEN3_VL_PATH = "/chenyudata/Other/Qwen3-VL-4B-Instruct"' in krea2_source
+    assert 'QWEN_IMAGE_VAE_PATH = "/chenyudata/Other/Qwen-Image-2512"' in krea2_source
     assert 'QWEN3_VL_PATH = "/datasets/ComfyUI/models/LLM/Qwen-VL/Qwen3-VL-4B-Instruct"' not in krea2_source
     assert 'QWEN_IMAGE_VAE_PATH = "/datasets/ai-toolkit/models/Qwen-Image"' not in krea2_source
     assert "Krea 2 Raw" in options_source

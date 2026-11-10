@@ -32,9 +32,9 @@ def test_compshare_qwen_model_options_do_not_leak_into_api_captioner():
         "name: 'Ideogram4Captioner'", 1
     )[0]
     model_options = [
-        "/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct",
-        "/model/ModelScope/Qwen/Qwen3.6-27B",
-        "/model/HuggingFace/huihui-ai/Huihui-Qwen3.6-27B-abliterated",
+        "/chenyudata/Other/Qwen3-VL-8B-Instruct",
+        "Qwen/Qwen3.6-27B",
+        "huihui-ai/Huihui-Qwen3.6-27B-abliterated",
         "huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated",
     ]
 

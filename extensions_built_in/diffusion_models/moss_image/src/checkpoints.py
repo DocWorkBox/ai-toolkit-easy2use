@@ -45,7 +45,7 @@ from toolkit.paths import MODELS_PATH
 SFT_REPO = "OpenMOSS-Team/MOSS-Image-SFT"
 BASE_REPO = "OpenMOSS-Team/MOSS-Image-Base"
 COMFY_REPO = "Comfy-Org/MOSS-Image"
-MOSS_COMFY_LOCAL_PATH = "/model/ModelScope/Comfy-Org/MOSS-Image"
+MOSS_COMFY_LOCAL_PATH = "/chenyudata/ComfyUI/models"
 QWEN35_9B_REPO = "Qwen/Qwen3.5-9B"
 
 VENDOR_VAE_FILE = "vae/diffusion_pytorch_model.safetensors"

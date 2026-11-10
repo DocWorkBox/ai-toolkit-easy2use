@@ -173,17 +173,17 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Ace Step',
         group: 'music',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/HuggingFace/ACE-Step/acestep-transcriber', defaultNameOrPath],
-            'config.process[0].caption.model_name_or_path2': ['/model/HuggingFace/ACE-Step/acestep-captioner', undefined],
+            'config.process[0].caption.model_name_or_path': ['ACE-Step/acestep-transcriber', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path2': ['ACE-Step/acestep-captioner', undefined],
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
             'config.process[0].caption.caption_format': ['ace_step', undefined],
             'config.process[0].caption.compile': [true, false],
         },
         name_or_path_options: [
-            { value: '/model/HuggingFace/ACE-Step/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
+            { value: 'ACE-Step/acestep-transcriber', label: 'ACE-Step/acestep-transcriber' },
         ],
         name_or_path2_options: [
-            { value: '/model/HuggingFace/ACE-Step/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
+            { value: 'ACE-Step/acestep-captioner', label: 'ACE-Step/acestep-captioner' },
         ],
         additionalSections: [
             'caption.model_name_or_path2',
@@ -199,7 +199,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'MOSS-Music',
         group: 'music',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/HuggingFace/OpenMOSS-Team/MOSS-Music-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['OpenMOSS-Team/MOSS-Music-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsAudio, defaultExtensions],
             'config.process[0].caption.caption_format': ['ace_step', undefined],
             'config.process[0].caption.caption_prompt': [mossMusicCaptionPrompt, undefined],
@@ -207,7 +207,7 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.compile': [true, false],
         },
         name_or_path_options: [
-            { value: '/model/HuggingFace/OpenMOSS-Team/MOSS-Music-8B-Instruct', label: 'MOSS-Music-8B-Instruct' },
+            { value: 'OpenMOSS-Team/MOSS-Music-8B-Instruct', label: 'MOSS-Music-8B-Instruct' },
         ],
         captionPrompts: {
             '描述（ACE-Step）': mossMusicCaptionPrompt,
@@ -225,7 +225,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Qwen3-VL',
         group: 'image',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/chenyudata/Other/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.prompt_template': [defaultCaptionPromptTemplate, undefined],
             'config.process[0].caption.target_lang': [defaultCaptionTargetLanguage, undefined],
@@ -237,11 +237,11 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: '/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
-            { value: '/model/HuggingFace/huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
+            { value: '/chenyudata/Other/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated', label: 'huihui-ai/Huihui-Qwen3-VL-8B-Instruct-abliterated' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
-            { value: '/model/ModelScope/Qwen/Qwen3.6-27B', label: 'Qwen/Qwen3.6-27B' },
-            { value: '/model/HuggingFace/huihui-ai/Huihui-Qwen3.6-27B-abliterated', label: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated' },
+            { value: 'Qwen/Qwen3.6-27B', label: 'Qwen/Qwen3.6-27B' },
+            { value: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated', label: 'huihui-ai/Huihui-Qwen3.6-27B-abliterated' },
         ],
         additionalSections: [
             'caption.prompt_template',
@@ -293,7 +293,7 @@ export const captionerTypes: CaptionOption[] = [
         group: 'image/video/sound',
         hasMultiLinePrompts: true,
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/ModelScope/zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['zhaoke1006/Qwen2.5-Omni-7B-H3-Prompt-Rewriter', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsVideo, defaultExtensions],
             'config.process[0].caption.caption_prompt': [qwen25OmniH3CaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -319,7 +319,7 @@ export const captionerTypes: CaptionOption[] = [
         label: 'Qwen3-Omni',
         group: 'image/video/sound',
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', defaultNameOrPath],
             'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage, ...extensionsAudio], defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultVideoCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -330,7 +330,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'ai-toolkit/Qwen3-Omni-30B-A3B-Instruct', label: 'ai-toolkit/Qwen3-Omni-30B-A3B-Instruct' },
             { value: 'ai-toolkit/Qwen3-Omni-30B-A3B-Thinking', label: 'ai-toolkit/Qwen3-Omni-30B-A3B-Thinking' },
-            { value: '/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', label: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated' },
+            { value: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated', label: 'ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated' },
         ],
         captionPrompts: {
             '通用': defaultVideoCaptionPrompt,
@@ -354,13 +354,13 @@ export const captionerTypes: CaptionOption[] = [
         supportsLoras: true,
         cloudLoras: [
             {
-                path: '/model/HuggingFace/ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_lora_caption_this_song.safetensors',
+                path: 'ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_lora_caption_this_song.safetensors',
                 name: 'Caption This Song',
             },
         ],
         defaults: {
             'config.process[0].caption.loras': [[], undefined],
-            'config.process[0].caption.model_name_or_path': ['/model/HuggingFace/ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', defaultNameOrPath],
             'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage, ...extensionsAudio], defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultVideoCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -369,8 +369,8 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.compile': [true, false],
         },
         name_or_path_options: [
-            { value: '/model/HuggingFace/ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', label: 'ai-toolkit/Qwen2.5-Omni-7B (convrot8)' },
-            { value: '/model/ModelScope/Qwen/Qwen2.5-Omni-7B', label: 'Qwen/Qwen2.5-Omni-7B' },
+            { value: 'ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors', label: 'ai-toolkit/Qwen2.5-Omni-7B (convrot8)' },
+            { value: 'Qwen/Qwen2.5-Omni-7B', label: 'Qwen/Qwen2.5-Omni-7B' },
             { value: 'Qwen/Qwen2.5-Omni-3B', label: 'Qwen/Qwen2.5-Omni-3B' },
         ],
         captionPrompts: {
@@ -394,7 +394,7 @@ export const captionerTypes: CaptionOption[] = [
         noCompile: true,
         defaults: {
             'config.process[0].caption.loras': [[], undefined],
-            'config.process[0].caption.model_name_or_path': ['/model/ModelScope/Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors', defaultNameOrPath],
             'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage], defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultImageCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [1024, undefined],
@@ -411,7 +411,7 @@ export const captionerTypes: CaptionOption[] = [
             'config.process[0].caption.compile': [false, false],
         },
         name_or_path_options: [
-            { value: '/model/ModelScope/Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors', label: 'Comfy-Org/Qwen3.8-27B (W4A8)' },
+            { value: 'Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors', label: 'Comfy-Org/Qwen3.8-27B (W4A8)' },
             { value: 'Qwen/Qwen3.8-27B', label: 'Qwen/Qwen3.8-27B（bf16，加载时量化）' },
         ],
         captionPrompts: {
@@ -440,7 +440,7 @@ export const captionerTypes: CaptionOption[] = [
         // The deconstruction JSON is long; the Python captioner also enforces this floor.
         minNewTokens: 3072,
         defaults: {
-            'config.process[0].caption.model_name_or_path': ['/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', defaultNameOrPath],
+            'config.process[0].caption.model_name_or_path': ['/chenyudata/Other/Qwen3-VL-8B-Instruct', defaultNameOrPath],
             'config.process[0].caption.extensions': [extensionsImage, defaultExtensions],
             'config.process[0].caption.caption_prompt': [defaultIdeogramCaptionPrompt, undefined],
             'config.process[0].caption.max_res': [512, undefined],
@@ -449,7 +449,7 @@ export const captionerTypes: CaptionOption[] = [
         name_or_path_options: [
             { value: 'Qwen/Qwen3-VL-2B-Instruct', label: 'Qwen/Qwen3-VL-2B-Instruct' },
             { value: 'Qwen/Qwen3-VL-4B-Instruct', label: 'Qwen/Qwen3-VL-4B-Instruct' },
-            { value: '/model/ModelScope/Qwen/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
+            { value: '/chenyudata/Other/Qwen3-VL-8B-Instruct', label: 'Qwen/Qwen3-VL-8B-Instruct' },
             { value: 'Qwen/Qwen3-VL-30B-A3B-Instruct', label: 'Qwen/Qwen3-VL-30B-A3B-Instruct' },
         ],
         additionalSections: [

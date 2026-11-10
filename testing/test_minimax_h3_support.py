@@ -28,7 +28,7 @@ def test_minimax_h3_is_registered_with_custom_training_components():
     assert sum(isinstance(node, ast.Name) and node.id == "MinimaxH3Model" for node in models.elts) == 1
     assert 'arch = "minimax_h3"' in model
     assert 'COMFY_REPO = "Comfy-Org/MiniMax-H3"' in model
-    assert 'ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"' in model
+    assert 'ORIGINAL_REPO = "/chenyudata/Other/MiniMax/MiniMax-H3"' in model
     assert "from .src.transformer import MiniMaxH3Transformer" in model
     assert "from .src.vae import MiniMaxH3VideoVAE" in model
     assert "def get_frame_count_snapper" in model
@@ -42,7 +42,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
 
     assert 'name: "minimax_h3"' in options
     assert 'name: "minimax_h3_ref2va"' in options
-    assert options.count('"/model/ModelScope/Comfy-Org/MiniMax-H3"') == 2
+    assert options.count('"/chenyudata/Other/Comfy-Org/MiniMax-H3"') == 2
     assert '"config.process[0].datasets[x].do_audio": [true, undefined]' in options
     assert '"config.process[0].datasets[x].do_i2v": [false, undefined]' in options
     assert "模型目录路径" in options
@@ -63,7 +63,7 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "'datasets.batch_size':" in docs
 
 
-def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help():
+def test_minimax_h3_training_adapter_uses_repo_defaults_and_localized_help():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     version = VERSION_SOURCE.read_text(encoding="utf-8")
@@ -95,11 +95,11 @@ def test_minimax_h3_training_adapter_uses_compshare_defaults_and_localized_help(
     assert 'VERSION = "1.19.0"' in version
 
 
-def test_fasth3_uses_compshare_dit_and_shared_minimax_components():
+def test_fasth3_uses_repo_dit_and_chengyu_minimax_components():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
-    assert '"/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy"' in options
-    shared_root = "/model/ModelScope/Comfy-Org/MiniMax-H3"
+    assert '"FastVideo/FastVideo-FastH3-Comfy"' in options
+    shared_root = "/chenyudata/Other/Comfy-Org/MiniMax-H3"
     assert (
         f'"{shared_root}/text_encoders/'
         'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"' in options
@@ -124,44 +124,44 @@ def test_minimax_h3_remote_adapters_download_to_toolkit_models_folder():
     assert 'LEGACY_REF2VA_TRAINING_ADAPTER_PATH' in model
     assert 'if lora_path == LEGACY_REF2VA_TRAINING_ADAPTER_PATH:' in model
     assert 'lora_path = REF2VA_TRAINING_ADAPTER_REPO_PATH' in model
-    assert 'TOOLKIT_ROOT, "models", "loras", "training_adapters"' in model
+    assert 'MODELS_PATH, "loras", "training_adapters"' in model
     assert "resolve_lora_file(" in model
     assert "download_dir=adapter_root" in model
 
 
-def test_ltx25_uses_compshare_modelscope_path():
+def test_ltx25_uses_chengyu_model_path():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     model = LTX25_MODEL_SOURCE.read_text(encoding="utf-8")
 
-    assert '"/model/ModelScope/Lightricks/LTX-2.5"' in options
+    assert '"/chenyudata/Other/LTX-2.5"' in options
     assert "repo_id_from_name_or_path" in model
     assert "resolve_comfy_file" in model
 
 
-def test_compshare_uses_the_project_models_folder_by_default():
+def test_chengyu_uses_the_creator_models_folder_by_default():
     ui_paths = UI_PATHS_SOURCE.read_text(encoding="utf-8")
     cron_paths = CRON_PATHS_SOURCE.read_text(encoding="utf-8")
     settings_route = SETTINGS_ROUTE_SOURCE.read_text(encoding="utf-8")
 
-    expected_default = "export const defaultModelsFolder = path.join(TOOLKIT_ROOT, 'models');"
+    expected_default = "export const defaultModelsFolder = '/poddata/ai-toolkit-models';"
     assert expected_default in ui_paths
     assert expected_default in cron_paths
     assert "let modelsPath = ''" in cron_paths
     assert "row.value !== defaultModelsFolder" in cron_paths
-    assert "legacyDefaultModelsFolder" not in settings_route
+    assert "legacyDefaultModelsFolder" in settings_route
     assert "/datasets/" not in ui_paths
     assert "/datasets/" not in cron_paths
 
 
-def test_flux3_uses_compshare_qwen_assets_and_writable_project_cache():
+def test_flux3_uses_chengyu_qwen_assets_and_writable_project_cache():
     source = Path(
         "extensions_built_in/diffusion_models/flux3/src/text_encoder.py"
     ).read_text(encoding="utf-8")
     assert (
-        'QWEN3_VL_4B_LOCAL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"'
+        'QWEN3_VL_4B_LOCAL_PATH = "/chenyudata/Other/Qwen3-VL-4B-Instruct"'
         in source
     )
     assert 'os.path.join(TOOLKIT_ROOT, "models", "Qwen3-VL-4B-Instruct")' in source
     assert "/datasets/ComfyUI/" not in source
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
-    assert '"/model/ModelScope/black-forest-labs/flux-3-image-klein-comfy"' in options
+    assert '"/chenyudata/Other/flux-3-image-klein-base"' in options

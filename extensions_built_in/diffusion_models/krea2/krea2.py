@@ -15,6 +15,8 @@ target = noise - clean), so ``get_noise_prediction`` does no time flip / negatio
 
 import math
 import os
+from toolkit.models.v2.resolver import resolve_lora_file
+from toolkit.paths import MODELS_PATH
 from typing import TYPE_CHECKING, List, Optional
 
 import torch
@@ -96,8 +98,8 @@ scheduler_config = {
 }
 
 # Defaults; both overridable via model.model_kwargs.
-QWEN3_VL_PATH = "/model/ModelScope/Qwen/Qwen3-VL-4B-Instruct"
-QWEN_IMAGE_VAE_PATH = "/model/ModelScope/Qwen/Qwen-Image-2512"
+QWEN3_VL_PATH = "/chenyudata/Other/Qwen3-VL-4B-Instruct"
+QWEN_IMAGE_VAE_PATH = "/chenyudata/Other/Qwen-Image-2512"
 
 HF_TOKEN = os.getenv("HF_TOKEN", None)
 
@@ -271,28 +273,12 @@ class Krea2Model(QwenImageVAEHolderMixin, BaseModel):
 
     def load_training_adapter(self, transformer: SingleStreamDiT):
         self.print_and_status_update("Loading assistant LoRA")
-        lora_path = self.model_config.assistant_lora_path
-        if not os.path.exists(lora_path):
-            # assume it is a hub path
-            lora_splits = lora_path.split("/")
-            if len(lora_splits) != 3:
-                raise ValueError(
-                    f"Assistant LoRA path {lora_path} is not a valid local path or hub path."
-                )
-            repo_id = "/".join(lora_splits[:2])
-            filename = lora_splits[2]
-            try:
-                lora_path = huggingface_hub.hf_hub_download(
-                    repo_id=repo_id,
-                    filename=filename,
-                    token=HF_TOKEN,
-                )
-                # upgrade path to the local download
-                self.model_config.assistant_lora_path = lora_path
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to download assistant LoRA from {lora_path}: {e}"
-                )
+        lora_path = resolve_lora_file(
+            self.model_config.assistant_lora_path, hf_token=HF_TOKEN,
+            status_fn=self.print_and_status_update,
+            download_dir=os.path.join(MODELS_PATH, "loras", "training_adapters"),
+        )
+        self.model_config.assistant_lora_path = lora_path
         # load the adapter and merge it in. We will inference with a -1.0 multiplier so the adapter effects only work during training.
         lora_state_dict = load_file(lora_path)
         # detect the LoRA rank from the first down-projection weight.

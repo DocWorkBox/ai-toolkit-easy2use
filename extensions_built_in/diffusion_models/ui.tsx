@@ -81,7 +81,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/circlestone-labs/Anima-Base-v1.0-Diffusers",
+        "/chenyudata/Other/Anima-Base-v1.0-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [false, false],
@@ -106,7 +106,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/black-forest-labs/FLUX.1-dev",
+        "/chenyudata/Other/flux.1-dev",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -124,7 +124,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/black-forest-labs/FLUX.1-Kontext-dev",
+        "/chenyudata/Other/FLUX.1-Kontext-dev",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -201,7 +201,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+        "/chenyudata/Other/Wan2.1-T2V-1.3B-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [false, false],
@@ -227,7 +227,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+        "/chenyudata/Other/Wan2.1-I2V-14B-480P-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -255,7 +255,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Wan-AI/Wan2.1-I2V-14B-720P-Diffusers",
+        "/chenyudata/Other/Wan2.1-I2V-14B-720P-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -283,7 +283,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Wan-AI/Wan2.1-T2V-14B-Diffusers",
+        "/chenyudata/Other/Wan2.1-T2V-14B-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -309,7 +309,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+        "/chenyudata/Other/Wan2.2-T2V-A14B-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -351,7 +351,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+        "/chenyudata/Other/Wan2.2-I2V-A14B-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -393,7 +393,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "/chenyudata/Other/Wan2.2-TI2V-5B-Diffusers",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -442,7 +442,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Qwen/Qwen-Image",
+        "/chenyudata/Other/Qwen-Image",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -467,7 +467,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Qwen/Qwen-Image-2512",
+        "/chenyudata/Other/Qwen-Image-2512",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -495,7 +495,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Qwen/Qwen-Image-Edit",
+        "/chenyudata/Other/Qwen-Image-Edit",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -525,7 +525,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/Qwen/Qwen-Image-Edit-2509",
+        "/chenyudata/Other/Qwen-Image-Edit-2509",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -563,7 +563,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Qwen/Qwen-Image-Edit-2511",
+        "/chenyudata/Other/Qwen-Image-Edit-2511",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -601,11 +601,11 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Comfy-Org/Qwen-Image-2.1",
+        "/chenyudata/Other/Comfy-Org/Qwen-Image-2.1",
         defaultNameOrPath,
       ],
       "config.process[0].model.extras_name_or_path": [
-        "/model/ModelScope/Qwen/Qwen-Image-2.1",
+        "/chenyudata/Other/Qwen-Image-2.1",
         undefined,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -651,7 +651,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       // the turbo weight file in the repack (text encoder and VAE come from
       // the same repack); model_kwargs.turbo selects the turbo schedule
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Comfy-Org/Qwen-Image-2.1",
+        "/chenyudata/Other/Comfy-Org/Qwen-Image-2.1",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -795,7 +795,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "instruction",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/FireRedTeam/FireRed-Image-Edit-1.1",
+        "/chenyudata/Other/FireRed-Image-Edit-1.1",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -942,7 +942,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/black-forest-labs/FLUX.2-dev",
+        "/chenyudata/Other/FLUX.2-dev",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -978,7 +978,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Tongyi-MAI/Z-Image-Turbo",
+        "/chenyudata/Other/Z-Image-Turbo",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -1010,7 +1010,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Tongyi-MAI/Z-Image",
+        "/chenyudata/Other/Z-Image",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -1033,7 +1033,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/zhaotutu12/Z-Image-De-Turbo",
+        "/chenyudata/Other/Z-Image-De-Turbo",
         defaultNameOrPath,
       ],
       "config.process[0].model.extras_name_or_path": [
@@ -1062,7 +1062,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Comfy-Org/MiniMax-H3",
+        "/chenyudata/Other/Comfy-Org/MiniMax-H3",
         defaultNameOrPath,
       ],
       // the Comfy-Org weights are pre-quantized (int8 convrot DiT, nvfp4 TE); these
@@ -1246,7 +1246,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Comfy-Org/MiniMax-H3",
+        "/chenyudata/Other/Comfy-Org/MiniMax-H3",
         defaultNameOrPath,
       ],
       // pre-quantized weights: matching qtypes keep the load unchanged
@@ -1487,7 +1487,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/HuggingFace/PrunaAI/P-H3-Image-Comfy",
+        "PrunaAI/P-H3-Image-Comfy",
         defaultNameOrPath,
       ],
       // the comfy files are pre-quantized int8 ConvRot (DiT, text encoder, VAE);
@@ -1573,8 +1573,19 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/FastVideo/FastH3-Omni-Comfy",
+        "FastVideo/FastH3-Omni-Comfy",
         defaultNameOrPath,
+      ],
+      "config.process[0].model.model_kwargs": [
+        {
+          text_encoder_path:
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          video_vae_path:
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/vae/minimax_h3_video_vae_fp16.safetensors",
+          audio_vae_path:
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/vae/minimax_h3_audio_vae_fp32.safetensors",
+        },
+        {},
       ],
       // pre-quantized weights: matching qtypes keep the load unchanged
       "config.process[0].model.quantize": [true, false],
@@ -1768,17 +1779,17 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy",
+        "FastVideo/FastVideo-FastH3-Comfy",
         defaultNameOrPath,
       ],
       "config.process[0].model.model_kwargs": [
         {
           text_encoder_path:
-            "/model/ModelScope/Comfy-Org/MiniMax-H3/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
           video_vae_path:
-            "/model/ModelScope/Comfy-Org/MiniMax-H3/vae/minimax_h3_video_vae_fp16.safetensors",
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/vae/minimax_h3_video_vae_fp16.safetensors",
           audio_vae_path:
-            "/model/ModelScope/Comfy-Org/MiniMax-H3/vae/minimax_h3_audio_vae_fp32.safetensors",
+            "/chenyudata/Other/Comfy-Org/MiniMax-H3/vae/minimax_h3_audio_vae_fp32.safetensors",
         },
         {},
       ],
@@ -1874,16 +1885,16 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           不支持首帧或参考条件。
         </p>
         <p>
-          FastH3 DiT 从 compshare 的 <code>/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy</code>
-          加载；文本编码器和 VAE 从 <code>/model/ModelScope/Comfy-Org/MiniMax-H3</code>
+          FastH3 DiT 使用 <code>FastVideo/FastVideo-FastH3-Comfy</code>，缺失时下载到训练器的 models 目录；
+          文本编码器和 VAE 从 <code>/chenyudata/Other/Comfy-Org/MiniMax-H3</code>
           共享。使用的文件如下：
         </p>
         <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
-          <code>{`/model/ModelScope/FastVideo/FastVideo-FastH3-Comfy/
+          <code>{`FastVideo/FastVideo-FastH3-Comfy/
 ├── diffusion_models/
 │   └── fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors
 
-/model/ModelScope/Comfy-Org/MiniMax-H3/
+/chenyudata/Other/Comfy-Org/MiniMax-H3/
 ├── text_encoders/
 │   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
 └── vae/
@@ -1905,7 +1916,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Lightricks/LTX-2",
+        "/chenyudata/Other/LTX-2",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -1946,7 +1957,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Lightricks/LTX-2.3/ltx-2.3-22b-dev.safetensors",
+        "/chenyudata/ComfyUI/models/checkpoints/ltx/ltx-2.3-22b-dev.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -1991,7 +2002,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       // comfy-style split files resolve from/download to the models folder;
       // the int8 ConvRot dev transformer is the default
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/Lightricks/LTX-2.5",
+        "/chenyudata/Other/LTX-2.5",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2036,7 +2047,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/black-forest-labs/flux-3-image-klein-comfy",
+        "/chenyudata/Other/flux-3-image-klein-base",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2318,7 +2329,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/black-forest-labs/FLUX.2-klein-base-4B",
+        "/chenyudata/Other/FLUX.2-klein-base-4B",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2352,7 +2363,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/PaddlePaddle/ERNIE-Image",
+        "/chenyudata/Other/ERNIE-Image",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2374,7 +2385,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/black-forest-labs/FLUX.2-klein-base-9B",
+        "/chenyudata/Other/FLUX.2-klein-base-9B",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2471,7 +2482,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
         defaultNameOrPath,
       ],
       "config.process[0].model.extras_name_or_path": [
-        "Tongyi-MAI/Z-Image-Turbo",
+        "/chenyudata/Other/Z-Image-Turbo",
         undefined,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2490,7 +2501,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "experimental",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/ideogram-ai/ideogram-4-fp8",
+        "/chenyudata/Other/ideogram-4-fp8",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2567,7 +2578,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     gateUrl: "https://huggingface.co/krea/Krea-2-Raw",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/krea/Krea-2-Raw",
+        "/chenyudata/Other/Krea-2-Raw",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2588,7 +2599,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     gateUrl: "https://huggingface.co/krea/Krea-2-Turbo",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/krea/Krea-2-Turbo",
+        "/chenyudata/Other/Krea-2-Turbo",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2598,7 +2609,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].network.conv_alpha": [undefined, 16],
       "config.process[0].model.low_vram": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
+        "ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].sample.guidance_scale": [1, 4],
@@ -2618,7 +2629,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "experimental",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/krea/Krea-2-Raw",
+        "/chenyudata/Other/Krea-2-Raw",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2655,7 +2666,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "experimental",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "/model/ModelScope/krea/Krea-2-Turbo",
+        "/chenyudata/Other/Krea-2-Turbo",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2665,7 +2676,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].network.conv_alpha": [undefined, 16],
       "config.process[0].model.low_vram": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "/model/ModelScope/ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
+        "ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].sample.guidance_scale": [1, 4],
@@ -2745,7 +2756,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "image",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "Boogu/Boogu-Image-0.1-Base",
+        "/chenyudata/Other/Boogu-Image-0.1-Base",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],
@@ -2764,7 +2775,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "instruction",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "Boogu/Boogu-Image-0.1-Edit",
+        "/chenyudata/Other/Boogu-Image-0.1-Edit",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],

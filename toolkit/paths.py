@@ -6,12 +6,13 @@ KEYMAPS_ROOT = os.path.join(TOOLKIT_ROOT, "toolkit", "keymaps")
 ORIG_CONFIGS_ROOT = os.path.join(TOOLKIT_ROOT, "toolkit", "orig_configs")
 DIFFUSERS_CONFIGS_ROOT = os.path.join(TOOLKIT_ROOT, "toolkit", "diffusers_configs")
 COMFY_MODELS_PATH = None
+CHENGYU_MODELS_PATH = "/poddata/ai-toolkit-models"
 
 # check if ENV variable is set
 if 'MODELS_PATH' in os.environ and os.environ['MODELS_PATH'].strip() != "":
     MODELS_PATH = os.environ['MODELS_PATH']
 else:
-    MODELS_PATH = os.path.join(TOOLKIT_ROOT, "models")
+    MODELS_PATH = CHENGYU_MODELS_PATH
 
 
 def get_path(path):

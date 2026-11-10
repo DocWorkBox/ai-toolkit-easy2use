@@ -15,6 +15,8 @@ from typing import Callable, Iterable, Optional
 
 from toolkit.paths import MODELS_PATH
 
+CHENGYU_COMFY_MODELS_PATH = "/chenyudata/ComfyUI/models"
+
 
 def comfy_precision_rank(filename: str, qtype: Optional[str] = None) -> int:
     """Load-preference rank for a comfy weight filename, given the REQUESTED
@@ -153,7 +155,8 @@ def resolve_comfy_file(
     MODELS_PATH (and each of ``extra_roots``), the bare filename at each root,
     any subfolder of the category folder (recursive — e.g.
     diffusion_models/my_custom_sub/), then the hub — downloaded to the
-    repo-relative path under MODELS_PATH. With ``local_only`` the hub is never
+    repo-relative path under MODELS_PATH. The chengyu shared model mount is
+    searched last and never used as a download destination. With ``local_only`` the hub is never
     touched and a miss returns None.
     """
     if override_path is not None:
@@ -166,15 +169,20 @@ def resolve_comfy_file(
     filename = os.path.basename(rel_path)
     category = os.path.dirname(rel_path)
     roots = [MODELS_PATH] + [r for r in (extra_roots or []) if os.path.isdir(r)]
-    for root in roots:
-        for rel in (rel_path, filename):
-            candidate = os.path.join(root, rel)
-            if os.path.exists(candidate):
-                return candidate
-    for root in roots:
-        found = find_file_recursive(os.path.join(root, category), filename)
-        if found is not None:
-            return found
+    shared_roots = []
+    if os.path.isdir(CHENGYU_COMFY_MODELS_PATH) and CHENGYU_COMFY_MODELS_PATH not in roots:
+        shared_roots.append(CHENGYU_COMFY_MODELS_PATH)
+    # Preserve existing direct and recursive lookups before the platform fallback.
+    for group in (roots, shared_roots):
+        for root in group:
+            for rel in (rel_path, filename):
+                candidate = os.path.join(root, rel)
+                if os.path.exists(candidate):
+                    return candidate
+        for root in group:
+            found = find_file_recursive(os.path.join(root, category), filename)
+            if found is not None:
+                return found
 
     if local_only:
         return None

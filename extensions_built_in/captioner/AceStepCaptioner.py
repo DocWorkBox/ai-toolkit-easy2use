@@ -284,6 +284,9 @@ class AceStepCaptioner(BaseCaptioner):
 
     def _load_thinker(self, name_or_path: str, label: str):
         """Load a Qwen2.5-Omni checkpoint and keep only its thinker."""
+        from toolkit.chengyu_model_storage import resolve_hf_source
+
+        name_or_path = resolve_hf_source(name_or_path)
         self.print_and_status_update(f"Loading {label} model")
         full = Qwen2_5OmniForConditionalGeneration.from_pretrained(
             name_or_path,

@@ -58,7 +58,7 @@ MODEL_TESTS = {
     },
     "boogu_image": {
         # native ~1024; 512/low-step/high-CFG degenerates to a black frame
-        "model": {"name_or_path": "Boogu/Boogu-Image-0.1-Base", "quantize": True, "quantize_te": True},
+        "model": {"name_or_path": "/chenyudata/Other/Boogu-Image-0.1-Base", "quantize": True, "quantize_te": True},
         "sample": {"width": 512, "height": 512, "num_inference_steps": 25, "guidance_scale": 4.0, "seed": 42},
     },
     "ernie_image": {

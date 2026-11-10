@@ -28,7 +28,7 @@ def test_anima_ui_uses_upstream_preset_with_compshare_path():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
     assert options.count('name: "anima"') == 1
-    assert "/model/ModelScope/circlestone-labs/Anima-Base-v1.0-Diffusers" in options
+    assert "/chenyudata/Other/Anima-Base-v1.0-Diffusers" in options
     assert (
         '"circlestone-labs/Anima-Base-v1.0-Diffusers", defaultNameOrPath'
         not in options

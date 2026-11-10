@@ -5,7 +5,8 @@ export const TOOLKIT_ROOT = path.resolve('@', '..', '..');
 export const defaultTrainFolder = path.join(TOOLKIT_ROOT, 'output');
 export const defaultDatasetsFolder = path.join(TOOLKIT_ROOT, 'datasets');
 export const defaultDataRoot = path.join(TOOLKIT_ROOT, 'data');
-export const defaultModelsFolder = path.join(TOOLKIT_ROOT, 'models');
+export const defaultModelsFolder = '/poddata/ai-toolkit-models';
+export const legacyDefaultModelsFolder = path.join(TOOLKIT_ROOT, 'models');
 
 // Forked file-server workers set AI_TOOLKIT_QUIET_PATHS so this line prints
 // once per launched process group, not once per worker.
@@ -49,7 +50,7 @@ export const getModelsPath = async () => {
     },
   });
   let modelsPath = '';
-  if (row?.value && row.value !== '' && row.value !== defaultModelsFolder) {
+  if (row?.value && row.value !== '' && row.value !== defaultModelsFolder && row.value !== legacyDefaultModelsFolder) {
     modelsPath = row.value;
   }
   return modelsPath;

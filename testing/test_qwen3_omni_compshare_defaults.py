@@ -2,12 +2,12 @@ from pathlib import Path
 
 
 HUIHUI_MODEL_PATH = (
-    "/model/HuggingFace/ai-toolkit/"
+    "ai-toolkit/"
     "Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated"
 )
 
 
-def test_qwen3_omni_uses_compshare_local_default():
+def test_qwen3_omni_keeps_repo_default_when_not_found_on_chengyu():
     options_source = Path("ui/src/helpers/captionOptions.ts").read_text(
         encoding="utf-8"
     )

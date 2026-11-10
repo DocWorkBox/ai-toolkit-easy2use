@@ -62,11 +62,6 @@ CONVROT_MODELS = {
         "base_repo": "Qwen/Qwen3-Omni-30B-A3B-Thinking",
         "thinking": True,
     },
-    "/model/HuggingFace/ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated": {
-        "filename": "huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors",
-        "base_repo": "Qwen/Qwen3-Omni-30B-A3B-Thinking",
-        "thinking": True,
-    },
 }
 DEFAULT_CONVROT_MODEL = "ai-toolkit/Qwen3-Omni-30B-A3B-Instruct"
 
@@ -555,10 +550,12 @@ class Qwen3OmniCaptioner(BaseCaptioner):
     def _resolve_base_assets(self, base_repo: str) -> str:
         """Prefer config and processor assets stored under toolkit models."""
         from toolkit.paths import TOOLKIT_ROOT
+        from toolkit.chengyu_model_storage import seed_project_assets
 
         local_dir = os.path.join(
             TOOLKIT_ROOT, "models", os.path.basename(base_repo)
         )
+        seed_project_assets(base_repo, local_dir)
         if os.path.isfile(os.path.join(local_dir, "config.json")):
             return local_dir
         return base_repo

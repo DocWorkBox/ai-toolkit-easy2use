@@ -45,7 +45,7 @@ from toolkit.lora_special import LoRASpecialNetwork
 from toolkit.metadata import get_meta_for_safetensors
 from toolkit.models.base_model import BaseModel
 from toolkit.models.v2.resolver import find_file_recursive, resolve_lora_file
-from toolkit.paths import TOOLKIT_ROOT
+from toolkit.paths import MODELS_PATH, TOOLKIT_ROOT
 from toolkit.samplers.custom_flowmatch_sampler import (
     CustomFlowMatchEulerDiscreteScheduler,
 )
@@ -91,7 +91,7 @@ scheduler_config = {
 # model's configs and processor in a separate local directory because the
 # repack omits them.
 COMFY_REPO = "Comfy-Org/Qwen-Image-2.1"
-BASE_REPO = "/model/ModelScope/Qwen/Qwen-Image-2.1"
+BASE_REPO = "/chenyudata/Other/Qwen-Image-2.1"
 TURBO_COMFY_FILES = [
     "diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
 ]
@@ -319,7 +319,7 @@ class QwenImage2Model(BaseModel):
             self.model_config.assistant_lora_path,
             status_fn=self.print_and_status_update,
             download_dir=os.path.join(
-                TOOLKIT_ROOT, "models", "loras", "training_adapters"
+                MODELS_PATH, "loras", "training_adapters"
             ),
         )
         self.model_config.assistant_lora_path = lora_path
