@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path, PurePosixPath
 
@@ -48,6 +49,26 @@ def load_catalog(catalog_path=None):
     return data
 
 
+def _superseded_training_adapters(entries):
+    versions = {}
+    for entry in entries:
+        if entry.get("category") != "训练适配器" or entry.get("kind") != "file":
+            continue
+        name = PurePosixPath(entry["path"]).name.casefold()
+        # Only the trailing adapter version changes: e.g. "8step_v2" in
+        # the model name identifies a different variant, not adapter v2.
+        match = re.fullmatch(r"(.+_training_adapter)_(?:v(\d+(?:\.\d+)*)|alpha)\.safetensors", name)
+        if match:
+            series = (entry.get("family", "").casefold(), match[1])
+            version = tuple(map(int, match[2].split("."))) if match[2] else (-1,)
+            versions.setdefault(series, []).append((version, entry["id"]))
+    hidden = set()
+    for group in versions.values():
+        latest = max(version for version, _ in group)
+        hidden.update(key for version, key in group if version < latest)
+    return hidden
+
+
 def scan_models(repo_root=None, catalog_path=None):
     root = Path(repo_root or util.REPO_ROOT).resolve()
     catalog_file = Path(catalog_path or root / CATALOG_FILENAME)
@@ -61,6 +82,7 @@ def scan_models(repo_root=None, catalog_path=None):
     recognized_actual_top_level = set()
     results = []
     family_positions = {}
+    hidden_adapters = _superseded_training_adapters(catalog["models"])
 
     for catalog_index, entry in enumerate(catalog["models"]):
         portable_path = entry.get("path", "")
@@ -100,7 +122,10 @@ def scan_models(repo_root=None, catalog_path=None):
         )
         if uses_configured_root:
             result["detail"] = "%s；%s" % (result["detail"], CONFIGURED_MODELS_HINT)
-        results.append(result)
+        # Keep recognizing old installations below so they do not reappear as
+        # unknown files. Only visible versions contribute to the list/counts.
+        if entry["id"] not in hidden_adapters:
+            results.append(result)
 
         if uses_configured_root:
             continue

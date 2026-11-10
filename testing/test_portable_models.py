@@ -86,9 +86,49 @@ def test_training_adapter_scan_uses_toolkit_root_not_external_models(tmp_path, m
     report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
     for filename in filenames:
         matches = [item for item in report["models"] if item["path"].endswith("/" + filename)]
+        if filename == "minimax_h3_ref2va_training_adapter_v1.safetensors":
+            assert matches == []
+            assert (folder / filename).read_bytes() == b"weights"
+            continue
         assert len(matches) == 1, filename
         assert matches[0]["status"] == "ready", matches[0]
         assert matches[0]["absolute_path"] == str((folder / filename).resolve())
+
+
+def test_only_current_trainer_adapter_versions_are_visible(tmp_path, monkeypatch):
+    from manager.models import scan_models
+
+    monkeypatch.setenv("MODELS_PATH", str(tmp_path / "external"))
+    old = tmp_path / "models/minimax_h3_training_adapter/minimax_h3_training_adapter_v1.safetensors"
+    old.parent.mkdir(parents=True)
+    old.write_bytes(b"existing checkpoint")
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    visible = {
+        row["path"] for row in report["models"]
+        if row["category"] == "训练适配器" and "_training_adapter_" in row["path"]
+    }
+    trainer = set(re.findall(r"""['"](\./models/[^'"]+_training_adapter_[^'"]+\.safetensors)['"]""", _model_ui()))
+    assert visible == trainer
+    assert old.read_bytes() == b"existing checkpoint"
+    assert not any(row["id"] == "unrecognized:minimax_h3_training_adapter" for row in report["models"])
+    assert report["summary"]["total"] == len(report["models"])
+
+
+def test_training_adapter_versions_are_numeric_and_variant_specific(tmp_path):
+    from manager.models import scan_models
+
+    def entry(stem, version):
+        filename = f"{stem}_training_adapter_{version}.safetensors"
+        return {"id": filename, "name": filename, "family": "Test", "category": "训练适配器",
+                "path": f"./models/loras/training_adapters/{filename}", "kind": "file"}
+
+    entries = [entry("fast_8step_v2", v) for v in ["v10", "alpha", "v2", "v1"]]
+    entries.append(entry("fast_omni", "v1"))
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"schema": 1, "models": entries}), encoding="utf-8")
+    report = scan_models(repo_root=tmp_path, catalog_path=catalog)
+    assert {r["id"] for r in report["models"]} == {entries[0]["id"], entries[-1]["id"]}
+    assert report["summary"]["missing"] == 2
 
 
 def test_catalog_defines_special_component_layouts():
