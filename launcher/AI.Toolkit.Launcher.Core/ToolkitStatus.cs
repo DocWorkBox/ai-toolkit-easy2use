@@ -85,12 +85,15 @@ public sealed record ModelStatusItem(
         && uri.Scheme == Uri.UriSchemeHttps;
 }
 
+public sealed record ModelFilter(string Id, string Label, string Group, IReadOnlyList<string> Models, bool Remote = false);
+
 public sealed record ModelScanReport(
     string ModelsRoot,
     string CatalogPath,
     ModelScanSummary Summary,
     IReadOnlyList<ModelStatusItem> Models,
-    string ConfiguredModelsRoot = ""
+    string ConfiguredModelsRoot = "",
+    IReadOnlyList<ModelFilter>? Filters = null
 );
 
 public static class ToolkitStatusParser
@@ -197,6 +200,13 @@ public static class ToolkitStatusParser
             }
         }
 
+        var filters = new List<ModelFilter>();
+        if (root.TryGetProperty("filters", out var choices) && choices.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var choice in choices.EnumerateArray())
+                filters.Add(new ModelFilter(String(choice, "id"), String(choice, "label"), String(choice, "group"),
+                    StringArray(choice, "models"), Boolean(choice, "remote")));
+        }
         return new ModelScanReport(
             String(root, "models_root"),
             String(root, "catalog_path"),
@@ -208,7 +218,7 @@ public static class ToolkitStatusParser
                 Integer(summary, "total")
             ),
             models,
-            String(root, "configured_models_root", String(root, "models_root"))
+            String(root, "configured_models_root", String(root, "models_root")), filters
         );
     }
 

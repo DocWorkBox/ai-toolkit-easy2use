@@ -31,6 +31,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private string _modelsRoot;
     private string _configuredModelsRoot;
     private string _modelSummaryText = "尚未扫描模型目录";
+    private static readonly ModelFilter AllModels = new("", "全部架构", "全部", Array.Empty<string>());
+    private ModelScanReport? _lastModelScan;
+    private ModelFilter _selectedModelFilter = AllModels;
+    public IReadOnlyList<ModelFilter> ModelFilters { get; private set; } = new[] { AllModels };
+    public ModelFilter SelectedModelFilter
+    {
+        get => _selectedModelFilter;
+        set
+        {
+            if (value != null && SetField(ref _selectedModelFilter, value))
+                ApplyModelFilter();
+        }
+    }
     private bool _isBusy;
     private bool _isUiRunning;
     private bool _isShuttingDown;
@@ -320,21 +333,35 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 ConfiguredModelsRoot = string.IsNullOrWhiteSpace(report.ConfiguredModelsRoot)
                     ? report.ModelsRoot
                     : report.ConfiguredModelsRoot;
-                Models.Clear();
-                foreach (var model in report.Models)
-                {
-                    Models.Add(model);
-                }
-
+                var previousId = SelectedModelFilter.Id;
+                _lastModelScan = report;
+                ModelFilters = new[] { AllModels }.Concat(report.Filters ?? Array.Empty<ModelFilter>()).ToArray();
+                OnPropertyChanged(nameof(ModelFilters));
+                _selectedModelFilter = ModelFilters.FirstOrDefault(f => f.Id == previousId) ?? AllModels;
+                OnPropertyChanged(nameof(SelectedModelFilter));
+                ApplyModelFilter();
                 var summary = report.Summary;
-                ModelSummaryText = $"可用 {summary.Ready} · 文件问题 {summary.Issues} · 未安装 {summary.Missing} · 未识别 {summary.Unrecognized}";
                 StatusText = "模型目录扫描完成";
                 AppendLog(
                     summary.Issues > 0 ? "warning" : "success",
-                    $"模型扫描：{ModelSummaryText}；便携目录：{report.ModelsRoot}；MODELS_PATH：{ConfiguredModelsRoot}"
+                    $"模型扫描：共 {summary.Total} 项；便携目录：{report.ModelsRoot}；MODELS_PATH：{ConfiguredModelsRoot}"
                 );
             }
         );
+    }
+
+    private void ApplyModelFilter()
+    {
+        if (_lastModelScan is null) return;
+        var filter = SelectedModelFilter;
+        var ids = filter.Id.Length == 0 ? null : filter.Models.ToHashSet(StringComparer.Ordinal);
+        Models.Clear();
+        foreach (var model in _lastModelScan.Models)
+            if (ids is null || ids.Contains(model.Id)) Models.Add(model);
+
+        ModelSummaryText = filter.Remote ? "远程 API，无需本地模型文件"
+            : Models.Count == 0 && ids != null ? "没有对应的本地检查项"
+            : $"可用 {Models.Count(m => m.Status == "ready")} · 文件问题 {Models.Count(m => m.Status is "incomplete" or "misplaced" or "name_mismatch")} · 未安装 {Models.Count(m => m.Status == "missing")} · 未识别 {Models.Count(m => m.Status == "unrecognized")}";
     }
 
     public async Task StartUiAsync()

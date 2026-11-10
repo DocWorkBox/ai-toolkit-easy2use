@@ -14,6 +14,11 @@
     UseLayoutRounding="True"
     WindowStartupLocation="CenterScreen">
     <Window.Resources>
+        <CollectionViewSource x:Key="GroupedModelFilters" Source="{Binding ModelFilters}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Group" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
         <Style x:Key="StatusPanelStyle" TargetType="Border">
             <Setter Property="Padding" Value="16,14" />
             <Setter Property="Margin" Value="0,0,10,0" />
@@ -217,6 +222,7 @@
                 </RadioButton>
                 <RadioButton
                     x:Name="ModelsNav"
+                    Checked="OnModelsPageSelected"
                     GroupName="MainNavigation"
                     Style="{StaticResource NavigationTabStyle}">
                     <StackPanel Orientation="Horizontal">
@@ -655,17 +661,39 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            FontSize="12"
-                            Foreground="{StaticResource MutedTextBrush}"
-                            Text="{Binding ModelSummaryText}" />
-                        <TextBlock
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            FontSize="11"
-                            Foreground="{StaticResource MutedTextBrush}"
-                            Text="下载按钮仅打开官方页面，不会自动安装" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="模型架构" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox x:Name="ArchitectureFilter" AutomationProperties.Name="模型架构"
+                                      Width="310" Height="30" MaxDropDownHeight="420"
+                                      ItemsSource="{Binding Source={StaticResource GroupedModelFilters}}"
+                                      SelectedItem="{Binding SelectedModelFilter, Mode=TwoWay}"
+                                      IsSynchronizedWithCurrentItem="False" TextSearch.TextPath="Label"
+                                      DisplayMemberPath="Label" ToolTip="{Binding SelectedModelFilter.Label}"
+                                      Foreground="#171917">
+                                <ComboBox.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#171917" />
+                                    </Style>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Setter Property="Foreground" Value="#171917" />
+                                        <Setter Property="Padding" Value="12,4" />
+                                    </Style>
+                                </ComboBox.Resources>
+                                <ComboBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#DDE5DF" Padding="6,3">
+                                                    <TextBlock Text="{Binding Name}" Foreground="#254A34" FontWeight="SemiBold" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ComboBox.GroupStyle>
+                            </ComboBox>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{StaticResource MutedTextBrush}" Text="{Binding ModelSummaryText}" />
                     </Grid>
                 </Border>
 

@@ -190,6 +190,7 @@ internal static class Program
               "models_root": "C:\\portable\\models",
               "configured_models_root": "D:\\ComfyUI\\models",
               "catalog_path": "C:\\portable\\portable_models.json",
+              "filters": [{"id":"a","label":"A","group":"image","models":["missing-model"]}],
               "summary": {
                 "ready": 1,
                 "issues": 1,
@@ -237,6 +238,7 @@ internal static class Program
             """;
 
         var report = ToolkitStatusParser.ParseModelScan(json);
+        Assert.Equal("missing-model", report.Filters!.Single().Models.Single());
 
         Assert.Equal(@"C:\portable\models", report.ModelsRoot);
         Assert.Equal(@"D:\ComfyUI\models", report.ConfiguredModelsRoot);
@@ -846,13 +848,24 @@ internal static class Program
                 @"C:\portable\ai-toolkit\portable_models.json",
                 new ModelScanSummary(0, 0, 1, 0, 1),
                 new[] { missing },
-                @"D:\ComfyUI\models"
+                @"D:\ComfyUI\models",
+                new[] {
+                    new ModelFilter("a", "A", "图像", new[] { missing.Id }),
+                    new ModelFilter("api", "API", "打标模型", Array.Empty<string>(), true)
+                }
             ),
         };
         var viewModel = new MainViewModel(backend, new ImmediateSynchronizationContext());
 
         await viewModel.ScanModelsAsync();
 
+        Assert.Equal(1, viewModel.Models.Count);
+        viewModel.SelectedModelFilter = viewModel.ModelFilters.Single(f => f.Id == "api");
+        Assert.Equal(0, viewModel.Models.Count);
+        Assert.True(viewModel.ModelSummaryText.Contains("API"), "API uses no local files");
+        await viewModel.ScanModelsAsync();
+        Assert.Equal("api", viewModel.SelectedModelFilter.Id);
+        viewModel.SelectedModelFilter = viewModel.ModelFilters.First();
         Assert.Equal(1, viewModel.Models.Count);
         Assert.True(
             viewModel.ModelSummaryText.Contains("未安装 1", StringComparison.Ordinal),
@@ -979,8 +992,19 @@ internal static class Program
                 Environment.SetEnvironmentVariable("WINDIR", null, EnvironmentVariableTarget.Process);
                 var app = new App();
                 app.InitializeComponent();
+                var backend = new FakeLauncherBackend();
+                var model = new ModelStatusItem("test-weight", "Weight", "打标模型", "missing",
+                    "./models/test", "", "", "", false);
+                backend.ModelReport = backend.ModelReport with
+                {
+                    Models = new[] { model },
+                    Filters = new[] {
+                        new ModelFilter("image", "Test Image", "图像", new[] { model.Id }),
+                        new ModelFilter("api", "Test API", "打标模型", Array.Empty<string>(), true)
+                    }
+                };
                 var viewModel = new MainViewModel(
-                    new FakeLauncherBackend(),
+                    backend,
                     new ImmediateSynchronizationContext()
                 );
                 var window = new MainWindow(viewModel);
@@ -995,19 +1019,6 @@ internal static class Program
                 Assert.True(
                     configuredModelsRoot is not null,
                     "model management must expose the configured MODELS_PATH"
-                );
-                viewModel.Models.Add(
-                    new ModelStatusItem(
-                        "missing-model",
-                        "Missing Model",
-                        "模型组件",
-                        "missing",
-                        "./models/Missing-Model",
-                        @"C:\portable\ai-toolkit\models\Missing-Model",
-                        "未安装。请下载后放到 ./models/Missing-Model",
-                        "https://huggingface.co/example/Missing-Model",
-                        true
-                    )
                 );
                 modelsNav!.IsChecked = true;
                 var toolTipStyle = app.TryFindResource(typeof(System.Windows.Controls.ToolTip)) as System.Windows.Style;
@@ -1053,6 +1064,15 @@ internal static class Program
                 window.Arrange(new System.Windows.Rect(0, 0, 1180, 780));
                 window.UpdateLayout();
                 Assert.True(modelGrid!.IsVisible, "model grid must be visible on the model page");
+                var filter = (System.Windows.Controls.ComboBox)window.FindName("ArchitectureFilter");
+                Assert.Equal(3, filter.Items.Count);
+                Assert.Equal(3, filter.Items.Groups!.Count);
+                filter.IsDropDownOpen = true;
+                filter.SelectedItem = viewModel.ModelFilters.Single(f => f.Id == "api");
+                Assert.Equal(0, modelGrid.Items.Count);
+                filter.SelectedItem = viewModel.ModelFilters.Single(f => f.Id == "image");
+                Assert.Equal(1, modelGrid.Items.Count);
+                filter.IsDropDownOpen = false;
                 Assert.True(
                     modelGrid.ActualWidth > 800 && modelGrid.ActualHeight > 300,
                     "model grid must retain usable dimensions at the default window size"

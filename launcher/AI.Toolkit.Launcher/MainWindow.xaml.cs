@@ -27,6 +27,16 @@ public partial class MainWindow : Window
     {
         Loaded -= OnLoaded;
         await ViewModel.InitializeAsync();
+        ScanOnFirstVisit();
+    }
+
+    private void OnModelsPageSelected(object sender, RoutedEventArgs e) => ScanOnFirstVisit();
+
+    private void ScanOnFirstVisit()
+    {
+        if (IsLoaded && ModelsNav.IsChecked == true && ViewModel.ModelFilters.Count == 1
+            && ViewModel.ScanModelsCommand.CanExecute(null))
+            ViewModel.ScanModelsCommand.Execute(null);
     }
 
     private void OnLogsChanged(object? sender, NotifyCollectionChangedEventArgs e)

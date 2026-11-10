@@ -26,6 +26,31 @@ def _model_ui():
     return "\n".join(_read(path) for path in MODEL_UI_PATHS)
 
 
+def test_model_filters_match_trainer_and_caption_variants(tmp_path):
+    from manager.models import scan_models
+
+    report = scan_models(repo_root=tmp_path, catalog_path=CATALOG_PATH)
+    filters = {f["id"]: f for f in report["filters"]}
+    training = {k: f["label"] for k, f in filters.items() if not k.startswith("caption/")}
+    assert training == dict(re.findall(r'^    name: "([^"]+)",\s*label: "([^"]+)"', _model_ui(), re.M))
+    rows = {m["id"] for m in report["models"]}
+    for f in filters.values():
+        assert set(f["models"]) <= rows
+        assert f["models"] or f.get("remote")
+    assert "moss-image-edit-processor" not in filters["moss_image"]["models"]
+    assert "moss-image-edit-processor" in filters["moss_image:base_edit"]["models"]
+    assert "moss-image-sft" not in filters["moss_image:base_edit"]["models"]
+    assert "minimax-h3-video-vae" in filters["minimax_h3_omni"]["models"]
+    assert "minimax-h3-training-adapter-v3" not in filters["minimax_h3_omni"]["models"]
+    captions = [f for f in filters.values() if f["group"] == "打标模型"]
+    assert {f["id"].split("/")[1] for f in captions} == set(re.findall(
+        r"^        name: '([^']+)'", _read("ui/src/helpers/captionOptions.ts"), re.M))
+    qwen = [set(f["models"]) for f in captions if "/Qwen38Captioner/" in f["id"]]
+    assert {"qwen38-w4a8", "qwen38-assets"} in qwen
+    assert {"qwen38-bf16", "qwen38-assets"} in qwen
+    assert filters["caption/RemoteAPICaptioner"]["remote"]
+
+
 def test_catalog_uses_local_paths_and_official_download_links():
     catalog = _catalog()
 

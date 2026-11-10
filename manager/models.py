@@ -173,6 +173,7 @@ def scan_models(repo_root=None, catalog_path=None):
     return {
         "schema": 1,
         "models_root": str(models_root),
+        "filters": catalog.get("filters", []),
         "configured_models_root": str(configured_models_root),
         "catalog_path": str(catalog_file.resolve()),
         "summary": summary,
