@@ -93,13 +93,13 @@ const discoveredDefaults = {
   boogu_image_edit: '/chenyudata/Other/Boogu-Image-0.1-Edit',
 };
 const missingDefaults = {
-  p_h3_image: 'PrunaAI/P-H3-Image-Comfy',
-  minimax_h3_omni: 'FastVideo/FastH3-Omni-Comfy',
-  minimax_h3_vsa: 'FastVideo/FastVideo-FastH3-Comfy',
+  p_h3_image: '/poddata/ai-toolkit-models',
+  minimax_h3_omni: '/poddata/ai-toolkit-models',
+  minimax_h3_vsa: '/poddata/ai-toolkit-models',
   ming_image: 'Comfy-Org/Ming-Image',
   nucleus_image: 'NucleusAI/Nucleus-Image',
   hidream_o1: 'HiDream-ai/HiDream-O1-Image',
-  zimage_l2p: 'zhen-nan/L2P/model-1k-merge.safetensors',
+  zimage_l2p: '/poddata/ai-toolkit-models/diffusion_models/model-1k-merge.safetensors',
   prx_pixel: 'Photoroom/prxpixel-t2i',
   iris3b: 'speridlabs/iris-3b',
   mageflow: 'microsoft/Mage-Flow-Base',
@@ -119,7 +119,7 @@ test('current plugin architecture and auxiliary repo defaults are retained', () 
     assert.equal(diffusion.get(name).get('config.process[0].model.extras_name_or_path'), 'Tongyi-MAI/Z-Image-Turbo');
   }
   assert.equal(diffusion.get('zimage:turbo').get('config.process[0].model.assistant_lora_path'),
-    'ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors');
+    '/poddata/ai-toolkit-models/loras/training_adapters/zimage_turbo_training_adapter_v2.safetensors');
   assert.equal(diffusion.get('zimage_l2p').get('config.process[0].model.extras_name_or_path'),
     '/chenyudata/Other/Z-Image-Turbo');
 });
@@ -129,7 +129,59 @@ test('captioning uses available Qwen3-VL weights without substituting other Qwen
   assert.equal(captions.get('Qwen3VLCaptioner').get('config.process[0].caption.model_name_or_path'),
     '/chenyudata/Other/Qwen3-VL-8B-Instruct');
   assert.equal(captions.get('Qwen38Captioner').get('config.process[0].caption.model_name_or_path'),
-    'Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors');
+    '/poddata/ai-toolkit-models/text_encoders/qwen3.8_27b_w4a8.safetensors');
+});
+
+test('downloaded audio and language models are preconfigured at their final paths', () => {
+  const audio = modelDefaults('extensions_built_in/audio_models/ui.tsx');
+  const llm = modelDefaults('extensions_built_in/llm_models/ui.tsx');
+  for (const [arch, filename] of Object.entries({
+    ace_step_15: 'ace_step_1.5_base_aio.safetensors',
+    ace_step_15_xl: 'ace_step_1.5_xl_base_aio.safetensors',
+    yue2: 'yue2_3b_int8_convrot.safetensors',
+  })) {
+    assert.equal(audio.get(arch).get('config.process[0].model.name_or_path'),
+      `/poddata/ai-toolkit-models/checkpoints/${filename}`);
+  }
+  assert.equal(llm.get('qwen38').get('config.process[0].model.name_or_path'),
+    '/poddata/ai-toolkit-models/text_encoders/qwen3.8_27b_w4a8.safetensors');
+});
+
+test('captioner defaults point to the downloaded HF snapshots and Huihui checkpoint', () => {
+  const captions = modelDefaults('ui/src/helpers/captionOptions.ts');
+  for (const [name, relative] of Object.entries({
+    AceStepCaptioner: 'huggingface/ACE-Step/acestep-transcriber',
+    MossMusicCaptioner: 'huggingface/OpenMOSS-Team/MOSS-Music-8B-Instruct',
+    Qwen3OmniCaptioner: 'text_encoders/huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors',
+  })) {
+    assert.equal(captions.get(name).get('config.process[0].caption.model_name_or_path'),
+      `/poddata/ai-toolkit-models/${relative}`);
+  }
+  assert.equal(captions.get('AceStepCaptioner').get('config.process[0].caption.model_name_or_path2'),
+    '/poddata/ai-toolkit-models/huggingface/ACE-Step/acestep-captioner');
+});
+
+test('training adapters and option callbacks retain the final local filenames', () => {
+  const adapters = {
+    'qwen_image_2:turbo': 'qwen_image_2_turbo_training_adapter_v1.safetensors',
+    ming_image: 'ming_image_01_design_training_adapter_v1.safetensors',
+    'zimage:turbo': 'zimage_turbo_training_adapter_v2.safetensors',
+    minimax_h3: 'minimax_h3_training_adapter_v3.safetensors',
+    minimax_h3_ref2va: 'minimax_h3_ref2va_training_adapter_v2.safetensors',
+    p_h3_image: 'p_h3_image_training_adapter_v1.safetensors',
+    minimax_h3_omni: 'fastvideo_fasth3_omni_training_adapter_v1.safetensors',
+    minimax_h3_vsa: 'fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors',
+    'krea2:turbo': 'krea2_turbo_training_adapter_v1.safetensors',
+    'krea2:o_edit_turbo': 'krea2_turbo_training_adapter_v1.safetensors',
+  };
+  for (const [arch, file] of Object.entries(adapters)) {
+    assert.equal(diffusion.get(arch).get('config.process[0].model.assistant_lora_path'),
+      `/poddata/ai-toolkit-models/loras/training_adapters/${file}`);
+  }
+  assert.equal(diffusion.get('ideogram4').get('config.process[0].model.unconditional_lora_path'),
+    '/poddata/ai-toolkit-models/loras/ideogram_4_unconditional_lora_r16.safetensors');
+  const text = source('extensions_built_in/diffusion_models/ui.tsx');
+  assert.doesNotMatch(text, /["']ostris\/minimax_h3_training_adapter\//);
 });
 
 test('FastH3 variants reuse the verified local H3 text encoder and VAEs', () => {

@@ -34,8 +34,8 @@ current plugin and was not restored from the old options.
 | FLUX.2 Mistral text encoder | `/chenyudata/Other/Mistral-Small-3.1-24B-Instruct-2503` |
 | LTX-2 Gemma text encoder | `/chenyudata/Other/gemma-3-12b-it-qat-q4_0-unquantized` |
 
-FastH3 8-Step V2 and Omni keep official repo defaults for their missing DiTs,
-but reuse the confirmed local MiniMax-H3 text encoder and both VAEs.
+FastH3 8-Step V2 and Omni use `/poddata/ai-toolkit-models` for their downloaded
+DiTs, and reuse the confirmed local MiniMax-H3 text encoder and both VAEs.
 
 MOSS and Fibo keep official repo identifiers in the UI to retain variant and
 precision selection. Existing weights are resolved under
@@ -53,7 +53,8 @@ Its fallback repos remain `Qwen/Qwen3-4B` and `Qwen/Qwen3-8B`.
 ## Not Matched Locally
 
 These versions were not found in the inspected shared model directories or
-targeted checkpoint search. They retain official repo defaults:
+targeted checkpoint search. Models outside the creator download set retain
+official repo defaults:
 
 - P-H3-Image; FastH3 8-Step V2; FastH3 Omni.
 - Ming-Image; Nucleus-Image; HiDream-O1; Z-Image L2P; PRX Pixel; IRIS-3B;
@@ -72,8 +73,9 @@ to contain the toolkit's required embedded configuration.
 ## Creator Downloads
 
 The requested missing models download to `/poddata/ai-toolkit-models/` using
-`scripts/chengyu_models.json`. Model repo defaults remain valid download sources;
-their on-disk destinations are selected by the storage layer.
+`scripts/chengyu_models.json`. UI defaults are preconfigured at the final local
+locations before downloads finish. Official repo identifiers remain in the
+manifest and download fallbacks, not as the selected local model paths.
 
 - `diffusion_models/`: P-H3, FastH3 V2/Omni DiTs and Z-Image L2P.
 - `text_encoders/`: the P-H3 encoder, Qwen3.8 W4A8 and the default Huihui
@@ -112,8 +114,10 @@ configured writable `MODELS_PATH`, whose chengyu default is now
 settings still override the default. Saved settings equal to the old project
 default are recognized without a database migration.
 
-H3-family training adapters retain repo references and use
-`<MODELS_PATH>/loras/training_adapters/`. Existing Qwen3.8, P-H3, FLUX.3,
+H3-family training adapter downloads retain repo references and use
+`/poddata/ai-toolkit-models/loras/training_adapters/`. Their UI defaults and option
+callbacks select the local files; the manifest retains the repo references.
+Existing Qwen3.8, P-H3, FLUX.3,
 MOSS, Omni and LTX tokenizer/config caches remain enabled. API captioning,
 localization, custom optimizers and staged sampling are unchanged.
 
@@ -121,3 +125,7 @@ Small downloaded P-H3, Qwen3.8 and Omni configurations seed the existing
 `<TOOLKIT_ROOT>/models/` caches without copying weights or overwriting valid
 cached files. Completed full HF snapshots are read offline from the creator
 volume; missing/partial snapshots are completed in the same location.
+
+Preconfigured paths affect newly created configurations. Saved jobs are not
+rewritten. Missing explicit local weight files report that the file may still
+be downloading rather than treating an absolute filesystem path as a Hub repo.

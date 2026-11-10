@@ -8,7 +8,7 @@ def _source(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_missing_chengyu_audio_models_keep_official_repo_defaults():
+def test_chengyu_audio_models_use_creator_paths_without_replacing_undownloaded_repos():
     sources = "\n".join(
         _source(path)
         for path in (
@@ -25,11 +25,11 @@ def test_missing_chengyu_audio_models_keep_official_repo_defaults():
         )
     )
     expected_paths = (
-        "Comfy-Org/YuE2",
+        "/poddata/ai-toolkit-models/checkpoints/yue2_3b_int8_convrot.safetensors",
         "Qwen/Qwen2.5-Omni-7B",
-        "OpenMOSS-Team/MOSS-Music-8B-Instruct",
+        "/poddata/ai-toolkit-models/huggingface/OpenMOSS-Team/MOSS-Music-8B-Instruct",
         "ai-toolkit/Qwen2.5-Omni-7B",
-        "m-a-p/MERT-v2-FullSong",
+        "/poddata/ai-toolkit-models/huggingface/m-a-p/MERT-v2-FullSong",
         "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4",
         "ai-toolkit/melbandroformer",
     )

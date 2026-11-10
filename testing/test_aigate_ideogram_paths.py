@@ -44,12 +44,12 @@ def test_compshare_krea2_uses_local_model_paths():
 
     assert '"/chenyudata/Other/Krea-2-Raw"' in options_source
     assert '"/chenyudata/Other/Krea-2-Turbo"' in options_source
-    assert '"ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"' in options_source
+    assert '"/poddata/ai-toolkit-models/loras/training_adapters/krea2_turbo_training_adapter_v1.safetensors"' in options_source
     assert 'name: "krea2:o_edit"' in options_source
     assert 'name: "krea2:o_edit_turbo"' in options_source
     assert options_source.count('"/chenyudata/Other/Krea-2-Raw"') >= 2
     assert options_source.count('"/chenyudata/Other/Krea-2-Turbo"') >= 2
-    assert options_source.count('"ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors"') >= 2
+    assert options_source.count('"/poddata/ai-toolkit-models/loras/training_adapters/krea2_turbo_training_adapter_v1.safetensors"') >= 2
     assert 'QWEN3_VL_PATH = "/chenyudata/Other/Qwen3-VL-4B-Instruct"' in krea2_source
     assert 'QWEN_IMAGE_VAE_PATH = "/chenyudata/Other/Qwen-Image-2512"' in krea2_source
     assert 'QWEN3_VL_PATH = "/datasets/ComfyUI/models/LLM/Qwen-VL/Qwen3-VL-4B-Instruct"' not in krea2_source

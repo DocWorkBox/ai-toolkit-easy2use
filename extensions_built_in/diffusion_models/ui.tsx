@@ -665,7 +665,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
       // training adapter: live on the DiT while training, off while sampling
       "config.process[0].model.assistant_lora_path": [
-        'ostris/qwen_image_2_turbo_training_adapter/qwen_image_2_turbo_training_adapter_v1.safetensors',
+        '/poddata/ai-toolkit-models/loras/training_adapters/qwen_image_2_turbo_training_adapter_v1.safetensors',
         undefined
       ],
       // the turbo checkpoint samples with its own fixed 8-step schedule at
@@ -717,7 +717,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.timestep_type": ["shift", "sigmoid"],
       // training adapter: merged in for training, inverted for sampling
       "config.process[0].model.assistant_lora_path": [
-        "ostris/ming_image_training_adapter/ming_image_01_design_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/ming_image_01_design_training_adapter_v1.safetensors",
         undefined,
       ],
       // recommended: 12 steps, no guidance (the negative is zero conditioning)
@@ -990,7 +990,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.timestep_type": ["weighted", "sigmoid"],
       "config.process[0].model.qtype": ["qfloat8", "qfloat8"],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/zimage_turbo_training_adapter/zimage_turbo_training_adapter_v2.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/zimage_turbo_training_adapter_v2.safetensors",
         undefined,
       ],
       "config.process[0].sample.guidance_scale": [1, 4],
@@ -1077,7 +1077,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v3.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1167,13 +1167,13 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
               "config.process[0].train.guidance_loss_target",
             );
             setJobConfig(
-              "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v3.safetensors",
+              "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
           } else if (value === "both") {
             setJobConfig(true, "config.process[0].train.do_guidance_loss");
             setJobConfig(
-              "ostris/minimax_h3_training_adapter/minimax_h3_training_adapter_v3.safetensors",
+              "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_training_adapter_v3.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
@@ -1259,7 +1259,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v2.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1363,13 +1363,13 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
               "config.process[0].train.guidance_loss_target",
             );
             setJobConfig(
-              "ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v2.safetensors",
+              "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
           } else if (value === "both") {
             setJobConfig(true, "config.process[0].train.do_guidance_loss");
             setJobConfig(
-              "ostris/minimax_h3_training_adapter/minimax_h3_ref2va_training_adapter_v2.safetensors",
+              "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_ref2va_training_adapter_v2.safetensors",
               "config.process[0].model.assistant_lora_path",
             );
             if (!config?.config?.process?.[0]?.train?.guidance_loss_target) {
@@ -1487,7 +1487,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "PrunaAI/P-H3-Image-Comfy",
+        "/poddata/ai-toolkit-models",
         defaultNameOrPath,
       ],
       // the comfy files are pre-quantized int8 ConvRot (DiT, text encoder, VAE);
@@ -1501,7 +1501,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/p_h3_image_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/p_h3_image_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1573,7 +1573,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "FastVideo/FastH3-Omni-Comfy",
+        "/poddata/ai-toolkit-models",
         defaultNameOrPath,
       ],
       "config.process[0].model.model_kwargs": [
@@ -1597,7 +1597,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/fastvideo_fasth3_omni_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/fastvideo_fasth3_omni_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1671,7 +1671,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           setJobConfig(kwargs, "config.process[0].model.model_kwargs");
           setJobConfig(
             value === "ta"
-              ? "ostris/minimax_h3_training_adapter/fastvideo_fasth3_omni_training_adapter_v1.safetensors"
+              ? "/poddata/ai-toolkit-models/loras/training_adapters/fastvideo_fasth3_omni_training_adapter_v1.safetensors"
               : undefined,
             "config.process[0].model.assistant_lora_path",
           );
@@ -1779,7 +1779,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "FastVideo/FastVideo-FastH3-Comfy",
+        "/poddata/ai-toolkit-models",
         defaultNameOrPath,
       ],
       "config.process[0].model.model_kwargs": [
@@ -1803,7 +1803,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1860,7 +1860,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
         ) => {
           setJobConfig(
             value === "ta"
-              ? "ostris/minimax_h3_training_adapter/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors"
+              ? "/poddata/ai-toolkit-models/loras/training_adapters/fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors"
               : undefined,
             "config.process[0].model.assistant_lora_path",
           );
@@ -1885,12 +1885,12 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           不支持首帧或参考条件。
         </p>
         <p>
-          FastH3 DiT 使用 <code>FastVideo/FastVideo-FastH3-Comfy</code>，缺失时下载到训练器的 models 目录；
+          FastH3 DiT 从 <code>/poddata/ai-toolkit-models</code> 读取；
           文本编码器和 VAE 从 <code>/chenyudata/Other/Comfy-Org/MiniMax-H3</code>
           共享。使用的文件如下：
         </p>
         <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
-          <code>{`FastVideo/FastVideo-FastH3-Comfy/
+          <code>{`/poddata/ai-toolkit-models/
 ├── diffusion_models/
 │   └── fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors
 
@@ -2478,7 +2478,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     group: "image",
     defaults: {
       "config.process[0].model.name_or_path": [
-        "zhen-nan/L2P/model-1k-merge.safetensors",
+        "/poddata/ai-toolkit-models/diffusion_models/model-1k-merge.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.extras_name_or_path": [
@@ -2515,7 +2515,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
         defaultSampleConfig,
       ],
       "config.process[0].model.unconditional_lora_path": [
-        "ostris/ideogram_4_unconditional_lora/ideogram_4_unconditional_lora_r16.safetensors",
+        "/poddata/ai-toolkit-models/loras/ideogram_4_unconditional_lora_r16.safetensors",
         undefined,
       ],
     },
@@ -2609,7 +2609,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].network.conv_alpha": [undefined, 16],
       "config.process[0].model.low_vram": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/krea2_turbo_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].sample.guidance_scale": [1, 4],
@@ -2676,7 +2676,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].network.conv_alpha": [undefined, 16],
       "config.process[0].model.low_vram": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/krea2_turbo_training_adapter/krea2_turbo_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/krea2_turbo_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].sample.guidance_scale": [1, 4],

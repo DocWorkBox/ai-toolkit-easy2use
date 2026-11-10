@@ -84,7 +84,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors",
+        "/poddata/ai-toolkit-models/text_encoders/qwen3.8_27b_w4a8.safetensors",
         defaultNameOrPath,
       ],
       "config.process[0].model.quantize": [true, false],

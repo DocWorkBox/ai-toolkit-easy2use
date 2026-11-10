@@ -505,6 +505,10 @@ class Qwen3OmniCaptioner(BaseCaptioner):
         if os.path.isfile(name_or_path):
             self._model_info = info_for_filename(os.path.basename(name_or_path))
             return name_or_path
+        if os.path.isabs(name_or_path) and not os.path.isdir(name_or_path):
+            raise FileNotFoundError(
+                f"Qwen3-Omni checkpoint not found: {name_or_path}. The file may still be downloading."
+            )
 
         model_info = CONVROT_MODELS.get(
             name_or_path, CONVROT_MODELS[DEFAULT_CONVROT_MODEL]

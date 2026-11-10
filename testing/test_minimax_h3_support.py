@@ -63,17 +63,17 @@ def test_minimax_h3_ui_defaults_and_notes_are_localized():
     assert "'datasets.batch_size':" in docs
 
 
-def test_minimax_h3_training_adapter_uses_repo_defaults_and_localized_help():
+def test_minimax_h3_training_adapter_uses_creator_defaults_and_localized_help():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
     docs = DOCS_SOURCE.read_text(encoding="utf-8")
     version = VERSION_SOURCE.read_text(encoding="utf-8")
 
     adapter_path = (
-        "ostris/minimax_h3_training_adapter/"
+        "/poddata/ai-toolkit-models/loras/training_adapters/"
         "minimax_h3_training_adapter_v3.safetensors"
     )
     ref2va_adapter_path = (
-        "ostris/minimax_h3_training_adapter/"
+        "/poddata/ai-toolkit-models/loras/training_adapters/"
         "minimax_h3_ref2va_training_adapter_v2.safetensors"
     )
     assert options.count(adapter_path) == 3
@@ -95,10 +95,10 @@ def test_minimax_h3_training_adapter_uses_repo_defaults_and_localized_help():
     assert 'VERSION = "1.19.0"' in version
 
 
-def test_fasth3_uses_repo_dit_and_chengyu_minimax_components():
+def test_fasth3_uses_creator_dit_and_chengyu_minimax_components():
     options = OPTIONS_SOURCE.read_text(encoding="utf-8")
 
-    assert '"FastVideo/FastVideo-FastH3-Comfy"' in options
+    assert '"/poddata/ai-toolkit-models"' in options
     shared_root = "/chenyudata/Other/Comfy-Org/MiniMax-H3"
     assert (
         f'"{shared_root}/text_encoders/'

@@ -84,6 +84,18 @@ class ChengyuComfyResolverTests(unittest.TestCase):
         self.assertEqual(Path(result), Path(expected))
         self.download.assert_not_called()
 
+    def test_missing_absolute_directory_is_not_treated_as_a_hub_repo(self):
+        missing = (self.project / "not-downloaded-yet").as_posix()
+        self.assertEqual(self.resolver.repo_id_from_name_or_path(missing, "org/repo"), "org/repo")
+
+    def test_missing_explicit_local_weights_never_trigger_invalid_hub_requests(self):
+        missing = (self.project / "pending.safetensors").as_posix()
+        for name in ("resolve_component_file", "resolve_named_file", "resolve_lora_file"):
+            with self.subTest(resolver=name), self.assertRaisesRegex(FileNotFoundError, "missing|not found|downloading"):
+                kwargs = {"folder": "text_encoders"} if name == "resolve_component_file" else {}
+                getattr(self.resolver, name)(missing, **kwargs)
+        self.download.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,12 +2,12 @@ from pathlib import Path
 
 
 HUIHUI_MODEL_PATH = (
-    "ai-toolkit/"
-    "Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated"
+    "/poddata/ai-toolkit-models/text_encoders/"
+    "huihui_qwen3_omni_30b_a3b_thinking_abliterated_convrot8.safetensors"
 )
 
 
-def test_qwen3_omni_keeps_repo_default_when_not_found_on_chengyu():
+def test_qwen3_omni_preconfigures_creator_checkpoint_before_download_finishes():
     options_source = Path("ui/src/helpers/captionOptions.ts").read_text(
         encoding="utf-8"
     )
@@ -31,7 +31,7 @@ def test_qwen3_omni_keeps_repo_default_when_not_found_on_chengyu():
     ) in section
     assert f"model_name_or_path: '{HUIHUI_MODEL_PATH}'" in config_source
     assert "/datasets/studio/huggingface/models" not in section
-    assert f'"{HUIHUI_MODEL_PATH}":' in backend_source
+    assert '"ai-toolkit/Huihui-Qwen3-Omni-30B-A3B-Thinking-abliterated":' in backend_source
 
 
 def test_qwen3_omni_prefers_toolkit_local_base_assets():

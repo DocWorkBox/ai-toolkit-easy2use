@@ -19,7 +19,7 @@ from toolkit.basic import UnusableFileError
 
 from .model import ABC_END, ABC_START, CODEC_SIZE, EOD, INSTRUCTIONS, MUSIC_START
 
-MERT_REPO = "m-a-p/MERT-v2-FullSong"
+MERT_REPO = "/poddata/ai-toolkit-models/huggingface/m-a-p/MERT-v2-FullSong"
 MERT_SAMPLE_RATE = 24000
 MERT_LAYER = 20
 HEAD_REPO = "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4"
@@ -92,8 +92,8 @@ def _rebuild_rotary(model: nn.Module) -> int:
     return n
 
 
-SHEETSAGE_REPO = "m-a-p/SheetSage2"
-SHEETSAGE_FILE = "Comfy-Org/YuE2/audio_encoders/sheetsage2_bf16.safetensors"
+SHEETSAGE_REPO = "/poddata/ai-toolkit-models/huggingface/m-a-p/SheetSage2"
+SHEETSAGE_FILE = "/poddata/ai-toolkit-models/audio_encoders/sheetsage2_bf16.safetensors"
 # tied to token_embedding.weight (loaded); everything else in the Comfy file maps 1:1 onto upstream
 NONPERSISTENT_OK = {"decoder.embed_tokens.weight"}
 SHEETSAGE_SAMPLE_RATE = 24000

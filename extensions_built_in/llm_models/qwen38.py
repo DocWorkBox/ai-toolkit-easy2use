@@ -53,7 +53,7 @@ from .src.qwen38_model import Qwen38Generator, build_sequence_embeds
 from .src.qwen38_assets import resolve_qwen38_assets
 
 BASE_REPO = "Qwen/Qwen3.8-27B"
-DEFAULT_CHECKPOINT = "Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors"
+DEFAULT_CHECKPOINT = "/poddata/ai-toolkit-models/text_encoders/qwen3.8_27b_w4a8.safetensors"
 DEFAULT_INSTRUCTION = "Describe this in detail."
 
 KIND_IMAGE, KIND_VIDEO = 1, 2

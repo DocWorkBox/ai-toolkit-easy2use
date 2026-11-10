@@ -132,6 +132,7 @@ def repo_id_from_name_or_path(
     if (
         name_or_path
         and not os.path.exists(name_or_path)
+        and not os.path.isabs(name_or_path)
         and not name_or_path.endswith(".safetensors")
         and "/" in name_or_path
     ):
@@ -233,6 +234,8 @@ def resolve_component_file(
         if found is not None:
             return found
 
+    if os.path.isabs(path):
+        raise FileNotFoundError(f"{component} not found: {path}. The file may still be downloading.")
     if len(splits) < 3:
         raise FileNotFoundError(
             f"{component} not found: {path}. Must be a local file or "
@@ -287,6 +290,8 @@ def resolve_lora_file(
         if found is not None:
             return found
 
+    if os.path.isabs(path):
+        raise FileNotFoundError(f"LoRA not found: {path}. The file may still be downloading.")
     if len(splits) < 3:
         raise FileNotFoundError(
             f"LoRA not found: {path}. Must be a local file or "
@@ -314,6 +319,8 @@ def resolve_named_file(
     (downloaded into the models folder at its repo-relative path)."""
     if os.path.exists(path):
         return path
+    if os.path.isabs(path):
+        raise FileNotFoundError(f"{component} not found: {path}. The file may still be downloading.")
     splits = path.split("/")
     if len(splits) < 3:
         raise ValueError(

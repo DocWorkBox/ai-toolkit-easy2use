@@ -293,6 +293,10 @@ class ZImageL2PModel(ZImageModel):
         self.print_and_status_update("Loading ZImage model")
         model_path = self.model_config.name_or_path
         base_model_path = self.model_config.extras_name_or_path
+        if os.path.isabs(model_path) and not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"Z-Image L2P checkpoint not found: {model_path}. The file may still be downloading."
+            )
 
         # If model_path looks like "<repo_org>/<repo_name>/.../file.safetensors"
         # and isn't a local file or directory, resolve it from HF Hub. Cache the

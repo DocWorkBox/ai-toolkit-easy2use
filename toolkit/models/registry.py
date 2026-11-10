@@ -19,7 +19,7 @@ GENERIC = {"modality": "image", "model": {}, "sample": dict(IMG)}
 # size_locked: only the default resolution is valid
 ARCH_REGISTRY: Dict[str, dict] = {
     "zimage": {"modality": "image", "model": {"name_or_path": "Tongyi-MAI/Z-Image-Turbo"}, "sample": {**IMG, "num_inference_steps": 8, "guidance_scale": 1.0}},
-    "zimage_l2p": {"modality": "image", "model": {"name_or_path": "zhen-nan/L2P/model-1k-merge.safetensors", "extras_name_or_path": "Tongyi-MAI/Z-Image-Turbo", "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 8, "guidance_scale": 1.0}},
+    "zimage_l2p": {"modality": "image", "model": {"name_or_path": "/poddata/ai-toolkit-models/diffusion_models/model-1k-merge.safetensors", "extras_name_or_path": "/chenyudata/Other/Z-Image-Turbo", "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 8, "guidance_scale": 1.0}},
     "qwen_image": {"modality": "image", "model": {"name_or_path": "Qwen/Qwen-Image", "quantize": True, "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 20}},
     "qwen_image_edit": {"modality": "image", "model": {"name_or_path": "Qwen/Qwen-Image-Edit", "quantize": True, "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 20}, "needs_control_image": True},
     "qwen_image_edit_plus": {"modality": "image", "model": {"name_or_path": "Qwen/Qwen-Image-Edit-2509", "quantize": True, "quantize_te": True}, "sample": {**IMG, "num_inference_steps": 20}, "needs_control_image": True},
@@ -61,9 +61,9 @@ ARCH_REGISTRY: Dict[str, dict] = {
     "moss_image:edit": {"modality": "image", "model": {"name_or_path": "OpenMOSS-Team/MOSS-Image-SFT", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8", "model_kwargs": {"edit": True, "kv_cache": True, "match_target_res": True, "uncond_skip_layers": [22]}}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 3.0}, "needs_control_image": True},
     "moss_image:base_edit": {"modality": "image", "model": {"name_or_path": "OpenMOSS-Team/MOSS-Image-Base", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8", "model_kwargs": {"edit": True, "kv_cache": True, "match_target_res": True, "uncond_skip_layers": [22]}}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 3.0}, "needs_control_image": True},
     "fibo2": {"modality": "image", "model": {"name_or_path": "Comfy-Org/Fibo-2.0", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8"}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 5.0}},
-    "ace_step_15": {"modality": "audio", "model": {"name_or_path": "ostris/ace_step_1.5_ComfyUI_files/ace_step_1.5_base_aio.safetensors", "quantize": True, "quantize_te": True}, "sample": {"width": 512, "height": 512, "num_inference_steps": 20, "guidance_scale": 4.0}},
+    "ace_step_15": {"modality": "audio", "model": {"name_or_path": "/poddata/ai-toolkit-models/checkpoints/ace_step_1.5_base_aio.safetensors", "quantize": True, "quantize_te": True}, "sample": {"width": 512, "height": 512, "num_inference_steps": 20, "guidance_scale": 4.0}},
     "qwen25_omni": {"modality": "text", "model": {"name_or_path": "ai-toolkit/Qwen2.5-Omni-7B/qwen2_5_omni_7b_convrot8.safetensors", "quantize": True, "qtype": "convrot8"}, "sample": {"width": 512, "height": 512, "num_inference_steps": 1, "guidance_scale": 1.0}},
-    "yue2": {"modality": "audio", "model": {"name_or_path": "Comfy-Org/YuE2/checkpoints/yue2_3b_int8_convrot.safetensors", "quantize": True, "qtype": "convrot8"}, "sample": {"width": 512, "height": 512, "num_inference_steps": 32, "guidance_scale": 1.0, "duration": 120}},
+    "yue2": {"modality": "audio", "model": {"name_or_path": "/poddata/ai-toolkit-models/checkpoints/yue2_3b_int8_convrot.safetensors", "quantize": True, "qtype": "convrot8"}, "sample": {"width": 512, "height": 512, "num_inference_steps": 32, "guidance_scale": 1.0, "duration": 120}},
 }
 
 OUTPUT_EXT = {"image": "png", "video": "mp4", "audio": "mp3"}
