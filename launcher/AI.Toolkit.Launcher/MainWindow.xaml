@@ -14,6 +14,39 @@
     UseLayoutRounding="True"
     WindowStartupLocation="CenterScreen">
     <Window.Resources>
+        <ControlTemplate x:Key="WhiteArchitecturePicker" TargetType="ComboBox">
+            <Grid>
+                <ToggleButton Focusable="False" ClickMode="Press"
+                              IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="White" CornerRadius="2">
+                                <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,9,0"
+                                      Stroke="Black" StrokeThickness="1.5" Data="M 0,0 L 4,4 8,0" />
+                            </Border>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
+                <ContentPresenter Content="{TemplateBinding SelectionBoxItem}"
+                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                  VerticalAlignment="Center" Margin="9,0,26,0" IsHitTestVisible="False" />
+                <Border x:Name="Outline" BorderBrush="#909090" BorderThickness="1" CornerRadius="2" IsHitTestVisible="False" />
+                <Popup x:Name="PART_Popup" Placement="Bottom" Focusable="False"
+                       IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                    <Border Background="White" BorderBrush="#909090" BorderThickness="1"
+                            MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                        </ScrollViewer>
+                    </Border>
+                </Popup>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter TargetName="Outline" Property="BorderBrush" Value="#457653" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
         <CollectionViewSource x:Key="GroupedModelFilters" Source="{Binding ModelFilters}">
             <CollectionViewSource.GroupDescriptions>
                 <PropertyGroupDescription PropertyName="Group" />
@@ -668,23 +701,44 @@
                                       ItemsSource="{Binding Source={StaticResource GroupedModelFilters}}"
                                       SelectedItem="{Binding SelectedModelFilter, Mode=TwoWay}"
                                       IsSynchronizedWithCurrentItem="False" TextSearch.TextPath="Label"
-                                      DisplayMemberPath="Label" ToolTip="{Binding SelectedModelFilter.Label}"
-                                      Foreground="#171917">
-                                <ComboBox.Resources>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#171917" />
-                                    </Style>
+                                      ToolTip="{Binding SelectedModelFilter.Label}" Template="{StaticResource WhiteArchitecturePicker}"
+                                      Background="White" Foreground="Black">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}" Foreground="Black" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                                <ComboBox.ItemContainerStyle>
                                     <Style TargetType="ComboBoxItem">
-                                        <Setter Property="Foreground" Value="#171917" />
+                                        <Setter Property="Background" Value="White" />
                                         <Setter Property="Padding" Value="12,4" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ComboBoxItem">
+                                                    <Border x:Name="Row" Background="{TemplateBinding Background}"
+                                                            BorderBrush="Transparent" BorderThickness="2,1"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Row" Property="BorderBrush" Value="#457653" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsHighlighted" Value="True">
+                                                            <Setter TargetName="Row" Property="BorderBrush" Value="Black" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
                                     </Style>
-                                </ComboBox.Resources>
+                                </ComboBox.ItemContainerStyle>
                                 <ComboBox.GroupStyle>
                                     <GroupStyle>
                                         <GroupStyle.HeaderTemplate>
                                             <DataTemplate>
-                                                <Border Background="#DDE5DF" Padding="6,3">
-                                                    <TextBlock Text="{Binding Name}" Foreground="#254A34" FontWeight="SemiBold" />
+                                                <Border Background="White" Padding="6,3" BorderBrush="#D4D4D4" BorderThickness="0,0,0,1">
+                                                    <TextBlock Text="{Binding Name}" Foreground="Black" FontWeight="SemiBold" />
                                                 </Border>
                                             </DataTemplate>
                                         </GroupStyle.HeaderTemplate>

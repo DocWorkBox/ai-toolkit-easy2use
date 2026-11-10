@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using AiToolkit.Launcher;
 using AiToolkit.Launcher.Core;
 
@@ -974,11 +979,75 @@ internal static class Program
         var capturedStdout = await stdout;
         var capturedStderr = await stderr;
 
-        Assert.Equal(0, process.ExitCode);
         Assert.True(
-            capturedStdout.Contains(WpfSmokeMarker, StringComparison.Ordinal),
+            process.ExitCode == 0 && capturedStdout.Contains(WpfSmokeMarker, StringComparison.Ordinal),
             "WPF smoke child exited without its completion marker: " + capturedStderr
         );
+    }
+
+    private static IEnumerable<TextBlock> VisibleLabels(DependencyObject root)
+    {
+        if (root is TextBlock label && label.IsVisible) yield return label;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            foreach (var item in VisibleLabels(VisualTreeHelper.GetChild(root, i)))
+                yield return item;
+    }
+
+    private static void AssertBlackLabel(DependencyObject root, string text)
+    {
+        var label = VisibleLabels(root).FirstOrDefault(t => t.Text == text);
+        Assert.True(label != null, $"expected rendered label: {text}");
+        Assert.True(label!.Foreground is SolidColorBrush b && b.Color == Colors.Black,
+            $"{text} should render black, got {label.Foreground}");
+    }
+
+    private static void AssertWhiteSurface(FrameworkElement surface)
+    {
+        var bitmap = new RenderTargetBitmap((int)surface.ActualWidth, (int)surface.ActualHeight,
+            96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(surface);
+        var pixel = new byte[4];
+        bitmap.CopyPixels(new Int32Rect(bitmap.PixelWidth * 3 / 4, bitmap.PixelHeight / 2, 1, 1), pixel, 4, 0);
+        Assert.True(pixel.All(b => b == 255), $"expected white surface, got {Convert.ToHexString(pixel)}");
+    }
+
+    private static void CheckPickerScrolling(ComboBox filter, FrameworkElement popupBody)
+    {
+        var scroll = (ScrollViewer)((Border)popupBody).Child;
+        var bar = (ScrollBar)scroll.Template.FindName("PART_VerticalScrollBar", scroll);
+        var marker = VisibleLabels(popupBody).First(t => t.Text == "Test Image");
+        double Y() => marker.TranslatePoint(new Point(), scroll).Y;
+        void Flush() => scroll.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+        var selected = filter.SelectedItem;
+        scroll.ScrollToTop();
+        Flush();
+        var top = Y();
+        scroll.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, -120)
+            { RoutedEvent = System.Windows.Input.Mouse.MouseWheelEvent });
+        Flush();
+        var wheelTravel = top - Y();
+        var track = (Track)bar.Template.FindName("PART_Track", bar);
+        track.Thumb.RaiseEvent(new DragDeltaEventArgs(0, 2) { RoutedEvent = Thumb.DragDeltaEvent });
+        Flush();
+        var dragTravel = top - Y() - wheelTravel;
+        Console.WriteLine($"Picker travel (DIP): wheel={wheelTravel:F1}, drag(2)={dragTravel:F1}");
+        Assert.True(wheelTravel > 0 && wheelTravel < scroll.ActualHeight / 2 && dragTravel > 0 && dragTravel < 50,
+            $"small inputs should not jump groups: wheel={wheelTravel:F1}, drag={dragTravel:F1}, viewport={scroll.ActualHeight:F1}");
+
+        var middle = Math.Floor(scroll.ScrollableHeight / 2);
+        scroll.ScrollToVerticalOffset(middle);
+        Flush();
+        var prior = Y();
+        scroll.ScrollToVerticalOffset(middle + 1);
+        Flush();
+        Assert.True(Math.Abs(prior - Y() - 1) < 1, $"fine scrolling should move the content: distance={prior - Y():F2}, offset={scroll.VerticalOffset:F2}");
+        scroll.ScrollToBottom();
+        Flush();
+        Assert.True(scroll.VerticalOffset == scroll.ScrollableHeight, "last group should be reachable");
+        Assert.True(ReferenceEquals(selected, filter.SelectedItem), "scrolling should not change the filter");
+        scroll.ScrollToTop();
+        Flush();
     }
 
     private static int RunWpfSmokeChild()
@@ -1001,7 +1070,8 @@ internal static class Program
                     Filters = new[] {
                         new ModelFilter("image", "Test Image", "图像", new[] { model.Id }),
                         new ModelFilter("api", "Test API", "打标模型", Array.Empty<string>(), true)
-                    }
+                    }.Concat(Enumerable.Range(0, 90).Select(i =>
+                        new ModelFilter($"extra-{i}", $"Model {i}", i < 60 ? "训练 A" : "训练 B", new[] { model.Id }))).ToArray()
                 };
                 var viewModel = new MainViewModel(
                     backend,
@@ -1065,14 +1135,26 @@ internal static class Program
                 window.UpdateLayout();
                 Assert.True(modelGrid!.IsVisible, "model grid must be visible on the model page");
                 var filter = (System.Windows.Controls.ComboBox)window.FindName("ArchitectureFilter");
-                Assert.Equal(3, filter.Items.Count);
-                Assert.Equal(3, filter.Items.Groups!.Count);
+                Assert.Equal(93, filter.Items.Count);
+                Assert.Equal(5, filter.Items.Groups!.Count);
                 filter.IsDropDownOpen = true;
+                dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                var popup = (Popup)filter.Template.FindName("PART_Popup", filter);
+                var popupBody = (FrameworkElement)popup.Child;
+                AssertBlackLabel(popupBody, "Test API");
+                AssertBlackLabel(popupBody, "打标模型");
+                var apiItem = VisibleLabels(popupBody).First(t => t.Text == "Test API");
+                var row = (FrameworkElement)ItemsControl.ContainerFromElement(filter, apiItem);
+                AssertWhiteSurface(row);
+                CheckPickerScrolling(filter, popupBody);
                 filter.SelectedItem = viewModel.ModelFilters.Single(f => f.Id == "api");
                 Assert.Equal(0, modelGrid.Items.Count);
                 filter.SelectedItem = viewModel.ModelFilters.Single(f => f.Id == "image");
                 Assert.Equal(1, modelGrid.Items.Count);
                 filter.IsDropDownOpen = false;
+                window.UpdateLayout();
+                AssertBlackLabel(filter, "Test Image");
+                AssertWhiteSurface(filter);
                 Assert.True(
                     modelGrid.ActualWidth > 800 && modelGrid.ActualHeight > 300,
                     "model grid must retain usable dimensions at the default window size"
