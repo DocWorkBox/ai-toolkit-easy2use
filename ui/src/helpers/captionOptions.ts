@@ -5,7 +5,7 @@ import {
     defaultCaptionTargetLanguage,
 } from '@/helpers/captionPrompts';
 
-type CaptionGroup = 'image' | 'music' | 'video' | 'image/video/sound';
+type CaptionGroup = 'image' | 'music' | 'video' | 'image/video' | 'image/video/sound';
 type AdditionalSections =
     'caption.model_name_or_path2'
     | 'caption.caption_prompt'
@@ -23,7 +23,12 @@ type AdditionalSections =
     | 'caption.target_lang'
     | 'caption.thinking'
     | 'caption.batch_size'
-    | 'caption.layer_offloading';
+    | 'caption.layer_offloading'
+    | 'caption.mtp'
+    | 'caption.cuda_graph'
+    | 'caption.vision_bf16'
+    | 'caption.video_fps'
+    | 'caption.system_prompt';
 
 export interface CaptionOption {
     name: string;
@@ -33,6 +38,11 @@ export interface CaptionOption {
     supportsQuantization?: boolean;
     supportsLowVram?: boolean;
     supportsLoras?: boolean;
+    // compile is a no-op for this captioner (its decode is already CUDA-graphed)
+    noCompile?: boolean;
+    // LoRAs published for this model, offered in the LoRA browser alongside
+    // local files. Paths are 'org/repo/path_to/file.safetensors'; the captioner
+    // searches the models folder for the file before downloading it to loras/.
     cloudLoras?: CloudLora[];
     minNewTokens?: number;
     defaults?: { [key: string]: any };
@@ -45,6 +55,8 @@ export interface CaptionOption {
 }
 
 const defaultNameOrPath = '';
+
+export const defaultQtype = 'convrot8';
 
 const extensionsAudio = ['mp3', 'wav', 'flac', 'ogg'];
 const extensionsImage = ['jpg', 'jpeg', 'png', 'bmp', 'webp'];
@@ -387,6 +399,52 @@ export const captionerTypes: CaptionOption[] = [
         ],
     },
     {
+        name: 'Qwen38Captioner',
+        label: 'Qwen3.8 27B',
+        group: 'image/video',
+        supportsLoras: true,
+        noCompile: true,
+        defaults: {
+            'config.process[0].caption.loras': [[], undefined],
+            'config.process[0].caption.model_name_or_path': ['./models/text_encoders/qwen3.8_27b_w4a8.safetensors', defaultNameOrPath],
+            'config.process[0].caption.extensions': [[...extensionsVideo, ...extensionsImage], defaultExtensions],
+            'config.process[0].caption.caption_prompt': [defaultImageCaptionPrompt, undefined],
+            'config.process[0].caption.max_res': [1024, undefined],
+            'config.process[0].caption.max_new_tokens': [512, undefined],
+            'config.process[0].caption.mtp': [true, undefined],
+            'config.process[0].caption.mtp_depth': [3, undefined],
+            'config.process[0].caption.cuda_graph': [true, undefined],
+            'config.process[0].caption.vision_bf16': [true, undefined],
+            'config.process[0].caption.video_fps': [2, undefined],
+            'config.process[0].caption.thinking': [false, undefined],
+            // the ComfyUI file is already W4A8; quantize only applies to the HF repo
+            'config.process[0].caption.quantize': [true, true],
+            'config.process[0].caption.qtype': ['convrotw4a8', defaultQtype],
+            'config.process[0].caption.compile': [false, false],
+        },
+        name_or_path_options: [
+            { value: './models/text_encoders/qwen3.8_27b_w4a8.safetensors', label: 'Comfy-Org/Qwen3.8-27B (W4A8)' },
+            { value: './models/Qwen3.8-27B', label: 'Qwen/Qwen3.8-27B（bf16，加载时量化）' },
+        ],
+        captionPrompts: {
+            '通用（图片）': defaultImageCaptionPrompt,
+            '通用（视频）': defaultVideoCaptionPrompt,
+            'MiniMax H3 视频': minimaxT2VCaptionPrompt,
+            'MiniMax H3 图片': minimaxImageCaptionPrompt,
+        },
+        additionalSections: [
+            'caption.caption_prompt',
+            'caption.system_prompt',
+            'caption.max_res',
+            'caption.max_new_tokens',
+            'caption.video_fps',
+            'caption.thinking',
+            'caption.mtp',
+            'caption.cuda_graph',
+            'caption.vision_bf16',
+        ],
+    },
+    {
         name: 'Ideogram4Captioner',
         label: 'Ideogram 4 Captioner',
         group: 'image',
@@ -454,6 +512,7 @@ export const groupedCaptionerTypes: GroupedSelectOption[] = captionerTypes.reduc
         image: '图片',
         music: '音频',
         video: '视频',
+        'image/video': '图片 / 视频',
         'image/video/sound': '图片 / 视频 / 音频',
     };
     const groupLabel = groupLabels[arch.group];
@@ -487,6 +546,7 @@ export const quantizationOptions: SelectOption[] = [
     { value: 'uint4', label: '4 bit' },
     { value: 'uint3', label: '3 bit' },
     { value: 'uint2', label: '2 bit' },
+    { value: 'convrotw4a8', label: '4bit convrot W4A8（int4 权重、int8 激活）' },
 ];
 
 export const captionFormatOptions: SelectOption[] = [
@@ -523,4 +583,17 @@ export const maxNewTokensOptions: SelectOption[] = [
     { value: '8192', label: '8192' },
 ];
 
-export const defaultQtype = 'convrot8';
+export const videoFpsOptions: SelectOption[] = [
+    { value: '1', label: '1' },
+    { value: '2', label: '2（默认）' },
+    { value: '4', label: '4' },
+    { value: '8', label: '8' },
+];
+
+export const mtpDepthOptions: SelectOption[] = [
+    { value: '1', label: '1' },
+    { value: '2', label: '2' },
+    { value: '3', label: '3（默认）' },
+    { value: '4', label: '4' },
+    { value: '5', label: '5' },
+];

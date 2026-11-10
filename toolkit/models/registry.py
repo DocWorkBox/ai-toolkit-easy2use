@@ -63,6 +63,7 @@ ARCH_REGISTRY: Dict[str, dict] = {
     "moss_image:base": {"modality": "image", "model": {"name_or_path": "OpenMOSS-Team/MOSS-Image-Base", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8", "model_kwargs": {"uncond_skip_layers": [22]}}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 3.0}},
     "moss_image:edit": {"modality": "image", "model": {"name_or_path": "OpenMOSS-Team/MOSS-Image-SFT", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8", "model_kwargs": {"edit": True, "kv_cache": True, "match_target_res": True, "uncond_skip_layers": [22]}}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 3.0}, "needs_control_image": True},
     "moss_image:base_edit": {"modality": "image", "model": {"name_or_path": "OpenMOSS-Team/MOSS-Image-Base", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8", "model_kwargs": {"edit": True, "kv_cache": True, "match_target_res": True, "uncond_skip_layers": [22]}}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 3.0}, "needs_control_image": True},
+    "fibo2": {"modality": "image", "model": {"name_or_path": "Comfy-Org/Fibo-2.0", "quantize": True, "qtype": "convrot8", "quantize_te": True, "qtype_te": "convrot8"}, "sample": {"width": 1024, "height": 1024, "num_inference_steps": 30, "guidance_scale": 5.0}},
 }
 
 OUTPUT_EXT = {"image": "png", "video": "mp4", "audio": "mp3"}

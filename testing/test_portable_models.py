@@ -51,6 +51,8 @@ def test_current_training_adapters_use_shared_portable_directory():
         "minimax-h3-training-adapter-v3": "minimax_h3_training_adapter_v3.safetensors",
         "minimax-h3-ref2va-training-adapter-v2": "minimax_h3_ref2va_training_adapter_v2.safetensors",
         "fasth3-v2-training-adapter": "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors",
+        "fasth3-omni-adapter": "fastvideo_fasth3_omni_training_adapter_v1.safetensors",
+        "ph3-image-adapter": "p_h3_image_training_adapter_v1.safetensors",
         "qwen-image-2-turbo-training-adapter": "qwen_image_2_turbo_training_adapter_v1.safetensors",
         "ming-image-training-adapter": "ming_image_01_design_training_adapter_v1.safetensors",
     }
@@ -297,6 +299,9 @@ def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path(
         "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
         "Comfy-Org/Ming-Image",
         "FastVideo/FastVideo-FastH3-Comfy",
+        "FastVideo/FastH3-Omni-Comfy",
+        "PrunaAI/P-H3-Image-Comfy",
+        "Comfy-Org/Fibo-2.0",
         "black-forest-labs/flux-3-image-klein-base",
         "OpenMOSS-Team/MOSS-Image-SFT",
         "OpenMOSS-Team/MOSS-Image-Base",
@@ -352,7 +357,7 @@ def test_caption_and_runtime_component_defaults_are_local():
     assert registry_paths
     # These models keep repo selectors so their loaders can reuse Comfy weights
     # while caching only configs/tokenizers under the toolkit's models folder.
-    comfy_selectors = {"black-forest-labs/flux-3-image-klein-base",
+    comfy_selectors = {"black-forest-labs/flux-3-image-klein-base", "Comfy-Org/Fibo-2.0",
                        "OpenMOSS-Team/MOSS-Image-SFT", "OpenMOSS-Team/MOSS-Image-Base"}
     assert all(path.startswith("./models/") or path in comfy_selectors
                for path in registry_paths)

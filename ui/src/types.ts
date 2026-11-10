@@ -350,6 +350,19 @@ export interface CaptionProcessConfig {
     layer_offloading?: boolean;
     layer_offloading_percent?: number;
     loras?: CaptionLora[];
+    api_base_url?: string;
+    api_key?: string;
+    api_protocol?: 'openai' | 'anthropic';
+    api_concurrency?: number;
+    prompt_template?: string;
+    target_lang?: string;
+    // Qwen3.8 captioner
+    mtp?: boolean;
+    mtp_depth?: number;
+    cuda_graph?: boolean;
+    vision_bf16?: boolean;
+    video_fps?: number;
+    system_prompt?: string;
   }
 }
 

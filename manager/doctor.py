@@ -243,12 +243,14 @@ def collect_environment_report():
             )
 
     node_exe, node_major = nodejs.have_usable_node()
+    stale_node = node_exe == nodejs.local_node_exe() and nodejs.local_node_stale()
     checks.append(
         _result(
             "node",
             "node",
-            node_exe is not None,
-            "%s (v%s)" % (node_exe, node_major)
+            node_exe is not None and not stale_node,
+            "%s: expected bundled Node v%s (repair updates it)" % (node_exe, nodejs.NODE_VERSION)
+            if stale_node else "%s (v%s)" % (node_exe, node_major)
             if node_exe
             else "none >= %d found" % nodejs.MIN_NODE_MAJOR,
         )
