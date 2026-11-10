@@ -170,8 +170,11 @@ class SDTrainer(BaseSDTrainProcess):
                 # needed so we can autoparse the prompt to handle flags
                 gen_img_config = GenerateImageConfig(
                     prompt=prompt, # it will autoparse the prompt
+                    width=sample_item.width,
+                    height=sample_item.height,
                     negative_prompt=sample_item.neg,
                     output_path=output_path,
+                    num_frames=sample_item.num_frames,
                     ctrl_img=sample_item.ctrl_img,
                     ctrl_img_1=sample_item.ctrl_img_1,
                     ctrl_img_2=sample_item.ctrl_img_2,
@@ -919,10 +922,7 @@ class SDTrainer(BaseSDTrainProcess):
                         tv = torch.clamp(tv, min=0.001)
                 
                 # step latent, use here or with do_fft_loss
-                if self.sd.x0_pred:
-                    t0 = noise_pred
-                else:
-                    t0 = noisy_latents - tv * noise_pred
+                t0 = self.sd.get_x0_prediction(noise_pred, noisy_latents, tv)
                 
                 if self.train_config.t0_loss_target:
                     # replace the loss targets and pred
@@ -930,7 +930,7 @@ class SDTrainer(BaseSDTrainProcess):
                     pred = t0
                     # handle velocity equiv loss if set. This scales t0 loss to match velocity of flowmatchhing loss
                     if self.train_config.t0_velocity_equiv_weight:
-                        velocity_equiv_weight = (1.0 / torch.clamp(tv, min=0.1) ** 2)
+                        velocity_equiv_weight = (1.0 / torch.clamp(tv, min=0.01) ** 2)
                         local_loss_scale = velocity_equiv_weight
                         
                 if self.train_config.do_fft_loss:
@@ -939,7 +939,7 @@ class SDTrainer(BaseSDTrainProcess):
                     pred_mag = torch.fft.rfft2(t0.float(), norm="ortho").abs()
                     fft_loss = F.mse_loss(pred_mag, target_mag, reduction="none")
                     if self.train_config.do_fft_velocity_equiv_weight:
-                        velocity_equiv_weight = (1.0 / torch.clamp(tv, min=0.1) ** 2)
+                        velocity_equiv_weight = (1.0 / torch.clamp(tv, min=0.01) ** 2)
                         fft_loss = fft_loss * velocity_equiv_weight
                     fft_loss = fft_loss.mean()
                     self.additional_logs['loss/fft'] = fft_loss.item()

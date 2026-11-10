@@ -120,10 +120,13 @@ COMFY_FILES = {
     "video_vae": "vae/minimax_h3_video_vae_fp16.safetensors",
     "audio_vae": "vae/minimax_h3_audio_vae_fp32.safetensors",
     "dit_fasth3": "diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors",
+    "dit_fasth3_omni": "diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors",
 }
 # FastH3 8-Step V2 (FastVideo DMD2 + VSA distill) comfy repack: DiT plus the
 # shared text encoder and VAEs at the same repo-relative paths
 FASTH3_REPO = "FastVideo/FastVideo-FastH3-Comfy"
+# FastH3 Omni (8-step ref2va distill, 32 PDD heads) comfy repack, same layout
+FASTH3_OMNI_REPO = "FastVideo/FastH3-Omni-Comfy"
 # tokenizer/processor/text-encoder config come from the original repo (tiny files)
 ORIGINAL_REPO = "MiniMaxAI/MiniMax-H3"
 
@@ -153,9 +156,12 @@ def blank_log_image_function(self, *args, **kwargs):
 class MiniMaxH3VaeBundle(torch.nn.Module):
     """Holds both frozen autoencoders behind the single ``self.vae`` handle."""
 
-    def __init__(self, video_vae: MiniMaxH3VideoVAE, audio_vae: MiniMaxH3AudioVAE):
+    def __init__(
+        self, video_vae: MiniMaxH3VideoVAE, audio_vae: Optional[MiniMaxH3AudioVAE]
+    ):
         super().__init__()
         self.video_vae = video_vae
+        # None for image-only derivatives (P-H3-Image)
         self.audio_vae = audio_vae
 
     @property
@@ -168,7 +174,8 @@ class MiniMaxH3VaeBundle(torch.nn.Module):
 
     def enable_gradient_checkpointing(self, enable: bool = True):
         self.video_vae.enable_gradient_checkpointing(enable)
-        self.audio_vae.enable_gradient_checkpointing(enable)
+        if self.audio_vae is not None:
+            self.audio_vae.enable_gradient_checkpointing(enable)
 
     def disable_gradient_checkpointing(self):
         self.enable_gradient_checkpointing(False)
@@ -177,8 +184,11 @@ class MiniMaxH3VaeBundle(torch.nn.Module):
 class MinimaxH3Model(BaseModel):
     supports_staged_sampling = True
     arch = "minimax_h3"
-    # video flow shift; audio stays on AUDIO_SIGMA_SHIFT, remapped from this
+    # video flow shift; audio stays on audio_sigma_shift, remapped from this
     video_sigma_shift = packing.VIDEO_SIGMA_SHIFT
+    audio_sigma_shift = packing.AUDIO_SIGMA_SHIFT
+    # released keyframe recipe rounds the posterior sample through fp16
+    keyframe_fp16_round = True
     # hub repo for missing files when name_or_path isn't an org/repo id
     comfy_repo = COMFY_REPO
     use_old_lokr_format = False
@@ -233,6 +243,19 @@ class MinimaxH3Model(BaseModel):
     def get_frame_count_snapper(self):
         # auto_frame_count: snap dataset clips down to the VAE's 17n+5 grid
         return packing.align_num_frames_down
+
+    def build_sample_sigmas(self, num_inference_steps: int) -> torch.Tensor:
+        """Video sigma grid for sampling (steps + 1 entries ending at 0)."""
+        return packing.build_sigma_schedule(
+            num_inference_steps,
+            self.video_sigma_shift,
+            t1000_ladder=getattr(self, "t1000_sample_ladder", False),
+        )
+
+    def _prompt_encoder_kwargs(self) -> dict:
+        """Extra kwargs for encode_minimax_h3_prompt (P-H3-Image taps several
+        hidden states through its text connector)."""
+        return {}
 
     def prepare_sample_prompt_context(self, gen_config):
         # sample prompts: video refs are treated at the sample's length, not
@@ -521,9 +544,10 @@ class MinimaxH3Model(BaseModel):
         return image
 
     def get_prompt_embeds(self, prompt, control_images=None) -> AdvancedPromptEmbeds:
+        self.sample_stage("text_encoder")
         if isinstance(prompt, str):
             prompt = [prompt]
-        if self.text_encoder.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.text_encoder.device == torch.device("cpu"):
             self.text_encoder.to(self.device_torch)
 
         # control tensors arrive in [0, 1]; the Qwen3-VL processor wants PIL
@@ -579,6 +603,7 @@ class MinimaxH3Model(BaseModel):
                 device=self.device_torch,
                 dtype=self.torch_dtype,
                 max_length=self.max_text_length,
+                **self._prompt_encoder_kwargs(),
             )
             embeds_list.append(embeds)
             tags_list.append(tags)
@@ -595,11 +620,12 @@ class MinimaxH3Model(BaseModel):
         """Images (C, H, W) or videos (T, C, H, W) in [-1, 1] -> normalized
         video latents (B, 24, t, h, w). Video frame counts are trimmed down to
         the VAE's 17n+5 grid when needed."""
+        self.sample_stage("vae")
         if device is None:
             device = self.vae_device_torch
         if dtype is None:
             dtype = self.vae_torch_dtype
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
 
         items = []
@@ -633,20 +659,22 @@ class MinimaxH3Model(BaseModel):
         with the released conditioning recipe: seeded posterior sample (seed
         42, independent of the request seed) rounded to fp16 before
         normalization."""
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         generator = torch.Generator(device="cpu").manual_seed(KEYFRAME_ENCODE_SEED)
         latents = self.video_vae.encode(
             frames.to(self.vae_device_torch, self.video_vae.dtype),
             sample=True,
             generator=generator,
-            fp16_round=True,
+            fp16_round=self.keyframe_fp16_round,
         )
         return latents.float()
 
     def decode_latents(self, latents: torch.Tensor, device=None, dtype=None):
         # differentiable: pixel-space losses backprop through the video VAE
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         video = self.video_vae.decode(latents.to(self.vae.device, self.video_vae.dtype))
         if device is not None:
@@ -656,7 +684,8 @@ class MinimaxH3Model(BaseModel):
     def decode_audio_latents(self, latents: torch.Tensor):
         # differentiable, like decode_latents
         """(B, 32, T) normalized -> waveform (B, 1, T*800) at 32 kHz."""
-        if self.vae.device == torch.device("cpu"):
+        self.sample_stage("vae")
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.vae_device_torch)
         return self.audio_vae.decode(latents.to(self.audio_vae.device, torch.float32))
 
@@ -681,9 +710,10 @@ class MinimaxH3Model(BaseModel):
     def encode_audio(self, audio_data_list):
         """[{"waveform": (C, L), "sample_rate": int}, ...] -> packed audio
         rows (B, 2*T, 32), normalized, channel-major stereo."""
+        self.sample_stage("vae")
         import torchaudio
 
-        if self.vae.device == torch.device("cpu"):
+        if getattr(self, "_staged_sampling", None) is None and self.vae.device == torch.device("cpu"):
             self.vae.to(self.device_torch)
 
         packed = []
@@ -776,7 +806,7 @@ class MinimaxH3Model(BaseModel):
             if sigma_v.shape[0] != batch_size:
                 sigma_v = sigma_v.expand(batch_size)
             sigma_a = remap_sigma(
-                sigma_v, self.video_sigma_shift, packing.AUDIO_SIGMA_SHIFT
+                sigma_v, self.video_sigma_shift, self.audio_sigma_shift
             )
             t_v = 1.0 - sigma_v
             t_a = 1.0 - sigma_a
@@ -940,6 +970,7 @@ class MinimaxH3Model(BaseModel):
             text_indices=text_indices.to(device),
             # target-video token grid (patch 1x2x2); consumed only by VSA models
             vsa_video_grid=(t_lat, h_lat // 2, w_lat // 2),
+            pdd_weights=self._pdd_weights(sigma_v),
         )
 
         if num_cond_audio > 0:
@@ -959,6 +990,20 @@ class MinimaxH3Model(BaseModel):
                 audio_sigma=sigma_a,
             )
         return -noise_pred
+
+    def _pdd_weights(self, sigma_v, sigma_v_next=None):
+        """Head weights for PDD checkpoints (None otherwise). Training passes a
+        single sigma: the one 1/n interval containing it."""
+        n = unwrap_model(self.model).params.pdd_steps
+        if n <= 1:
+            return None
+        return packing.build_pdd_weights(
+            sigma_v.flatten().tolist(),
+            n,
+            self.video_sigma_shift,
+            audio_shift=self.audio_sigma_shift,
+            sigma_v_next=None if sigma_v_next is None else sigma_v_next.flatten().tolist(),
+        )
 
     def get_loss_target(self, *args, **kwargs):
         noise = kwargs.get("noise")
@@ -1608,3 +1653,59 @@ class MinimaxH3FastModel(MinimaxH3Model):
     def text_embedding_space_version(self):
         # same Qwen3-VL presentation as the base model: share the embed cache
         return "minimax_h3"
+
+
+class MinimaxH3OmniModel(MinimaxH3Ref2VAModel):
+    """FastH3 Omni: FastVideo's 8-step ref2va distill. References work exactly
+    like ``minimax_h3_ref2va`` (control images/videos as reference blocks).
+
+    The DiT carries 32 PDD output heads per stream (see
+    MiniMaxH3TransformerParams.pdd_steps): sampling blends the heads each
+    step spans, training uses the head of the interval containing its sigma.
+    Video/audio shifts stay 12/3.
+
+    It was distilled with FastVideo's VSA (tile 128, ``p2_multi_region``
+    reference policy), which src/vsa.py does not implement, so attention runs
+    dense like native ComfyUI. ``model_kwargs.vsa`` (default false) opts into
+    the (4,4,4) tile VSA with references as dense prefix, at
+    ``vsa_sparsity`` (default 0.9).
+
+    Sample with 8 steps and guidance_scale 1.
+    """
+
+    arch = "minimax_h3_omni"
+    comfy_repo = FASTH3_OMNI_REPO
+    # trained ladder: [999, 874, ..., 125] -> PDD spans [0, 4, ..., 32]
+    t1000_sample_ladder = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        kw = self.model_config.model_kwargs
+        self.vsa_sparsity: Optional[float] = None
+        if bool(kw.get("vsa", False)):
+            self.vsa_sparsity = float(kw.get("vsa_sparsity", 0.9))
+
+    def _dit_component(self) -> str:
+        return "dit_fasth3_omni"
+
+    def _load_transformer(self) -> MiniMaxH3Transformer:
+        transformer = super()._load_transformer()
+        if transformer.params.pdd_steps <= 1:
+            raise ValueError(
+                "minimax_h3_omni needs the FastH3 Omni checkpoint with stacked "
+                "PDD output heads; this file has a single head. Use arch "
+                "minimax_h3_ref2va for the base ref2va checkpoints."
+            )
+        transformer.vsa_sparsity = self.vsa_sparsity
+        return transformer
+
+    def get_base_model_version(self):
+        return "minimax_h3_omni"
+
+    @property
+    def text_embedding_space_version(self):
+        # same Qwen3-VL reference presentation as ref2va: share its embed cache
+        n = self._image_ref_video_frames()
+        if n:
+            return f"minimax_h3_ref2va:img_as_vid{n}"
+        return "minimax_h3_ref2va"

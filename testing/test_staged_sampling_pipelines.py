@@ -44,12 +44,14 @@ class PipelineTests(unittest.TestCase):
         from extensions_built_in.diffusion_models.ming_image.src.pipeline import MingImagePipeline
         from extensions_built_in.diffusion_models.ming_image.ming_image import MingImageModel
         from extensions_built_in.diffusion_models.minimax_h3.src.pipeline import MiniMaxH3Pipeline
+        from extensions_built_in.diffusion_models.minimax_h3.minimax_h3 import MinimaxH3Model
         from extensions_built_in.diffusion_models.ltx2.ltx2 import (
             LTX2Model, LTX25Model, StagedLTX2ImageToVideoPipeline,
         )
         cls.ming_pipeline = MingImagePipeline
         cls.ming_model = MingImageModel
         cls.h3_pipeline = MiniMaxH3Pipeline
+        cls.h3_model = MinimaxH3Model
         cls.ltx_model = LTX2Model
         cls.ltx25_model = LTX25Model
         cls.ltx_i2v = StagedLTX2ImageToVideoPipeline
@@ -123,6 +125,11 @@ class PipelineTests(unittest.TestCase):
 
         model = self.model
         model.unet = model.transformer = Transformer().to(self.device)
+        model.model = model.transformer
+        model.transformer.params = SimpleNamespace(pdd_steps=1)
+        model.video_sigma_shift = 12.0
+        model.build_sample_sigmas = lambda steps: self.h3_model.build_sample_sigmas(model, steps)
+        model._pdd_weights = lambda *args: self.h3_model._pdd_weights(model, *args)
         model.vae = torch.nn.ModuleList([TinyModule(), TinyModule()]).to(self.device)
         embeds = SimpleNamespace(text_embeds=[torch.ones(2, 3)], text_token_tags=[torch.ones(2, dtype=torch.long)])
 

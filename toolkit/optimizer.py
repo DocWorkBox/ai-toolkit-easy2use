@@ -106,6 +106,9 @@ def get_optimizer(
     elif lower_type == 'automagic3':
         from toolkit.optimizers.automagic3 import Automagic3
         optimizer = Automagic3(params, lr=float(learning_rate), **optimizer_params)
+    elif lower_type == 'automagic4':
+        from toolkit.optimizers.automagic4 import Automagic4
+        optimizer = Automagic4(params, lr=float(learning_rate), **optimizer_params)
     elif lower_type == 'singularity':
         from toolkit.optimizers.singularity import Singularity
         optimizer = Singularity(params, lr=float(learning_rate), **optimizer_params)

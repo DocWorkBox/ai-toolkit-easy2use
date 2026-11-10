@@ -1477,6 +1477,286 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     ),
   },
   {
+    name: "p_h3_image",
+    label: "PrunaAI P-H3-Image",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      "config.process[0].model.name_or_path": [
+        "PrunaAI/P-H3-Image-Comfy",
+        defaultNameOrPath,
+      ],
+      // the comfy files are pre-quantized int8 ConvRot (DiT, text encoder, VAE);
+      // convrot8 keeps them as shipped, any other qtype picks the bf16 files
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.cache_text_embeddings": [true, false],
+      "config.process[0].model.assistant_lora_path": [
+        "ostris/minimax_h3_training_adapter/p_h3_image_training_adapter_v1.safetensors",
+        undefined,
+      ],
+      "config.process[0].network.linear": [16, defaultLinearRank],
+      "config.process[0].network.linear_alpha": [16, defaultLinearRank],
+      "config.process[0].network.network_kwargs.ignore_if_contains": [
+        ["adaln_proj"],
+        [],
+      ],
+      "config.process[0].sample.width": [2048, 1024],
+      "config.process[0].sample.height": [2048, 1024],
+      "config.process[0].sample.guidance_scale": [1, 4],
+      "config.process[0].sample.sample_steps": [8, 25],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].datasets[x].cache_latents_to_disk": [true, false],
+    },
+    disableSections: ["network.conv"],
+    additionalSections: [
+      "model.sample_staged_offloading",
+      "datasets.multi_control_paths",
+      "sample.multi_ctrl_imgs",
+      "model.low_vram",
+      "model.layer_offloading",
+      "model.assistant_lora_path",
+    ],
+    modelNotes: (
+      <div className="space-y-2">
+        <p>
+          P-H3-Image 是 PrunaAI 基于 MiniMax-H3 微调的文生图和图像编辑模型：8 步采样、不使用 CFG，
+          最多支持 8 张输入图片。没有控制图时按文生图训练和采样；有控制图时，第一张是待编辑图片，
+          其余是参考图（<code>&lt;Picture 1&gt;</code>、<code>&lt;Picture 2&gt;</code> 等）。
+          每张图片保持自身比例，只缩小、不放大至目标画布面积，并以 100 万像素以内的图片送入 Qwen3-VL-4B。
+          带参考图的打标文本会自动添加 <code>Edit &lt;Picture 1&gt;.</code> 前缀，
+          已明确指定待编辑图片时除外。设置 <code>model_kwargs.edit_prompt_prefix: false</code> 可关闭。
+          采样控制图采用相同规则。
+        </p>
+        <p>
+          权重按 ComfyUI 目录结构从设置中的{" "}
+          <Link href="/settings" className="text-blue-400 hover:underline">
+            模型目录路径
+          </Link>{" "}
+          读取，缺失文件从 <code>PrunaAI/P-H3-Image-Comfy</code> 下载到该目录
+          （int8 全套约 30 GB）。默认量化设置使用以下文件：
+        </p>
+        <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
+          <code>{`<MODELS_PATH>/
+├── diffusion_models/
+│   └── p-h3-image_int8_convrot.safetensors
+├── text_encoders/
+│   └── p-h3-image_text_encoder_int8_convrot.safetensors
+└── vae/
+    └── p-h3-image_vae_int8_convrot.safetensors`}</code>
+        </pre>
+        <p>
+          DiT 使用合并了 Pruna LoRA 的裁剪版 MiniMax-H3。默认 <code>convrot8</code> 直接加载
+          预量化 int8 文件，其他量化类型选择 bf16 文件后再量化。模型采用专用 8 步 sigma 调度，
+          请保持采样步数为 8、引导强度为 1。由于模型经过步数和引导蒸馏，训练时默认启用
+          P-H3-Image 训练适配器（<code>p_h3_image_training_adapter_v1</code>），预览采样时关闭。
+          模型面向约 800 万像素输出（2912×2912、3360×2496 等），编辑时约 400 万像素也可使用；
+          更低分辨率可能增加伪影。不支持音频和视频。
+        </p>
+      </div>
+    ),
+  },
+  {
+    name: "minimax_h3_omni",
+    label: "FastH3 Omni",
+    group: "video",
+    isVideoModel: true,
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      "config.process[0].model.name_or_path": [
+        "FastVideo/FastH3-Omni-Comfy",
+        defaultNameOrPath,
+      ],
+      // pre-quantized weights: matching qtypes keep the load unchanged
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype_te": ["nvfp4", "qfloat8"],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.cache_text_embeddings": [true, false],
+      "config.process[0].model.assistant_lora_path": [
+        "ostris/minimax_h3_training_adapter/fastvideo_fasth3_omni_training_adapter_v1.safetensors",
+        undefined,
+      ],
+      "config.process[0].network.linear": [16, defaultLinearRank],
+      "config.process[0].network.linear_alpha": [16, defaultLinearRank],
+      "config.process[0].network.network_kwargs.ignore_if_contains": [
+        ["adaln_proj"],
+        [],
+      ],
+      "config.process[0].sample.num_frames": [107, 1],
+      "config.process[0].sample.fps": [24, 1],
+      "config.process[0].sample.width": [768, 1024],
+      "config.process[0].sample.height": [768, 1024],
+      "config.process[0].sample.guidance_scale": [1, 4],
+      "config.process[0].sample.sample_steps": [8, 25],
+      "config.process[0].train.audio_loss_multiplier": [1.0, undefined],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].datasets[x].do_audio": [true, undefined],
+      "config.process[0].datasets[x].cache_latents_to_disk": [true, false],
+      "config.process[0].datasets[x].fps": [24, undefined],
+      "config.process[0].datasets[x].num_frames": [39, undefined],
+      "config.process[0].datasets[x].auto_frame_count": [true, undefined],
+    },
+    disableSections: ["network.conv"],
+    additionalSections: [
+      "model.sample_staged_offloading",
+      "sample.multi_ctrl_imgs",
+      "datasets.multi_control_paths",
+      "datasets.num_frames",
+      "model.layer_offloading",
+      "model.low_vram",
+      "datasets.do_audio",
+      "datasets.audio_normalize",
+      "datasets.audio_preserve_pitch",
+      "train.audio_loss_multiplier",
+      "datasets.auto_frame_count",
+      "model.assistant_lora_path",
+    ],
+    customModelSelectOptions: [
+      {
+        label: "蒸馏处理方式",
+        options: [
+          { value: "ta", label: "训练适配器（默认）" },
+          { value: "dopsd", label: "D-OPSD" },
+          { value: "none", label: "无" },
+        ],
+        getValue: (config: JobConfig) => {
+          if (config?.config?.process?.[0]?.model?.model_kwargs?.dopsd) {
+            return "dopsd";
+          }
+          const assistantLoraPath =
+            config?.config?.process?.[0]?.model?.assistant_lora_path;
+          return assistantLoraPath && assistantLoraPath.trim() !== ""
+            ? "ta"
+            : "none";
+        },
+        onChange: (
+          value: string,
+          config: JobConfig,
+          setJobConfig: (value: any, key: string) => void,
+        ) => {
+          const kwargs = {
+            ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}),
+          };
+          if (value === "dopsd") {
+            kwargs.dopsd = true;
+            kwargs.dopsd_bleed_strength = 1.0;
+          } else {
+            delete kwargs.dopsd;
+            delete kwargs.dopsd_bleed_strength;
+          }
+          setJobConfig(kwargs, "config.process[0].model.model_kwargs");
+          setJobConfig(
+            value === "ta"
+              ? "ostris/minimax_h3_training_adapter/fastvideo_fasth3_omni_training_adapter_v1.safetensors"
+              : undefined,
+            "config.process[0].model.assistant_lora_path",
+          );
+        },
+        doc: {
+          title: "FastH3 Omni 蒸馏处理",
+          description: (
+            <div>
+              FastH3 Omni 经过步数蒸馏，直接训练可能破坏蒸馏效果。训练适配器在训练期间吸收这种漂移，
+              推理时关闭，但长时间训练仍可能退化。D-OPSD 则采用自蒸馏：无梯度的教师前向将训练目标
+              作为参考，其预测结果用作不带参考图分支的训练目标，将参考内容学入触发词；
+              未设置触发词时学入打标文本。启用后会重新缓存包含像素张量的潜变量。
+            </div>
+          ),
+        },
+      },
+      {
+        label: "图片参考呈现方式",
+        options: [
+          { value: "picture", label: "图片（默认）" },
+          { value: "video", label: "静态视频片段" },
+        ],
+        getValue: (config: JobConfig) => {
+          return config?.config?.process?.[0]?.model?.model_kwargs
+            ?.image_refs_as_video
+            ? "video"
+            : "picture";
+        },
+        onChange: (
+          value: string,
+          config: JobConfig,
+          setJobConfig: (value: any, key: string) => void,
+        ) => {
+          const kwargs = {
+            ...(config?.config?.process?.[0]?.model?.model_kwargs ?? {}),
+          };
+          if (value === "video") {
+            kwargs.image_refs_as_video = true;
+          } else {
+            delete kwargs.image_refs_as_video;
+            delete kwargs.image_ref_video_frames;
+          }
+          setJobConfig(kwargs, "config.process[0].model.model_kwargs");
+        },
+        doc: {
+          title: "MiniMax-H3 图片参考呈现方式",
+          description: (
+            <div className="space-y-2">
+              <p>
+                设置静态参考图（数据集控制图和采样控制图）如何呈现给模型。视频参考始终采用视频处理流程。
+              </p>
+              <p>
+                <strong>图片</strong>：使用原生 ref2va 方式，以单帧参考块及
+                <code>&lt;Picture i&gt;</code> 标记送入 Qwen3-VL，只缩小、不放大。
+              </p>
+              <p>
+                <strong>静态视频片段</strong>：将图片保持 5 帧（2 个潜变量帧），按照视频参考流程处理，
+                匹配目标像素面积，使用多帧参考块及带时间戳的 <code>&lt;Video k&gt;</code> 标记。
+                适合训练时使用图片参考、采样时使用视频参考的情况，让 LoRA 学习实际推理使用的处理流程。
+                每个参考会增加少量序列行。可通过 <code>model_kwargs.image_ref_video_frames</code> 调整帧数
+                （17n+5）；修改此项会重新缓存文本嵌入。
+              </p>
+            </div>
+          ),
+        },
+      },
+    ],
+    modelNotes: (
+      <div className="space-y-2">
+        <p>
+          FastVideo 的 FastH3 Omni 将 MiniMax-H3 Ref2V 蒸馏为 8 步采样。
+          控制图片和视频作为主体或风格参考，而不是首帧；训练时读取数据集控制路径，
+          采样时读取采样控制图，参考方式与 MiniMax-H3 Ref2V 相同。
+        </p>
+        <p>
+          权重从设置中的{" "}
+          <Link href="/settings" className="text-blue-400 hover:underline">
+            模型目录路径
+          </Link>{" "}
+          读取，缺失文件在首次加载时从 <code>FastVideo/FastH3-Omni-Comfy</code> 下载到该目录。
+          文本编码器和 VAE 与 MiniMax-H3 相同，已有 MiniMax-H3 环境只需新增 DiT。使用的文件如下：
+        </p>
+        <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
+          <code>{`<MODELS_PATH>/
+├── diffusion_models/
+│   └── fasth3_omniref_8step_pruned_int8_convrot.safetensors
+├── text_encoders/
+│   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+└── vae/
+    ├── minimax_h3_video_vae_fp16.safetensors
+    └── minimax_h3_audio_vae_fp32.safetensors`}</code>
+        </pre>
+        <p>
+          按训练时的调度使用 8 步采样、引导强度 1。注意力采用与原生 ComfyUI 相同的稠密计算。
+          视频固定为 24 fps，帧数向下对齐至 17n+5。
+        </p>
+      </div>
+    ),
+  },
+  {
     name: "minimax_h3_vsa",
     label: "FastH3 8-Step V2",
     group: "video",
@@ -1971,6 +2251,52 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "model.model_kwargs.kv_cache",
       "model.sample_staged_offloading",
     ],
+  },
+  {
+    name: "fibo2",
+    label: "Fibo 2.0 Dev",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      // the Comfy-Org repack (vendor repo is gated); a comfy-layout
+      // .safetensors path (fine-tune) loads as named
+      "config.process[0].model.name_or_path": [
+        "Comfy-Org/Fibo-2.0",
+        defaultNameOrPath,
+      ],
+      // convrot8 attaches the repack's int8 convrot DiT / Qwen3-VL-4B as-is
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype_te": ["convrot8", "qfloat8"],
+      "config.process[0].model.low_vram": [true, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].sample.width": [1024, 1024],
+      "config.process[0].sample.height": [1024, 1024],
+      // vendor defaults: CFG 5 against the null caption, 30 steps
+      "config.process[0].sample.guidance_scale": [5, 4],
+      "config.process[0].sample.sample_steps": [30, 25],
+      "config.process[0].train.timestep_type": ["weighted", "sigmoid"],
+      "config.process[0].train.unload_text_encoder": [false, false],
+      "config.process[0].model.model_kwargs": [
+        {
+          match_target_res: true,
+        },
+        {},
+      ],
+    },
+    disableSections: ["network.conv", "train.unload_text_encoder"],
+    // one model: it edits when the dataset has control paths, and is plain
+    // text to image when it does not
+    additionalSections: [
+      "datasets.multi_control_paths",
+      "sample.multi_ctrl_imgs",
+      "model.qie.match_target_res",
+      "model.layer_offloading",
+      "model.low_vram",
+    ],
+    hasMultiLinePrompts: true,
   },
   {
     name: "flux2_klein_4b",

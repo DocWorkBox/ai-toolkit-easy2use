@@ -103,7 +103,7 @@ class Qwen2_5OmniH3Captioner(BaseCaptioner):
             {
                 "role": "system",
                 "content": [
-                    {"type": "text", "text": self.caption_config.caption_prompt}
+                    {"type": "text", "text": self.resolve_prompt(self.caption_config.caption_prompt, file_path)}
                 ],
             },
             {
