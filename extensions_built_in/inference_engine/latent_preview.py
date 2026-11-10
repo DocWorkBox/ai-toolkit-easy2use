@@ -47,11 +47,14 @@ ARCH_LATENT_FORMAT = {
     "minimax_h3": "MiniMaxH3Video",
     "minimax_h3_ref2va": "MiniMaxH3Video",
     "minimax_h3_vsa": "MiniMaxH3Video",
+    "minimax_h3_omni": "MiniMaxH3Video",
+    "p_h3_image": "MiniMaxH3Video",
     "anima": "Wan21",
     "cogview4": "Flux",
     "prx_pixel": None,  # pixel space
     "flux3": "Flux3Image",
     "moss_image": "Flux2",  # FLUX.2 encoder, same packing
+    "fibo2": "Flux2",  # FLUX.2 encoder, same packing
     "iris3b": None,  # pixel space
 }
 

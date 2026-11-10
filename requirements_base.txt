@@ -3,6 +3,8 @@ safetensors
 git+https://github.com/huggingface/diffusers.git@c943837899b16cbae2f619b8dd4f7bb6f07dd81a
 #pip install git+https://github.com/huggingface/diffusers.git@refs/pull/13432/head
 transformers==5.5.3
+# Qwen3.5/3.8 DeltaNet kernels; no backend extras that replace the Torch/Triton stack.
+flash-linear-attention==0.5.2
 lycoris-lora==1.8.3
 flatten_json
 pyyaml

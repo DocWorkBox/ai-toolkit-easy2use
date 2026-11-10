@@ -21,7 +21,9 @@ import {
   groupedCaptionerTypes,
   maxNewTokensOptions,
   maxResOptions,
+  mtpDepthOptions,
   quantizationOptions,
+  videoFpsOptions,
 } from '@/helpers/captionOptions';
 import {
   buildCaptionPrompt,
@@ -548,6 +550,22 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               />
             </div>
           )}
+          {additionalSections.includes('caption.video_fps') && (
+            <div className="mt-4">
+              <SelectInput
+                label="视频采样帧率"
+                docKey="config.process[0].caption.video_fps"
+                value={`${jobConfig.config.process[0].caption.video_fps ?? 2}`}
+                onChange={value => {
+                  const num = parseFloat(value);
+                  if (!isNaN(num)) {
+                    setJobConfig(num, 'config.process[0].caption.video_fps');
+                  }
+                }}
+                options={videoFpsOptions}
+              />
+            </div>
+          )}
           {additionalSections.includes('caption.batch_size') && (
             <div className="mt-4">
               <SelectInput
@@ -607,11 +625,13 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               checked={jobConfig.config.process[0].caption.recaption}
               onChange={value => setJobConfig(value, 'config.process[0].caption.recaption')}
             />
-            <Checkbox
-              label="编译模型"
-              checked={jobConfig.config.process[0].caption.compile || false}
-              onChange={value => setJobConfig(value, 'config.process[0].caption.compile')}
-            />
+            {!selectedCaptionOption?.noCompile && (
+              <Checkbox
+                label="编译模型"
+                checked={jobConfig.config.process[0].caption.compile || false}
+                onChange={value => setJobConfig(value, 'config.process[0].caption.compile')}
+              />
+            )}
             {additionalSections.includes('caption.extract_vocals_before_transcribe') && (
               <Checkbox
                 label="转录前提取人声"
@@ -631,6 +651,48 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
                 label="思考模式"
                 checked={jobConfig.config.process[0].caption.thinking || false}
                 onChange={value => setJobConfig(value, 'config.process[0].caption.thinking')}
+              />
+            )}
+            {additionalSections.includes('caption.mtp') && (
+              <>
+                <Checkbox
+                  label="MTP 推测解码"
+                  docKey="config.process[0].caption.mtp"
+                  checked={jobConfig.config.process[0].caption.mtp ?? true}
+                  onChange={value => setJobConfig(value, 'config.process[0].caption.mtp')}
+                />
+                {(jobConfig.config.process[0].caption.mtp ?? true) && (
+                  <div className="pt-2">
+                    <SelectInput
+                      label="MTP 草稿深度"
+                      docKey="config.process[0].caption.mtp_depth"
+                      value={`${jobConfig.config.process[0].caption.mtp_depth ?? 3}`}
+                      onChange={value => {
+                        const intVal = parseInt(value);
+                        if (!isNaN(intVal)) {
+                          setJobConfig(intVal, 'config.process[0].caption.mtp_depth');
+                        }
+                      }}
+                      options={mtpDepthOptions}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {additionalSections.includes('caption.cuda_graph') && (
+              <Checkbox
+                label="CUDA 图解码"
+                docKey="config.process[0].caption.cuda_graph"
+                checked={jobConfig.config.process[0].caption.cuda_graph ?? true}
+                onChange={value => setJobConfig(value, 'config.process[0].caption.cuda_graph')}
+              />
+            )}
+            {additionalSections.includes('caption.vision_bf16') && (
+              <Checkbox
+                label="视觉编码器使用 bf16"
+                docKey="config.process[0].caption.vision_bf16"
+                checked={jobConfig.config.process[0].caption.vision_bf16 ?? true}
+                onChange={value => setJobConfig(value, 'config.process[0].caption.vision_bf16')}
               />
             )}
             {additionalSections.includes('caption.layer_offloading') && (
@@ -682,8 +744,22 @@ const CaptionSimpleJob: React.FC<Props> = ({ jobConfig, setJobConfig, gpuIDs, se
               />
             </div>
           )}
+          {additionalSections.includes('caption.system_prompt') && (
+            <div className="mb-4">
+              <TextInput
+                label="系统提示词"
+                docKey="config.process[0].caption.system_prompt"
+                value={jobConfig.config.process[0].caption.system_prompt || ''}
+                onChange={value => {
+                  setJobConfig(value?.trim() === '' ? undefined : value, 'config.process[0].caption.system_prompt');
+                }}
+                placeholder="可选的系统提示词"
+              />
+            </div>
+          )}
           <TextAreaInput
             label="打标提示词"
+            docKey="config.process[0].caption.caption_prompt"
             value={jobConfig.config.process[0].caption.caption_prompt || ''}
             onChange={value => {
               setJobConfig(value, 'config.process[0].caption.caption_prompt');
