@@ -50,6 +50,7 @@ from toolkit.models.v2.resolver import resolve_component_file
 from toolkit.print import print_acc
 
 from .src.qwen38_model import Qwen38Generator, build_sequence_embeds
+from .src.qwen38_assets import resolve_qwen38_assets
 
 BASE_REPO = "Qwen/Qwen3.8-27B"
 DEFAULT_CHECKPOINT = "Comfy-Org/Qwen3.8-27B/text_encoders/qwen3.8_27b_w4a8.safetensors"
@@ -130,7 +131,8 @@ class Qwen38LLM(BaseModel):
             source = name_or_path
             if os.path.isdir(name_or_path) or "/" in name_or_path:
                 cfg_src = name_or_path if self.model_config.extras_name_or_path in (None, "", name_or_path) else cfg_src
-        config = AutoConfig.from_pretrained(cfg_src)
+        cfg_src = resolve_qwen38_assets(cfg_src, status_fn=self.print_and_status_update)
+        config = AutoConfig.from_pretrained(cfg_src, local_files_only=True)
         model, prequantized = load_qwen38(source, config, dtype, device, status_fn=self.print_and_status_update)
         if prequantized:
             model.aitk_is_quantized = True
@@ -151,7 +153,7 @@ class Qwen38LLM(BaseModel):
             flush()
         self.model = model
         self.model.generator = Qwen38Generator(model, use_cuda_graph=self.cuda_graph)
-        self.processor = AutoProcessor.from_pretrained(cfg_src)
+        self.processor = AutoProcessor.from_pretrained(cfg_src, local_files_only=True)
         self.tokenizer = self.processor.tokenizer
         self.text_encoder = None
         self.vae = None

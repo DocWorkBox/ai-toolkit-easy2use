@@ -46,7 +46,7 @@ def test_conflicts_are_resolved_and_fork_version_is_preserved():
         assert ">>>>>>>" not in text, path
         if path.endswith(".py"):
             ast.parse(text)
-    assert source("version.py").strip() == 'VERSION = "1.18.9"'
+    assert source("version.py").strip() == 'VERSION = "1.19.0"'
 
 
 def test_new_optimizer_does_not_replace_custom_optimizers():
