@@ -110,4 +110,3 @@ class L2PCreatorCheckpointTests(unittest.TestCase):
             with self.assertRaisesRegex(FileNotFoundError, "missing|not found|downloading"):
                 namespace["load_model"](model)
             download.assert_not_called()
-
