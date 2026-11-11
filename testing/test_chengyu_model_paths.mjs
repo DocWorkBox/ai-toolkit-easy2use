@@ -48,7 +48,7 @@ const oldDefaults = {
   'wan21:14b': '/chenyudata/Other/Wan2.1-T2V-14B-Diffusers',
   'wan22_14b:t2v': '/chenyudata/Other/Wan2.2-T2V-A14B-Diffusers',
   wan22_14b_i2v: '/chenyudata/Other/Wan2.2-I2V-A14B-Diffusers',
-  wan22_5b: '/chenyudata/Other/Wan2.2-TI2V-5B-Diffusers',
+  wan22_5b: '/chenyudata/ComfyUI/models/diffusion_models/Wan_2.2_ComfyUI_Repackaged/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors',
   lumina2: 'Alpha-VLLM/Lumina-Image-2.0',
   qwen_image: '/chenyudata/Other/Qwen-Image',
   'qwen_image:2512': '/chenyudata/Other/Qwen-Image-2512',
@@ -122,6 +122,16 @@ test('current plugin architecture and auxiliary repo defaults are retained', () 
     '/poddata/ai-toolkit-models/loras/training_adapters/zimage_turbo_training_adapter_v2.safetensors');
   assert.equal(diffusion.get('zimage_l2p').get('config.process[0].model.extras_name_or_path'),
     '/chenyudata/Other/Z-Image-Turbo');
+});
+
+test('Wan2.2 5B reuses its matching VAE and the existing UMT5 checkpoint', () => {
+  const defaults = diffusion.get('wan22_5b');
+  assert.equal(defaults.get('config.process[0].model.extras_name_or_path'),
+    'Wan-AI/Wan2.2-TI2V-5B-Diffusers');
+  assert.equal(defaults.get('config.process[0].model.vae_path'),
+    '/chenyudata/ComfyUI/models/vae/wan2.2_vae.safetensors');
+  assert.equal(defaults.get('config.process[0].model.te_name_or_path'),
+    '/chenyudata/Other/Wan2.1-T2V-1.3B-Diffusers');
 });
 
 test('captioning uses available Qwen3-VL weights without substituting other Qwen versions', () => {

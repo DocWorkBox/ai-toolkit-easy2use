@@ -393,9 +393,12 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "/chenyudata/Other/Wan2.2-TI2V-5B-Diffusers",
+        "/chenyudata/ComfyUI/models/diffusion_models/Wan_2.2_ComfyUI_Repackaged/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
         defaultNameOrPath,
       ],
+      "config.process[0].model.extras_name_or_path": ["Wan-AI/Wan2.2-TI2V-5B-Diffusers", defaultNameOrPath],
+      "config.process[0].model.te_name_or_path": ["/chenyudata/Other/Wan2.1-T2V-1.3B-Diffusers", undefined],
+      "config.process[0].model.vae_path": ["/chenyudata/ComfyUI/models/vae/wan2.2_vae.safetensors", undefined],
       "config.process[0].model.quantize": [true, false],
       "config.process[0].model.quantize_te": [true, false],
       "config.process[0].model.low_vram": [true, false],

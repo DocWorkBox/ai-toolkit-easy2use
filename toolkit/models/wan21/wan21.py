@@ -356,9 +356,13 @@ class Wan21(BaseModel):
                 "Loading LoRA is not supported for Wan2.1 models currently")
 
         # load + quantize + offload + placement, all driven by model_config
+        config_kwargs = {}
+        if transformer_path.endswith(".safetensors"):
+            config_kwargs["config_path"] = self.model_config.extras_name_or_path
         transformer = WanTransformer3DModel.load(
             transformer_path,
             subfolder=subfolder,
+            **config_kwargs,
             **self.component_load_kwargs("transformer"),
         )
         flush()
@@ -372,12 +376,12 @@ class Wan21(BaseModel):
         self.print_and_status_update("Loading Wan model")
         subfolder = 'transformer'
         transformer_path = model_path
-        if os.path.exists(transformer_path):
+        if os.path.isdir(transformer_path):
             subfolder = None
             transformer_path = os.path.join(transformer_path, 'transformer')
         
-        te_path = "ai-toolkit/umt5_xxl_encoder"   
-        if os.path.exists(os.path.join(model_path, 'text_encoder')):
+        te_path = self.model_config.te_name_or_path or "ai-toolkit/umt5_xxl_encoder"
+        if not self.model_config.te_name_or_path and os.path.isdir(os.path.join(model_path, 'text_encoder')):
             te_path = model_path
         
         vae_path = self.model_config.extras_name_or_path
@@ -407,7 +411,12 @@ class Wan21(BaseModel):
         self.print_and_status_update("Loading VAE")
         # todo, example does float 32? check if quality suffers
         
-        if self._wan_vae_path is not None:
+        if self.model_config.vae_path:
+            vae_kwargs = {}
+            if self.model_config.vae_path.endswith(".safetensors"):
+                vae_kwargs["config_path"] = self.model_config.extras_name_or_path
+            vae = WanVAE.load_model(self.model_config.vae_path, dtype=dtype, **vae_kwargs)
+        elif self._wan_vae_path is not None:
             # load the vae from individual repo
             vae = WanVAE.load_model(self._wan_vae_path, dtype=dtype, subfolder="")
         else:
