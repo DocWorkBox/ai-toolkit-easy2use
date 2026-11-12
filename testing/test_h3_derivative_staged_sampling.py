@@ -1,4 +1,4 @@
-"""Exercise P-H3 and FastH3 Omni phase-major sampling with tiny components."""
+"""Exercise H3 Image, P-H3 and FastH3 Omni staged sampling with tiny components."""
 
 from pathlib import Path
 import tempfile
@@ -15,12 +15,15 @@ import torch.nn.functional as F
 from extensions_built_in.diffusion_models.minimax_h3 import minimax_h3 as h3
 from extensions_built_in.diffusion_models.minimax_h3 import p_h3_image as ph3_module
 from extensions_built_in.diffusion_models.minimax_h3.p_h3_image import PH3ImageModel, PH3_SAMPLE_SIGMAS
+from extensions_built_in.diffusion_models.minimax_h3.minimax_h3_image import (
+    MinimaxH3ImageModel, H3_IMAGE_SAMPLE_SIGMAS,
+)
 from toolkit.advanced_prompt_embeds import AdvancedPromptEmbeds
 from toolkit.staged_sampling import StagedSampleBatch, StagedSampling
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CLASSES = (PH3ImageModel, h3.MinimaxH3OmniModel)
+CLASSES = (PH3ImageModel, h3.MinimaxH3OmniModel, MinimaxH3ImageModel)
 
 
 class Component(torch.nn.Module):
@@ -54,6 +57,8 @@ class H3DerivativeSamplingTests(unittest.TestCase):
         model.device_torch = model.te_device_torch = model.vae_device_torch = device
         model.torch_dtype = model.vae_torch_dtype = torch.float32
         model.model_config = SimpleNamespace(compile=False, layer_offloading=False, model_kwargs={})
+        model.low_vram = False
+        model.reference_min_short_edge = model.reference_max_short_edge = 32
         model.max_text_length = 128
         model.edit_prompt_prefix = True
         model.sample_step_hook = None
@@ -89,14 +94,16 @@ class H3DerivativeSamplingTests(unittest.TestCase):
                 return self.weight.expand(2, 3)
 
         class Transformer(Component):
-            params = SimpleNamespace(pdd_steps=32 if cls is h3.MinimaxH3OmniModel else 1)
+            params = SimpleNamespace(
+                pdd_steps=32 if cls is h3.MinimaxH3OmniModel else 6 if cls is MinimaxH3ImageModel else 1,
+            )
 
             def forward(self, hidden_states, audio_hidden_states, encoder_hidden_states, pdd_weights, **kwargs):
                 phase("denoise")
                 model.events.append("denoise")
                 context = encoder_hidden_states.mean() * 0.01
                 if self.params.pdd_steps > 1:
-                    test.assertEqual(tuple(pdd_weights[0].shape), (1, 32))
+                    test.assertEqual(tuple(pdd_weights[0].shape), (1, self.params.pdd_steps))
                     test.assertTrue(torch.isfinite(pdd_weights[0]).all())
                     context = context + pdd_weights[0].to(self.device).mean() * 0.01
                 else:
@@ -135,7 +142,8 @@ class H3DerivativeSamplingTests(unittest.TestCase):
     def config(self, model, index=0, references=False):
         return SimpleNamespace(
             width=32, height=32, num_frames=5, fps=24, seed=42 + index,
-            num_inference_steps=8, guidance_scale=1.0, latents=None,
+            num_inference_steps=6 if isinstance(model, MinimaxH3ImageModel) else 8,
+            guidance_scale=1.0, latents=None, sigmas=None,
             network_multiplier=0.5 + index * 0.1,
             ctrl_img=self.reference if references else None,
             ctrl_img_1=None, ctrl_img_2=None, ctrl_img_3=None,
@@ -148,7 +156,7 @@ class H3DerivativeSamplingTests(unittest.TestCase):
             text_token_tags=[torch.ones(2, dtype=torch.long)],
         )
 
-    def test_both_ui_entries_expose_existing_opt_in_control(self):
+    def test_all_ui_entries_expose_existing_opt_in_control(self):
         source = (ROOT / "extensions_built_in/diffusion_models/ui.tsx").read_text(encoding="utf-8")
         for cls in CLASSES:
             with self.subTest(arch=cls.arch):
@@ -217,15 +225,16 @@ class H3DerivativeSamplingTests(unittest.TestCase):
                     finally:
                         del model._staged_sampling
                     for actual, wanted in zip(model.saved, expected):
-                        if cls is PH3ImageModel:
+                        if cls is not h3.MinimaxH3OmniModel:
                             np.testing.assert_array_equal(np.asarray(actual), np.asarray(wanted))
                         else:
                             torch.testing.assert_close(actual["video"], wanted["video"], rtol=0, atol=0)
                             torch.testing.assert_close(actual["audio"], wanted["audio"], rtol=0, atol=0)
                             self.assertEqual(actual["fps"], wanted["fps"])
                     events = model.events
-                    expected_events = ["reference"] * (2 if references else 0) + ["denoise"] * 16
-                    expected_events += ["decode"] * 2 if cls is PH3ImageModel else ["decode", "audio"] * 2
+                    steps = 6 if cls is MinimaxH3ImageModel else 8
+                    expected_events = ["reference"] * (2 if references else 0) + ["denoise"] * (2 * steps)
+                    expected_events += ["decode", "audio"] * 2 if cls is h3.MinimaxH3OmniModel else ["decode"] * 2
                     self.assertEqual(events, expected_events)
                     self.assertEqual(len(model.saved), 2)
                     for module, device, training, parameters in states:
@@ -263,6 +272,39 @@ class H3DerivativeSamplingTests(unittest.TestCase):
                         model.decode_audio_latents(torch.ones(2, 32, 2))
                         model.encode_audio([{"waveform": torch.ones(2, 1600), "sample_rate": 32000}])
 
+    def test_h3_image_per_sample_sigma_grids_match_serial(self):
+        schedules = ([1.0, 0.8, 0.5], [0.9, 0.3])
+        baseline = self.model(MinimaxH3ImageModel)
+        expected = []
+        for i, sigmas in enumerate(schedules):
+            config = self.config(baseline, i, references=True)
+            config.sigmas = sigmas
+            config.num_inference_steps = len(sigmas)
+            baseline.network.multiplier = config.network_multiplier
+            expected.append(baseline.generate_single_image(
+                baseline.get_generation_pipeline(), config, self.embeds(baseline, i), None,
+                torch.Generator().manual_seed(config.seed), {},
+            ))
+        model = self.model(MinimaxH3ImageModel)
+        session = StagedSampling(model)
+        batch = StagedSampleBatch(session, model.get_generation_pipeline(), model.network)
+        model._staged_sampling = session
+        try:
+            with session:
+                for i, sigmas in enumerate(schedules):
+                    config = self.config(model, i, references=True)
+                    config.sigmas = sigmas
+                    config.num_inference_steps = len(sigmas)
+                    torch.manual_seed(config.seed)
+                    batch.add(config, self.embeds(model, i), None, {})
+                batch.run()
+        finally:
+            del model._staged_sampling
+        self.assertEqual(len(model.saved), 2)
+        for actual, wanted in zip(model.saved, expected):
+            np.testing.assert_array_equal(np.asarray(actual), np.asarray(wanted))
+        self.assertEqual(model.events, ["reference"] * 2 + ["denoise"] * 5 + ["decode"] * 2)
+
     def test_derivative_schedules_and_image_only_vae_remain_intact(self):
         ph3 = self.model(PH3ImageModel)
         omni = self.model(h3.MinimaxH3OmniModel)
@@ -270,6 +312,10 @@ class H3DerivativeSamplingTests(unittest.TestCase):
         self.assertIsNone(ph3.audio_vae)
         torch.testing.assert_close(omni.build_sample_sigmas(8), h3.packing.build_sigma_schedule(8, 12.0, True))
         self.assertEqual(omni.model.params.pdd_steps, 32)
+        image = self.model(MinimaxH3ImageModel)
+        torch.testing.assert_close(image.build_sample_sigmas(6), torch.tensor(H3_IMAGE_SAMPLE_SIGMAS))
+        self.assertIsNone(image.audio_vae)
+        self.assertEqual(image.model.params.pdd_steps, 6)
 
     def test_uncached_prompts_use_text_phase_with_other_components_on_cpu(self):
         for cls in CLASSES:
@@ -295,7 +341,7 @@ class H3DerivativeSamplingTests(unittest.TestCase):
     def test_phase_failures_clear_batch_and_restore_modules_and_rng(self):
         for cls in CLASSES:
             for failure in ("reference", "denoise", "decode", "audio"):
-                if failure == "audio" and cls is PH3ImageModel:
+                if failure == "audio" and cls is not h3.MinimaxH3OmniModel:
                     continue
                 with self.subTest(arch=cls.arch, failure=failure):
                     model = self.model(cls)

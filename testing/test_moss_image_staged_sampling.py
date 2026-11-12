@@ -150,7 +150,7 @@ class MossStagedSamplingTests(unittest.TestCase):
     def config(self, index=0, references=0, cfg=3.0):
         return SimpleNamespace(
             seed=42 + index, prompt="positive", negative_prompt="negative", width=64, height=64,
-            num_inference_steps=3, guidance_scale=cfg, latents=None, network_multiplier=0.5 + index,
+            num_inference_steps=3, guidance_scale=cfg, latents=None, sigmas=None, network_multiplier=0.5 + index,
             ctrl_img=self.paths[0] if references else None,
             ctrl_img_1=self.paths[0] if references else None,
             ctrl_img_2=self.paths[1] if references > 1 else None, ctrl_img_3=None,
