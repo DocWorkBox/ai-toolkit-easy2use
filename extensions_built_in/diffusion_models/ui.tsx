@@ -1566,6 +1566,98 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     ),
   },
   {
+    name: "minimax_h3_image",
+    label: "MiniMax-H3-Image",
+    group: "image",
+    defaults: {
+      // default updates when [selected, unselected] in the UI
+      "config.process[0].model.name_or_path": [
+        "Comfy-Org/MiniMax-H3-Image",
+        defaultNameOrPath,
+      ],
+      // pre-quantized weights: matching qtypes keep the load unchanged
+      "config.process[0].model.quantize": [true, false],
+      "config.process[0].model.qtype": ["convrot8", "qfloat8"],
+      "config.process[0].model.quantize_te": [true, false],
+      "config.process[0].model.qtype_te": ["nvfp4", "qfloat8"],
+      "config.process[0].model.low_vram": [false, false],
+      "config.process[0].sample.sampler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
+      "config.process[0].train.cache_text_embeddings": [true, false],
+      "config.process[0].model.assistant_lora_path": [
+        "ostris/minimax_h3_training_adapter/minimax_h3_image_training_adapter_v1.safetensors",
+        undefined,
+      ],
+      "config.process[0].network.linear": [16, defaultLinearRank],
+      "config.process[0].network.linear_alpha": [16, defaultLinearRank],
+      "config.process[0].network.network_kwargs.ignore_if_contains": [
+        ["adaln_proj"],
+        [],
+      ],
+      "config.process[0].sample.width": [2048, 1024],
+      "config.process[0].sample.height": [2048, 1024],
+      "config.process[0].sample.guidance_scale": [1, 4],
+      "config.process[0].sample.sample_steps": [6, 25],
+      "config.process[0].train.timestep_type": ["shift", "sigmoid"],
+      "config.process[0].datasets[x].cache_latents_to_disk": [true, false],
+    },
+    disableSections: ["network.conv"],
+    additionalSections: [
+      "datasets.multi_control_paths",
+      "sample.multi_ctrl_imgs",
+      "model.low_vram",
+      "model.layer_offloading",
+      "model.sample_staged_offloading",
+      "model.assistant_lora_path",
+    ],
+    modelNotes: (
+      <div className="space-y-2">
+        <p>
+          MiniMax-H3-Image 是移除音频流的 MiniMax-H3 DiT，蒸馏为无需 CFG 的
+          6 步模型，支持文生图和图像编辑。不提供控制图时按文生图训练和采样；
+          提供控制图时，每张图作为参考图加入打包序列，提示词可用{" "}
+          <code>&lt;Picture 1&gt;</code>、<code>&lt;Picture 2&gt;</code> 等名称引用。
+          Qwen3-VL 看到的参考图短边为 1024；VAE 编码的参考图保持自身宽高比，
+          不跟随目标图尺寸，短边限制在 1024 至 2048 之间（
+          <code>model_kwargs.reference_min_short_edge</code> /{" "}
+          <code>reference_max_short_edge</code>）。采样控制图也遵循相同规则。
+          提示词按原文使用，请详细描述整张目标图。
+        </p>
+        <p>
+          权重从{" "}
+          <Link href="/settings" className="text-blue-400 hover:underline">
+            模型目录路径
+          </Link>{" "}
+          按 ComfyUI 目录结构加载；缺少的文件从{" "}
+          <code>Comfy-Org/MiniMax-H3-Image</code> 下载到该目录，默认整套权重约 38GB。
+          文本编码器与 MiniMax-H3 相同，已有文件会直接复用。默认量化配置使用：
+        </p>
+        <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
+          <code>{`<MODELS_PATH>/
+├── diffusion_models/
+│   └── minimax_h3_image_pruned_int8_convrot.safetensors
+├── text_encoders/
+│   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+└── vae/
+    └── minimax_h3_image_vae_fp16.safetensors`}</code>
+        </pre>
+        <p>
+          默认量化类型会直接保留文件已有的量化格式。Transformer 选择{" "}
+          <code>convrotw4a8</code> 时加载 4 位{" "}
+          <code>minimax_h3_image_pruned_w4a8</code>；文本编码器选择{" "}
+          <code>convrot8</code> 时加载 int8 版本；其他 Transformer 量化类型会对 bf16
+          文件进行量化。模型在自身的 6 步 Sigma 网格上为每一步使用独立输出头，
+          请保持采样步数为 6、引导强度为 1。训练也只抽取这 6 个时间步，
+          因此“时间步类型”设置不生效。模型面向 400 万至 2000 万像素输出训练
+          （2048×2048、4096×4096、5472×3072 等），较低分辨率更容易出现伪影。
+          默认启用 MiniMax-H3-Image 训练适配器{" "}
+          <code>minimax_h3_image_training_adapter_v1</code> 作为动态辅助 LoRA，
+          预览采样时会自动关闭。支持可选的采样分阶段装卸，不支持音频和视频。
+        </p>
+      </div>
+    ),
+  },
+  {
     name: "minimax_h3_omni",
     label: "FastH3 Omni",
     group: "video",
