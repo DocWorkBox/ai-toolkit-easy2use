@@ -130,6 +130,10 @@ class PipelineTests(unittest.TestCase):
         model.video_sigma_shift = 12.0
         model.build_sample_sigmas = lambda steps: self.h3_model.build_sample_sigmas(model, steps)
         model._pdd_weights = lambda *args: self.h3_model._pdd_weights(model, *args)
+        model._num_audio_latents = lambda frames: self.h3_model._num_audio_latents(model, frames)
+        model._stage_for_sampling = lambda: None
+        model._park_vae_for_denoise = lambda: None
+        model._stage_for_decode = lambda: None
         model.vae = torch.nn.ModuleList([TinyModule(), TinyModule()]).to(self.device)
         embeds = SimpleNamespace(text_embeds=[torch.ones(2, 3)], text_token_tags=[torch.ones(2, dtype=torch.long)])
 

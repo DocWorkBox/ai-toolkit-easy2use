@@ -31,6 +31,7 @@ function moss(variant, edit = false) {
 }
 // Dependencies resolved by Python loaders rather than explicit paths in the form.
 const extra = {
+  minimax_h3_image: [...family('MiniMax-H3-Image'), 'minimax-h3-tokenizer', 'minimax-h3-processor', 'minimax-h3-text-encoder-config'],
   p_h3_image: family('P-H3-Image'), ming_image: family('Ming-Image'), fibo2: family('Fibo 2.0'), flux3: family('FLUX.3 Image Klein'),
   'ltx2.5': family('LTX-2.5'), yue2: family('YuE2'), 'ltx2.3': ['ltx2-text-encoder'],
   qwen_image_2: ['qwen-image-21-transformer', ...qi], 'qwen_image_2:turbo': ['qwen-image-21-turbo-transformer', ...qi],

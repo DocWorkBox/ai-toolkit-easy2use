@@ -70,6 +70,28 @@ def test_catalog_uses_local_paths_and_official_download_links():
         ), item
 
 
+def test_h3_image_catalog_matches_loader_and_portable_adapter():
+    catalog = _catalog()
+    preset = next(f for f in catalog["filters"] if f["id"] == "minimax_h3_image")
+    assert set(preset["models"]) == {
+        "minimax-h3-image-transformer", "minimax-h3-image-encoder", "minimax-h3-image-vae",
+        "minimax-h3-image-adapter", "minimax-h3-tokenizer", "minimax-h3-processor",
+        "minimax-h3-text-encoder-config",
+    }
+    entries = {m["id"]: m for m in catalog["models"]}
+    src = _read("extensions_built_in/diffusion_models/minimax_h3/minimax_h3_image.py")
+    files = ast.literal_eval(next(n.value for n in ast.parse(src).body if isinstance(n, ast.Assign)
+                                  and any(isinstance(v, ast.Name) and v.id == "H3_IMAGE_FILES" for v in n.targets)))
+    for component, key in (("dit", "transformer"), ("text_encoder", "encoder"), ("video_vae", "vae")):
+        row = entries["minimax-h3-image-" + key]
+        assert row["root"] == "configured_models"
+        paths = {row["path"] + "/" + p.removeprefix("**/") for p in row.get("required_any", [])} or {row["path"]}
+        assert paths == set(files[component])
+    adapter = entries["minimax-h3-image-adapter"]["path"]
+    assert adapter == "./models/loras/training_adapters/minimax_h3_image_training_adapter_v1.safetensors"
+    assert adapter in _model_ui()
+
+
 def test_current_training_adapters_use_shared_portable_directory():
     by_id = {item["id"]: item for item in _catalog()["models"]}
     adapters = {
@@ -360,6 +382,7 @@ def test_comfy_weight_models_use_repo_default_to_resolve_configured_models_path(
     assert remote_values
     assert set(remote_values) == {
         "Comfy-Org/MiniMax-H3",
+        "Comfy-Org/MiniMax-H3-Image",
         "Comfy-Org/Qwen-Image-2.1",
         "Comfy-Org/Qwen-Image-2.1/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors",
         "Comfy-Org/Ming-Image",
