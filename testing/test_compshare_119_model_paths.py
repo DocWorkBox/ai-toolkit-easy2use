@@ -36,6 +36,18 @@ def selected_default(block, key):
 
 
 class Compshare119ModelPathTests(unittest.TestCase):
+    def test_h3_image_defaults_to_local_bundle_with_project_cached_adapter(self):
+        block = model_block("extensions_built_in/diffusion_models/ui.tsx", "minimax_h3_image")
+        self.assertEqual(
+            selected_default(block, "config.process[0].model.name_or_path"),
+            "/model/ModelScope/Comfy-Org/MiniMax-H3-Image",
+        )
+        self.assertEqual(
+            selected_default(block, "config.process[0].model.assistant_lora_path"),
+            "ostris/minimax_h3_training_adapter/minimax_h3_image_training_adapter_v1.safetensors",
+        )
+        self.assertIn('"model.sample_staged_offloading"', block)
+
     def test_ph3_defaults_to_compshare_local_bundle(self):
         block = model_block("extensions_built_in/diffusion_models/ui.tsx", "p_h3_image")
         self.assertEqual(

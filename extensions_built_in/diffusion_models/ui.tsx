@@ -1572,7 +1572,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "Comfy-Org/MiniMax-H3-Image",
+        "/model/ModelScope/Comfy-Org/MiniMax-H3-Image",
         defaultNameOrPath,
       ],
       // pre-quantized weights: matching qtypes keep the load unchanged
@@ -1624,16 +1624,19 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           提示词按原文使用，请详细描述整张目标图。
         </p>
         <p>
-          权重从{" "}
+          权重复用 compshare 的{" "}
+          <code>/model/ModelScope/Comfy-Org/MiniMax-H3-Image</code> 本地目录，
+          也支持设置中的{" "}
           <Link href="/settings" className="text-blue-400 hover:underline">
             模型目录路径
           </Link>{" "}
-          按 ComfyUI 目录结构加载；缺少的文件从{" "}
-          <code>Comfy-Org/MiniMax-H3-Image</code> 下载到该目录，默认整套权重约 38GB。
+          按 ComfyUI 目录结构加载。缺少的文件从{" "}
+          <code>Comfy-Org/MiniMax-H3-Image</code> 下载到设置中的模型目录，
+          默认整套权重约 38GB。
           文本编码器与 MiniMax-H3 相同，已有文件会直接复用。默认量化配置使用：
         </p>
         <pre className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs overflow-x-auto">
-          <code>{`<MODELS_PATH>/
+          <code>{`/model/ModelScope/Comfy-Org/MiniMax-H3-Image/
 ├── diffusion_models/
 │   └── minimax_h3_image_pruned_int8_convrot.safetensors
 ├── text_encoders/
