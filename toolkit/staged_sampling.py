@@ -109,6 +109,7 @@ class StagedSampleBatch:
                 for i, job in enumerate(tqdm(self.jobs, desc=f"Sampling {phase}", leave=True)):
                     self.session.progress(phase, i, len(self.jobs))
                     config = job["config"]
+                    self.model.sample_sigmas = getattr(config, "sigmas", None)
                     job["rng"].restore()
                     self.network.multiplier = config.network_multiplier
                     self.model._sample_step_index = 0
@@ -132,7 +133,7 @@ class StagedSampleBatch:
                         del image
                     job["rng"] = SampleRNG()
                     self.session.progress(phase, i + 1, len(self.jobs))
-                    flush()
+                    flush(garbage_collect=False)
         finally:
             self.session.preparing = False
             self.model.sample_step_hook = hook
