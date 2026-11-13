@@ -568,13 +568,13 @@ internal static class Program
             await stream.FlushAsync();
         });
 
-        var ready = await UiReadinessProbe.WaitAsync(
-            new Uri($"http://127.0.0.1:{port}/"),
-            TimeSpan.FromSeconds(5),
-            CancellationToken.None
-        );
-
-        Assert.True(ready, "readiness probe did not observe the local server");
+        using var fixture = new TempDirectory();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var portFile = Path.Combine(fixture.Path, "port");
+        var probe = UiReadinessProbe.WaitForEndpointAsync(portFile, timeout.Token);
+        Assert.True(!probe.IsCompleted, "must not probe a default port before this session binds");
+        File.WriteAllText(portFile, port.ToString());
+        Assert.Equal(port, (await probe).Port);
         await server;
     }
 
@@ -1438,8 +1438,9 @@ internal static class Program
             return new FakeLauncherUiSession();
         }
 
-        public void OpenUi()
+        public void OpenUi(Uri address)
         {
+            Assert.Equal(FakeLauncherUiSession.TestAddress, address);
             OpenUiStarted.TrySetResult(true);
             if (BlockOpenUi)
             {
@@ -1583,6 +1584,8 @@ internal static class Program
 
     private sealed class FakeLauncherUiSession : ILauncherUiSession
     {
+        public static readonly Uri TestAddress = new("http://127.0.0.1:18675/");
+        public Uri Address => TestAddress;
         private readonly TaskCompletionSource<ManagerRunResult> _completion =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

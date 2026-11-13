@@ -13,6 +13,7 @@ public sealed record LauncherSnapshot(
 
 public interface ILauncherUiSession : IAsyncDisposable
 {
+    Uri Address { get; }
     int ProcessId { get; }
     Task<ManagerRunResult> Completion { get; }
     Task<bool> WaitUntilReadyAsync(CancellationToken cancellationToken);
@@ -52,7 +53,7 @@ public interface ILauncherBackend
 
     ILauncherUiSession StartUi(Action<ManagerEvent> onEvent);
 
-    void OpenUi();
+    void OpenUi(Uri address);
 
     void OpenModelsDirectory();
 
@@ -78,8 +79,6 @@ public static class ClipboardWriter
 
 public sealed class LauncherBackend : ILauncherBackend
 {
-    public static readonly Uri UiAddress = new("http://127.0.0.1:8675/");
-
     private readonly string _repositoryRoot;
     private readonly PythonCommand _python;
     private readonly ManagerClient _client;
@@ -203,12 +202,17 @@ public sealed class LauncherBackend : ILauncherBackend
             _python,
             ManagerAction.Launch
         );
-        return new LauncherUiSession(_client.StartSession(invocation, onEvent));
+        var portFile = Path.Combine(Path.GetTempPath(), $"aitk-ui-{Guid.NewGuid():N}.port");
+        var env = new Dictionary<string, string>(invocation.Environment)
+        {
+            ["AITK_UI_ENDPOINT_FILE"] = portFile,
+        };
+        return new LauncherUiSession(_client.StartSession(invocation with { Environment = env }, onEvent), portFile);
     }
 
-    public void OpenUi()
+    public void OpenUi(Uri address)
     {
-        OpenUrl(LauncherBackend.UiAddress.AbsoluteUri);
+        OpenUrl(address.AbsoluteUri);
     }
 
     public void OpenModelsDirectory()
@@ -268,10 +272,14 @@ public sealed class LauncherBackend : ILauncherBackend
 internal sealed class LauncherUiSession : ILauncherUiSession
 {
     private readonly ManagedSession _session;
+    private readonly string _portFile;
+    private Uri? _address;
+    public Uri Address => _address ?? throw new InvalidOperationException("UI 端口尚未就绪。");
 
-    public LauncherUiSession(ManagedSession session)
+    public LauncherUiSession(ManagedSession session, string portFile)
     {
         _session = session;
+        _portFile = portFile;
     }
 
     public int ProcessId => _session.ProcessId;
@@ -280,13 +288,20 @@ internal sealed class LauncherUiSession : ILauncherUiSession
 
     public async Task<bool> WaitUntilReadyAsync(CancellationToken cancellationToken)
     {
-        var ready = UiReadinessProbe.WaitAsync(
-            LauncherBackend.UiAddress,
-            TimeSpan.FromMinutes(5),
-            cancellationToken
-        );
-        var completed = await Task.WhenAny(ready, Completion);
-        return completed == ready && await ready;
+        using var startup = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        startup.CancelAfter(TimeSpan.FromMinutes(5));
+        try
+        {
+            var ready = UiReadinessProbe.WaitForEndpointAsync(_portFile, startup.Token);
+            if (await Task.WhenAny(ready, Completion) == Completion) return false;
+            _address = await ready;
+            return !Completion.IsCompleted;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException("5 分钟内未收到 Web 服务的就绪响应，请检查启动日志。");
+        }
+        finally { startup.Cancel(); }
     }
 
     public Task StopAsync()
@@ -294,8 +309,9 @@ internal sealed class LauncherUiSession : ILauncherUiSession
         return _session.StopAsync();
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        return _session.DisposeAsync();
+        await _session.DisposeAsync();
+        File.Delete(_portFile);
     }
 }

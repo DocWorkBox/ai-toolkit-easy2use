@@ -3,6 +3,7 @@
 import hashlib
 import os
 import subprocess
+import tempfile
 import threading
 from pathlib import Path
 
@@ -19,8 +20,6 @@ from .util import (
     warn,
 )
 
-UI_PORT = 8675
-UI_URL = "http://localhost:%d" % UI_PORT
 BROWSER_POLL_SECONDS = 300
 UI_DIR = os.path.join(REPO_ROOT, "ui")
 UI_BUILD_MARKER = ".aitk-build-fingerprint"
@@ -62,20 +61,23 @@ def _headless():
     )
 
 
-def _open_browser_when_ready(stop_event):
+def _open_browser_when_ready(stop_event, endpoint_file):
     """Poll the UI port in the background; open the browser once it responds."""
-    import time
     import urllib.request
     import webbrowser
 
     waited = 0
     while not stop_event.is_set() and waited < BROWSER_POLL_SECONDS:
         try:
-            urllib.request.urlopen(UI_URL, timeout=2).close()
-            webbrowser.open(UI_URL)
+            port = int(endpoint_file.read_text(encoding="ascii"))
+            if not 1 <= port <= 65535:
+                raise ValueError("Invalid UI port")
+            url = "http://127.0.0.1:%d/" % port
+            urllib.request.urlopen(url, timeout=2).close()
+            webbrowser.open(url)
             return
-        except OSError:
-            time.sleep(2)
+        except (OSError, ValueError):
+            stop_event.wait(2)
             waited += 2
 
 
@@ -192,11 +194,17 @@ def launch_ui(open_browser=True):
     if code != 0:
         return code
 
-    info("Starting AI Toolkit UI (%s) ..." % UI_URL)
+    with tempfile.TemporaryDirectory(prefix="aitk-ui-") as temp:
+        endpoint_file = Path(env.get("AITK_UI_ENDPOINT_FILE") or Path(temp) / "port")
+        return _run_ui(npm, dict(env, AITK_UI_ENDPOINT_FILE=str(endpoint_file)), endpoint_file, open_browser)
+
+
+def _run_ui(npm, env, endpoint_file, open_browser):
+    info("Starting AI Toolkit UI (preferred port 8675) ...")
     stop_event = threading.Event()
     if open_browser and not _headless():
         threading.Thread(
-            target=_open_browser_when_ready, args=(stop_event,), daemon=True
+            target=_open_browser_when_ready, args=(stop_event, endpoint_file), daemon=True
         ).start()
 
     proc = subprocess.Popen(

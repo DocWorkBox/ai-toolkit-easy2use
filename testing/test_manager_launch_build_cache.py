@@ -1,6 +1,18 @@
 from pathlib import Path
+from threading import Event
+from unittest.mock import patch
 
 from manager import launch
+
+
+def test_browser_probes_and_opens_the_published_port(tmp_path):
+    endpoint = tmp_path / "port"
+    endpoint.write_text("18675", encoding="ascii")
+    url = "http://127.0.0.1:18675/"
+    with patch("urllib.request.urlopen") as probe, patch("webbrowser.open") as browser:
+        launch._open_browser_when_ready(Event(), endpoint)
+    probe.assert_called_once_with(url, timeout=2)
+    browser.assert_called_once_with(url)
 
 
 def _make_ui_tree(root: Path) -> Path:

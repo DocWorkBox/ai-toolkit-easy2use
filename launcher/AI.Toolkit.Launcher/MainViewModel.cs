@@ -395,8 +395,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             IsUiRunning = true;
             ServiceStatus = "服务运行中";
             StatusText = "AI Toolkit 已启动";
-            AppendLog("success", $"UI 服务已就绪，PID {session.ProcessId}");
-            OpenUiInBackground();
+            AppendLog("success", $"UI 服务已就绪：{session.Address}（PID {session.ProcessId}）");
+            OpenUiInBackground(session.Address);
             _ = ObserveUiExitAsync(session);
         }
         catch (OperationCanceledException)
@@ -596,14 +596,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         );
     }
 
-    private void OpenUiInBackground()
+    private void OpenUiInBackground(Uri address)
     {
         _ = Task.Run(
             () =>
             {
                 try
                 {
-                    _backend.OpenUi();
+                    _backend.OpenUi(address);
                 }
                 catch (Exception ex)
                 {
@@ -804,7 +804,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         try
         {
-            _backend.OpenUi();
+            if (IsUiRunning && _uiSession is not null) _backend.OpenUi(_uiSession.Address);
         }
         catch (Exception ex)
         {

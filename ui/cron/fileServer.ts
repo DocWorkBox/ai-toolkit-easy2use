@@ -31,6 +31,7 @@ import os from 'os';
 import path from 'path';
 import { pipeline } from 'stream';
 import prisma from './prisma';
+import { listenPublic } from './publicPort';
 import { defaultDatasetsFolder, defaultTrainFolder, defaultDataRoot, TOOLKIT_ROOT, resolveDatasetsRoot, resolveTrainingRoot } from './paths';
 
 const isDev = process.argv.includes('dev');
@@ -525,7 +526,7 @@ function proxy(req: http.IncomingMessage, res: http.ServerResponse, upstreamPort
   }
 }
 
-function startServer(publicPort: number, upstreamPort: number): void {
+function startServer(publicPort: number, upstreamPort: number, fallback = false): Promise<number> {
   const server = http.createServer((req, res) => {
     const urlPath = (req.url || '').split('?')[0];
     if (req.method === 'GET' || req.method === 'HEAD') {
@@ -567,7 +568,7 @@ function startServer(publicPort: number, upstreamPort: number): void {
   // request timeout would kill them mid-transfer.
   server.requestTimeout = 0;
 
-  server.listen(publicPort);
+  return listenPublic(server, publicPort, fallback);
 }
 
 // ---------------------------------------------------------------------------
@@ -586,6 +587,17 @@ function getFreePort(): Promise<number> {
 
 async function primaryMain(): Promise<void> {
   const upstreamPort = await getFreePort();
+  const endpointFile = process.env.AITK_UI_ENDPOINT_FILE;
+  let actualPort: number | undefined;
+  const publish = (port: number) => {
+    if (endpointFile) {
+      fs.writeFileSync(endpointFile + '.tmp', String(port));
+      fs.renameSync(endpointFile + '.tmp', endpointFile);
+    }
+    actualPort = port;
+    if (port !== PUBLIC_PORT) console.log(`Port ${PUBLIC_PORT} unavailable; using ${port}.`);
+    console.log(`AI Toolkit UI: http://127.0.0.1:${port} (${numWorkers} file server workers)`);
+  };
 
   const nextBin = require.resolve('next/dist/bin/next');
   const nextArgs = isDev ? ['dev', '--turbopack'] : ['start'];
@@ -609,11 +621,11 @@ async function primaryMain(): Promise<void> {
       const lines = buffered.split('\n');
       buffered = lines.pop() || '';
       for (const line of lines) {
-        to.write(line.replace(internalAddr, `http://localhost:${PUBLIC_PORT}`) + '\n');
+        to.write(line.replace(internalAddr, actualPort ? `http://localhost:${actualPort}` : '[UI starting]') + '\n');
       }
     });
     from.on('end', () => {
-      if (buffered) to.write(buffered.replace(internalAddr, `http://localhost:${PUBLIC_PORT}`) + '\n');
+      if (buffered) to.write(buffered.replace(internalAddr, actualPort ? `http://localhost:${actualPort}` : '[UI starting]') + '\n');
     });
   };
   rewritePipe(nextChild.stdout!, process.stdout);
@@ -644,10 +656,8 @@ async function primaryMain(): Promise<void> {
     shutdown(1);
   });
 
-  console.log(`AI Toolkit UI: http://localhost:${PUBLIC_PORT} (${numWorkers} file server worker${numWorkers === 1 ? '' : 's'})`);
-
   if (numWorkers <= 1) {
-    startServer(PUBLIC_PORT, upstreamPort);
+    publish(await startServer(PUBLIC_PORT, upstreamPort, !!endpointFile));
     return;
   }
 
@@ -658,11 +668,22 @@ async function primaryMain(): Promise<void> {
     PUBLIC_PORT: String(PUBLIC_PORT),
     AI_TOOLKIT_QUIET_PATHS: '1',
   };
-  for (let i = 0; i < numWorkers; i++) {
-    cluster.fork(workerEnv);
-  }
+  // With listen(0), cluster shares one ephemeral socket across workers that
+  // request the same key (0), not workers that request its assigned port.
+  cluster.on('listening', (_worker, address) => {
+    if (actualPort === undefined) {
+      publish(address.port);
+      workerEnv.PUBLIC_PORT = String(address.port === PUBLIC_PORT ? PUBLIC_PORT : 0);
+      for (let i = 1; i < numWorkers; i++) cluster.fork(workerEnv);
+    } else if (actualPort !== address.port) {
+      console.error('File server lost its shared listening socket');
+      shutdown(1);
+    }
+  });
+  cluster.fork({ ...workerEnv, AITK_FIRST_LISTENER: '1' });
   cluster.on('exit', worker => {
     if (!shuttingDown) {
+      if (actualPort === undefined) return shutdown(1);
       console.warn(`File server worker ${worker.id} died, restarting`);
       cluster.fork(workerEnv);
     }
@@ -676,5 +697,7 @@ if (cluster.isPrimary) {
   });
 } else {
   process.on('disconnect', () => process.exit(0));
-  startServer(parseInt(process.env.PUBLIC_PORT!, 10), parseInt(process.env.UPSTREAM_PORT!, 10));
+  startServer(Number(process.env.PUBLIC_PORT), Number(process.env.UPSTREAM_PORT),
+    !!process.env.AITK_UI_ENDPOINT_FILE && process.env.AITK_FIRST_LISTENER === '1'
+  ).catch(err => { console.error('Public port bind failed:', err); process.exit(1); });
 }

@@ -69,6 +69,7 @@ $env:AITK_NVIDIA_SMI_COMMAND = $AitkNvidiaSmiCommand
 $workerProcess = $null
 $uiProcess = $null
 $browserOpened = $false
+$endpointFile = Join-Path ([IO.Path]::GetTempPath()) ("aitk-ui-{0}.port" -f [guid]::NewGuid().ToString('N'))
 
 try {
     $workerProcess = Start-Process -FilePath $NodeExe `
@@ -79,6 +80,7 @@ try {
         -RedirectStandardError $WorkerErr `
         -PassThru
 
+    $env:AITK_UI_ENDPOINT_FILE = $endpointFile
     $uiProcess = Start-Process -FilePath $NodeExe `
         -ArgumentList "`"$FileServerJs`" start --port $AppPort" `
         -WorkingDirectory $UiDir `
@@ -92,14 +94,21 @@ try {
         if ($uiProcess.HasExited) {
             throw "UI process exited before port $AppPort was ready. $(Read-LastLogLine -Path $UiErr)"
         }
-        if (Test-PortListening -Port ([int]$AppPort)) {
-            break
+        if (Test-Path -LiteralPath $endpointFile) {
+            $bound = [int]([IO.File]::ReadAllText($endpointFile))
+            if ($bound -lt 1 -or $bound -gt 65535) { throw 'Invalid UI port' }
+            $AppPort = "$bound"
+            $AppUrl = "http://127.0.0.1:$bound/"
+            try {
+                $response = Invoke-WebRequest -Uri $AppUrl -UseBasicParsing -TimeoutSec 2
+                if ($response.StatusCode -eq 200) { break }
+            } catch { }
         }
         Start-Sleep -Seconds 1
         $wait_for_port++
     }
 
-    if (-not (Test-PortListening -Port ([int]$AppPort))) {
+    if ($wait_for_port -ge 60) {
         throw "Timed out waiting for port $AppPort."
     }
 
@@ -125,4 +134,5 @@ try {
 } finally {
     Stop-ChildProcessTree -Process $uiProcess
     Stop-ChildProcessTree -Process $workerProcess
+    if (Test-Path -LiteralPath $endpointFile) { Remove-Item -LiteralPath $endpointFile }
 }

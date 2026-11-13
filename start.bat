@@ -17,7 +17,7 @@ set "FILE_SERVER_JS=%ROOT%\ui\dist\cron\fileServer.js"
 set "NVIDIA_SMI_HELPER=%ROOT%\scripts\portable\nvidia_smi.cmd"
 set "SUPERVISOR_PS1=%ROOT%\scripts\portable\run_portable_supervisor.ps1"
 set "APP_PORT=8675"
-set "APP_URL=http://127.0.0.1:8675"
+set "APP_URL=http://127.0.0.1:%APP_PORT%"
 set "CACHE_DIR=%ROOT%\.cache"
 set "WORKER_OUT=%CACHE_DIR%\worker.stdout.log"
 set "WORKER_ERR=%CACHE_DIR%\worker.stderr.log"
@@ -54,19 +54,9 @@ powershell.exe -NoProfile -Command ^
   "Set-Content -Path '%PORT_OWNER_INFO%' -Value $commandLine;" ^
   "if ($commandLine -like '*%NODE_EXE%*' -and $commandLine -like '*%FILE_SERVER_JS%*') { exit 0 } else { exit 2 }" >nul 2>nul
 if not errorlevel 1 (
-  if errorlevel 2 (
-    echo [portable] Port %APP_PORT% is already in use by another process.
-    if exist "%PORT_OWNER_INFO%" type "%PORT_OWNER_INFO%"
-    echo.
-    echo [portable] Please close the existing service, then launch this portable bundle again.
-    echo.
-    pause
-    exit /b 1
-  ) else (
-    echo [portable] This portable bundle is already running. Opening browser...
-    start "" "%APP_URL%"
-    exit /b 0
-  )
+  echo [portable] This portable bundle is already running. Opening browser...
+  start "" "%APP_URL%"
+  exit /b 0
 )
 
 if not exist "%ROOT%\aitk_db.db" (
