@@ -93,6 +93,7 @@ const discoveredDefaults = {
   boogu_image_edit: '/chenyudata/Other/Boogu-Image-0.1-Edit',
 };
 const missingDefaults = {
+  minimax_h3_image: 'Comfy-Org/MiniMax-H3-Image',
   p_h3_image: '/poddata/ai-toolkit-models',
   minimax_h3_omni: '/poddata/ai-toolkit-models',
   minimax_h3_vsa: '/poddata/ai-toolkit-models',
@@ -113,7 +114,7 @@ for (const [name, expected] of Object.entries({ ...oldDefaults, ...discoveredDef
 }
 
 test('current plugin architecture and auxiliary repo defaults are retained', () => {
-  assert.equal(diffusion.size, 63);
+  assert.equal(diffusion.size, 64);
   assert.equal(diffusion.has('flex2'), false);
   for (const name of ['zeta_chroma', 'zimage:deturbo']) {
     assert.equal(diffusion.get(name).get('config.process[0].model.extras_name_or_path'), 'Tongyi-MAI/Z-Image-Turbo');
@@ -191,7 +192,10 @@ test('training adapters and option callbacks retain the final local filenames', 
   assert.equal(diffusion.get('ideogram4').get('config.process[0].model.unconditional_lora_path'),
     '/poddata/ai-toolkit-models/loras/ideogram_4_unconditional_lora_r16.safetensors');
   const text = source('extensions_built_in/diffusion_models/ui.tsx');
-  assert.doesNotMatch(text, /["']ostris\/minimax_h3_training_adapter\//);
+  assert.deepEqual(
+    [...text.matchAll(/["'](ostris\/minimax_h3_training_adapter\/[^"']+)["']/g)].map(match => match[1]),
+    ['ostris/minimax_h3_training_adapter/minimax_h3_image_training_adapter_v1.safetensors'],
+  );
 });
 
 test('FastH3 variants reuse the verified local H3 text encoder and VAEs', () => {
