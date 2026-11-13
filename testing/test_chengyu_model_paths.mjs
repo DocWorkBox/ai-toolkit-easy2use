@@ -93,7 +93,7 @@ const discoveredDefaults = {
   boogu_image_edit: '/chenyudata/Other/Boogu-Image-0.1-Edit',
 };
 const missingDefaults = {
-  minimax_h3_image: 'Comfy-Org/MiniMax-H3-Image',
+  minimax_h3_image: '/poddata/ai-toolkit-models',
   p_h3_image: '/poddata/ai-toolkit-models',
   minimax_h3_omni: '/poddata/ai-toolkit-models',
   minimax_h3_vsa: '/poddata/ai-toolkit-models',
@@ -174,6 +174,7 @@ test('captioner defaults point to the downloaded HF snapshots and Huihui checkpo
 
 test('training adapters and option callbacks retain the final local filenames', () => {
   const adapters = {
+    minimax_h3_image: 'minimax_h3_image_training_adapter_v1.safetensors',
     'qwen_image_2:turbo': 'qwen_image_2_turbo_training_adapter_v1.safetensors',
     ming_image: 'ming_image_01_design_training_adapter_v1.safetensors',
     'zimage:turbo': 'zimage_turbo_training_adapter_v2.safetensors',
@@ -192,10 +193,7 @@ test('training adapters and option callbacks retain the final local filenames', 
   assert.equal(diffusion.get('ideogram4').get('config.process[0].model.unconditional_lora_path'),
     '/poddata/ai-toolkit-models/loras/ideogram_4_unconditional_lora_r16.safetensors');
   const text = source('extensions_built_in/diffusion_models/ui.tsx');
-  assert.deepEqual(
-    [...text.matchAll(/["'](ostris\/minimax_h3_training_adapter\/[^"']+)["']/g)].map(match => match[1]),
-    ['ostris/minimax_h3_training_adapter/minimax_h3_image_training_adapter_v1.safetensors'],
-  );
+  assert.doesNotMatch(text, /["']ostris\/minimax_h3_training_adapter\//);
 });
 
 test('FastH3 variants reuse the verified local H3 text encoder and VAEs', () => {

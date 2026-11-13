@@ -1575,7 +1575,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
     defaults: {
       // default updates when [selected, unselected] in the UI
       "config.process[0].model.name_or_path": [
-        "Comfy-Org/MiniMax-H3-Image",
+        "/poddata/ai-toolkit-models",
         defaultNameOrPath,
       ],
       // pre-quantized weights: matching qtypes keep the load unchanged
@@ -1588,7 +1588,7 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
       "config.process[0].train.noise_scheduler": ["flowmatch", "flowmatch"],
       "config.process[0].train.cache_text_embeddings": [true, false],
       "config.process[0].model.assistant_lora_path": [
-        "ostris/minimax_h3_training_adapter/minimax_h3_image_training_adapter_v1.safetensors",
+        "/poddata/ai-toolkit-models/loras/training_adapters/minimax_h3_image_training_adapter_v1.safetensors",
         undefined,
       ],
       "config.process[0].network.linear": [16, defaultLinearRank],
@@ -1627,11 +1627,13 @@ export const AI_TOOLKIT_UI_MODELS: ModelArch[] = [
           提示词按原文使用，请详细描述整张目标图。
         </p>
         <p>
-          权重从{" "}
+          chengyu 默认从 <code>/poddata/ai-toolkit-models</code> 按 ComfyUI 目录结构加载，
+          已复用公共盘的 DiT、文本编码器和图像 VAE；训练适配器保存在该目录下的{" "}
+          <code>loras/training_adapters</code>。也可在{" "}
           <Link href="/settings" className="text-blue-400 hover:underline">
             模型目录路径
           </Link>{" "}
-          按 ComfyUI 目录结构加载；缺少的文件从{" "}
+          调整可写缓存位置。缺少的文件从{" "}
           <code>Comfy-Org/MiniMax-H3-Image</code> 下载到该目录，默认整套权重约 38GB。
           文本编码器与 MiniMax-H3 相同，已有文件会直接复用。默认量化配置使用：
         </p>

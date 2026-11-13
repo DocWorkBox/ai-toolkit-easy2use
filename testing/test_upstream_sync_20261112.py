@@ -122,7 +122,7 @@ def test_h3_image_keeps_model_name_localized_notes_and_opt_in_staging():
     assert '"model.sample_staged_offloading"' in entry
     assert "图像编辑" in entry and "训练适配器" in entry
     assert "Weights load from the" not in entry
-    assert '"Comfy-Org/MiniMax-H3-Image"' in entry
+    assert '"/poddata/ai-toolkit-models"' in entry
     assert "minimax_h3_image_training_adapter_v1.safetensors" in entry
     assert '"config.process[0].model.sample_staged_offloading": [true' not in entry
     assert source("version.py").strip() == 'VERSION = "1.19.1"'

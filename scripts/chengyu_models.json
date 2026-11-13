@@ -2,6 +2,7 @@
   "root": "/poddata/ai-toolkit-models",
   "reuse_roots": ["/chenyudata/ComfyUI/models", "/chenyudata/Other", "/poddata/ComfyUI/models"],
   "groups": [
+    {"repo_id": "Comfy-Org/MiniMax-H3-Image", "local_dir": "", "files": ["diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors", "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors", "vae/minimax_h3_image_vae_fp16.safetensors"]},
     {"repo_id": "PrunaAI/P-H3-Image-Comfy", "local_dir": "", "files": ["diffusion_models/p-h3-image_int8_convrot.safetensors", "text_encoders/p-h3-image_text_encoder_int8_convrot.safetensors", "vae/p-h3-image_vae_int8_convrot.safetensors"]},
     {"repo_id": "FastVideo/FastVideo-FastH3-Comfy", "local_dir": "", "files": ["diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors"]},
     {"repo_id": "FastVideo/FastH3-Omni-Comfy", "local_dir": "", "files": ["diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors"]},
@@ -11,7 +12,7 @@
     {"repo_id": "Comfy-Org/YuE2", "local_dir": "", "files": ["checkpoints/yue2_3b_int8_convrot.safetensors", "audio_encoders/sheetsage2_bf16.safetensors"]},
     {"repo_id": "Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4", "local_dir": "ai_toolkit", "files": ["tokenizer_head_joint_v4.pt", "nar_lora_joint_v4.pt"]},
     {"repo_id": "ostris/ace_step_1.5_ComfyUI_files", "local_dir": "checkpoints", "files": ["ace_step_1.5_base_aio.safetensors", "ace_step_1.5_xl_base_aio.safetensors"]},
-    {"repo_id": "ostris/minimax_h3_training_adapter", "local_dir": "loras/training_adapters", "files": ["minimax_h3_training_adapter_v3.safetensors", "minimax_h3_ref2va_training_adapter_v2.safetensors", "p_h3_image_training_adapter_v1.safetensors", "fastvideo_fasth3_omni_training_adapter_v1.safetensors", "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors"]},
+    {"repo_id": "ostris/minimax_h3_training_adapter", "local_dir": "loras/training_adapters", "files": ["minimax_h3_training_adapter_v3.safetensors", "minimax_h3_ref2va_training_adapter_v2.safetensors", "p_h3_image_training_adapter_v1.safetensors", "fastvideo_fasth3_omni_training_adapter_v1.safetensors", "fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors", "minimax_h3_image_training_adapter_v1.safetensors"]},
     {"repo_id": "ostris/qwen_image_2_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["qwen_image_2_turbo_training_adapter_v1.safetensors"]},
     {"repo_id": "ostris/zimage_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["zimage_turbo_training_adapter_v2.safetensors"]},
     {"repo_id": "ostris/krea2_turbo_training_adapter", "local_dir": "loras/training_adapters", "files": ["krea2_turbo_training_adapter_v1.safetensors"]},

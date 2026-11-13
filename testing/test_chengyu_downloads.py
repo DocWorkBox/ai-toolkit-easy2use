@@ -27,6 +27,21 @@ class ChengyuDownloadTests(unittest.TestCase):
         return {"repo_id": "org/repo", "revision": "commit", "filename": filename,
                 "local_dir": "", "size": 4, "sha256": None, "kind": "files"}
 
+    def test_h3_image_manifest_keeps_shared_files_and_creator_adapter_destination(self):
+        manifest = json.loads((ROOT / "scripts/chengyu_models.json").read_text(encoding="utf-8"))
+        image = next((g for g in manifest["groups"] if g["repo_id"] == "Comfy-Org/MiniMax-H3-Image"), None)
+        self.assertIsNotNone(image)
+        self.assertEqual(image["local_dir"], "")
+        self.assertEqual(set(image["files"]), {
+            "diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors",
+            "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+            "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+            "vae/minimax_h3_image_vae_fp16.safetensors",
+        })
+        adapter = next(g for g in manifest["groups"] if g["repo_id"] == "ostris/minimax_h3_training_adapter")
+        self.assertEqual(adapter["local_dir"], "loras/training_adapters")
+        self.assertIn("minimax_h3_image_training_adapter_v1.safetensors", adapter["files"])
+
     def test_complete_existing_file_is_not_downloaded(self):
         item = self.entry()
         target = self.destination / item["filename"]
